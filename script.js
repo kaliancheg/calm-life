@@ -1,0 +1,243 @@
+// ========================================
+// Navigation Scroll Effect
+// ========================================
+const nav = document.querySelector('.nav');
+const navToggle = document.getElementById('navToggle');
+const navMenu = document.querySelector('.nav-menu');
+
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 50) {
+    nav.classList.add('scrolled');
+  } else {
+    nav.classList.remove('scrolled');
+  }
+});
+
+// Mobile Menu Toggle
+navToggle.addEventListener('click', () => {
+  navMenu.classList.toggle('active');
+  navToggle.classList.toggle('active');
+});
+
+// Close mobile menu on link click
+document.querySelectorAll('.nav-menu a').forEach(link => {
+  link.addEventListener('click', () => {
+    navMenu.classList.remove('active');
+    navToggle.classList.remove('active');
+  });
+});
+
+// ========================================
+// Particles Animation
+// ========================================
+const particlesContainer = document.getElementById('particles');
+const particleCount = 30;
+
+function createParticles() {
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    particle.classList.add('particle');
+    
+    // Random position and animation delay
+    particle.style.left = `${Math.random() * 100}%`;
+    particle.style.animationDelay = `${Math.random() * 20}s`;
+    particle.style.animationDuration = `${15 + Math.random() * 15}s`;
+    particle.style.width = `${2 + Math.random() * 4}px`;
+    particle.style.height = particle.style.width;
+    
+    particlesContainer.appendChild(particle);
+  }
+}
+
+createParticles();
+
+// ========================================
+// Scroll Animations (Intersection Observer)
+// ========================================
+const observerOptions = {
+  threshold: 0.1,
+  rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, observerOptions);
+
+// Add animation classes to elements
+document.querySelectorAll('.benefit-card, .practice-card, .testimonial-card, .about-feature, .about-float-card').forEach(el => {
+  el.classList.add('fade-in');
+  observer.observe(el);
+});
+
+document.querySelectorAll('.about-content, .about-visual').forEach(el => {
+  el.classList.add('fade-in-left');
+  observer.observe(el);
+});
+
+document.querySelectorAll('.cta-content, .cta-visual').forEach(el => {
+  el.classList.add('fade-in-right');
+  observer.observe(el);
+});
+
+// ========================================
+// Smooth Scroll for Anchor Links
+// ========================================
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      const offsetTop = target.offsetTop - 80;
+      window.scrollTo({
+        top: offsetTop,
+        behavior: 'smooth'
+      });
+    }
+  });
+});
+
+// ========================================
+// CTA Form Handler
+// ========================================
+const ctaForm = document.getElementById('ctaForm');
+const ctaEmail = document.getElementById('ctaEmail');
+const ctaSuccess = document.getElementById('ctaSuccess');
+
+ctaForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  
+  const email = ctaEmail.value.trim();
+  
+  if (email && isValidEmail(email)) {
+    // Simulate form submission
+    console.log('Email subscribed:', email);
+    
+    // Show success message
+    ctaForm.style.display = 'none';
+    ctaSuccess.classList.add('show');
+    
+    // Reset after 5 seconds
+    setTimeout(() => {
+      ctaForm.style.display = 'block';
+      ctaSuccess.classList.remove('show');
+      ctaEmail.value = '';
+    }, 5000);
+  }
+});
+
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+// ========================================
+// Counter Animation for Hero Stats
+// ========================================
+function animateCounter(element, target, suffix = '') {
+  let current = 0;
+  const increment = target / 50;
+  const timer = setInterval(() => {
+    current += increment;
+    if (current >= target) {
+      current = target;
+      clearInterval(timer);
+    }
+    element.textContent = Math.floor(current).toLocaleString() + suffix;
+  }, 30);
+}
+
+// Observe hero stats
+const heroStats = document.querySelector('.hero-stats');
+if (heroStats) {
+  const statsObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const statNumbers = entry.target.querySelectorAll('.hero-stat-number');
+        statNumbers.forEach(stat => {
+          const text = stat.textContent;
+          if (text.includes('K')) {
+            animateCounter(stat, 10, 'K+');
+          } else if (text.includes('50')) {
+            animateCounter(stat, 50, '+');
+          } else if (text.includes('98')) {
+            animateCounter(stat, 98, '%');
+          }
+        });
+        statsObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+  
+  statsObserver.observe(heroStats);
+}
+
+// ========================================
+// Parallax Effect for Hero Background
+// ========================================
+const heroBg = document.querySelector('.hero-bg');
+
+window.addEventListener('scroll', () => {
+  if (heroBg) {
+    const scrolled = window.scrollY;
+    heroBg.style.transform = `translateY(${scrolled * 0.3}px)`;
+  }
+});
+
+// ========================================
+// Typing Effect for Hero Subtitle (optional enhancement)
+// ========================================
+const heroSubtitle = document.querySelector('.hero-subtitle');
+
+if (heroSubtitle) {
+  const originalText = heroSubtitle.textContent;
+  heroSubtitle.textContent = '';
+  
+  let charIndex = 0;
+  const typeSpeed = 30;
+  
+  function typeText() {
+    if (charIndex < originalText.length) {
+      heroSubtitle.textContent += originalText.charAt(charIndex);
+      charIndex++;
+      setTimeout(typeText, typeSpeed);
+    }
+  }
+  
+  // Start typing after a short delay
+  setTimeout(typeText, 500);
+}
+
+// ========================================
+// Active Navigation Link Highlight
+// ========================================
+const sections = document.querySelectorAll('section[id]');
+
+window.addEventListener('scroll', () => {
+  let current = '';
+  
+  sections.forEach(section => {
+    const sectionTop = section.offsetTop;
+    const sectionHeight = section.clientHeight;
+    
+    if (window.scrollY >= sectionTop - 200) {
+      current = section.getAttribute('id');
+    }
+  });
+  
+  document.querySelectorAll('.nav-menu a').forEach(link => {
+    link.classList.remove('active');
+    if (link.getAttribute('href') === `#${current}`) {
+      link.classList.add('active');
+    }
+  });
+});
+
+// ========================================
+// Console Welcome Message
+// ========================================
+console.log('%c🌿 Добро пожаловать в CalmLife!', 'color: #5b8c5a; font-size: 20px; font-weight: bold;');
+console.log('%cНайдите свой путь к внутреннему покою.', 'color: #6b6b6b; font-size: 14px;');
