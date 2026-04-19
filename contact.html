@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+  <title>Контакты CalmLife</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-bg">
+      <div class="hero-gradient"></div>
+      <div class="particles" id="particles"></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-container">
+        <a href="index.html" class="nav-logo">🌿 CalmLife</a>
+        <ul class="nav-menu">
+          <li><a href="index.html">Главная</a></li>
+          <li><a href="about.html">О нас</a></li>
+          <li><a href="practices.html">Практики</a></li>
+          <li><a href="contact.html" class="nav-cta active">Контакты</a></li>
+        </ul>
+        <button class="nav-toggle" id="navToggle">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </nav>
+    <div class="hero-content">
+      <div class="hero-badge">Контакты</div>
+      <h1 class="hero-title">Готовы поговорить о спокойствии?<br><span class="hero-title-accent">Мы всегда на связи</span></h1>
+      <p class="hero-subtitle">Напишите нам, и мы подберём полезные материалы или ответим на вопросы по практикам.</p>
+      <div class="hero-actions">
+        <a href="#form" class="btn btn-primary">Написать нам</a>
+        <a href="index.html" class="btn btn-secondary">Вернуться на сайт</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-number">24/7</div>
+          <div class="hero-stat-label">ответы в комментариях</div>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat">
+          <div class="hero-stat-number">3</div>
+          <div class="hero-stat-label">канала поддержки</div>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat">
+          <div class="hero-stat-number">100%</div>
+          <div class="hero-stat-label">конфиденциальность</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="section about" id="contact-info">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge">Связь</div>
+        <h2 class="section-title">Выберите удобный способ</h2>
+      </div>
+      <div class="about-grid">
+        <div class="about-content">
+          <p class="about-text">Вы можете написать нам на почту, подписаться на еженедельную рассылку или оставить сообщение в соцсетях. Мы ответим с советами и подборкой релевантных практик.</p>
+          <div class="about-features">
+            <div class="about-feature">
+              <div class="about-feature-icon">✉️</div>
+              <div class="about-feature-text">
+                <h4>Email</h4>
+                <p>hello@calm-life.ru</p>
+              </div>
+            </div>
+            <div class="about-feature">
+              <div class="about-feature-icon">📲</div>
+              <div class="about-feature-text">
+                <h4>Соцсети</h4>
+                <p>VK, RuTube и другие каналы, которые скоро появятся.</p>
+              </div>
+            </div>
+            <div class="about-feature">
+              <div class="about-feature-icon">🕊️</div>
+              <div class="about-feature-text">
+                <h4>Поддержка</h4>
+                <p>Мы стараемся отвечать быстро и искренне, без шаблонов.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="about-visual">
+          <div class="about-image-placeholder">
+            <div class="about-image-inner">
+              <span class="about-image-emoji">📬</span>
+              <span class="about-image-text">Мы рядом</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section cta" id="form">
+    <div class="container">
+      <div class="cta-wrapper">
+        <div class="cta-content">
+          <h2 class="cta-title">Подписка на советы</h2>
+          <p class="cta-text">Оставьте email, и мы пришлём подборку медитаций и простых практик каждый понедельник.</p>
+          <form class="cta-form" id="ctaForm">
+            <div class="cta-input-group">
+              <input type="email" placeholder="Ваш email" required class="cta-input" id="ctaEmail">
+              <button type="submit" class="btn btn-primary btn-large">Подписаться</button>
+            </div>
+            <p class="cta-note">🔒 Без спама. Только полезные материалы.</p>
+          </form>
+          <div class="cta-success" id="ctaSuccess">✅ Спасибо! Проверьте вашу почту.</div>
+        </div>
+        <div class="cta-visual">
+          <div class="cta-circle">
+            <div class="cta-circle-inner">🤍</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section benefits">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge">Часто спрашивают</div>
+        <h2 class="section-title">Вопросы о CalmLife</h2>
+      </div>
+      <div class="benefits-grid">
+        <div class="benefit-card">
+          <div class="benefit-icon">❓</div>
+          <h3 class="benefit-title">Сколько времени занимает путь?</h3>
+          <p class="benefit-text">От 5 минут в день. Важно не скорость, а регулярность.</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">🔒</div>
+          <h3 class="benefit-title">Будет ли это безопасно?</h3>
+          <p class="benefit-text">Да, мы не собираем лишнюю информацию и уважаем ваше личное пространство.</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">⭐</div>
+          <h3 class="benefit-title">Подойдёт ли это новичку?</h3>
+          <p class="benefit-text">Абсолютно. Все практики адаптированы для тех, кто только начинает.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="footer-logo">🌿 CalmLife</div>
+          <p class="footer-desc">Помогаем людям обрести внутренний покой и жить осознанно с 2026 года.</p>
+        </div>
+        <div class="footer-links">
+          <h4>Навигация</h4>
+          <ul>
+            <li><a href="index.html">Главная</a></li>
+            <li><a href="about.html">О нас</a></li>
+            <li><a href="practices.html">Практики</a></li>
+            <li><a href="contact.html">Контакты</a></li>
+          </ul>
+        </div>
+        <div class="footer-links">
+          <h4>Ресурсы</h4>
+          <ul>
+            <li><a href="#">Помощь</a></li>
+            <li><a href="#">Материалы</a></li>
+            <li><a href="#">Поддержка</a></li>
+            <li><a href="#">FAQ</a></li>
+          </ul>
+        </div>
+        <div class="footer-social">
+          <h4>Мы в соцсетях</h4>
+          <div class="footer-social-links">
+            <a href="#" class="social-link">MAX</a>
+            <a href="#" class="social-link">VK</a>
+            <a href="#" class="social-link">RuTube</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">© 2026 CalmLife. Создано с 💚 для вашего спокойствия.</div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

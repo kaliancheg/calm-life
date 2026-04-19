@@ -215,26 +215,46 @@ if (heroSubtitle) {
 // Active Navigation Link Highlight
 // ========================================
 const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-menu a');
 
-window.addEventListener('scroll', () => {
-  let current = '';
-  
+function getPageName(path) {
+  const name = path.split('/').pop() || 'index';
+  return name.replace(/\.html$/i, '').toLowerCase() || 'index';
+}
+
+function getLinkPath(link) {
+  const href = link.getAttribute('href') || '';
+  if (href.startsWith('#') || href.trim() === '') return 'index';
+  return href.split('/').pop().replace(/\.html$/i, '').toLowerCase() || 'index';
+}
+
+function updateNavHighlight() {
+  const currentPath = getPageName(window.location.pathname);
+  let currentSection = '';
+
   sections.forEach(section => {
     const sectionTop = section.offsetTop;
-    const sectionHeight = section.clientHeight;
-    
     if (window.scrollY >= sectionTop - 200) {
-      current = section.getAttribute('id');
+      currentSection = section.getAttribute('id');
     }
   });
-  
-  document.querySelectorAll('.nav-menu a').forEach(link => {
+
+  navLinks.forEach(link => {
     link.classList.remove('active');
-    if (link.getAttribute('href') === `#${current}`) {
+    const href = link.getAttribute('href') || '';
+    const linkPath = getLinkPath(link);
+
+    const isCurrentPage = linkPath === currentPath;
+    const isCurrentSection = href.startsWith('#') && currentPath === 'index' && href === `#${currentSection}`;
+
+    if (isCurrentPage || isCurrentSection) {
       link.classList.add('active');
     }
   });
-});
+}
+
+window.addEventListener('scroll', updateNavHighlight);
+window.addEventListener('load', updateNavHighlight);
 
 // ========================================
 // Console Welcome Message

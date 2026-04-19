@@ -167,10 +167,43 @@ img {
   font-weight: 500;
   font-size: 0.95rem;
   position: relative;
+  transition: var(--transition);
+  padding: 10px 16px;
+  border-radius: 100px;
 }
 
-.nav.scrolled .nav-menu a {
+.nav-menu a.active {
+  color: var(--color-white);
+  background: var(--color-primary);
+}
+
+.nav-menu a.active::after {
+  width: 0;
+}
+
+.nav.scrolled .nav-menu a:not(.nav-cta) {
   color: var(--color-text);
+}
+
+.nav.scrolled .nav-cta {
+  color: var(--color-text) !important;
+  background: transparent;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.nav.scrolled .nav-cta:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.nav.scrolled .nav-menu a.active {
+  color: var(--color-white);
+  background: var(--color-primary);
+}
+
+.nav.scrolled .nav-cta.active {
+  color: var(--color-white) !important;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .nav-menu a::after {
@@ -190,13 +223,20 @@ img {
 
 .nav-cta {
   padding: 10px 24px !important;
-  background: var(--color-primary);
+  background: transparent;
   border-radius: 100px;
-  color: var(--color-white) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .nav-cta:hover {
-  background: var(--color-primary-dark);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.nav-cta.active {
+  background: var(--color-primary);
+  color: var(--color-white) !important;
+  border-color: var(--color-primary);
 }
 
 .nav-cta::after {
