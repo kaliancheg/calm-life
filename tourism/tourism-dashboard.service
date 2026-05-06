@@ -1,0 +1,35 @@
+[Unit]
+Description=Tourism Dashboard Application
+After=network.target mysql.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+
+# Путь к проекту
+WorkingDirectory=/var/www/calm-life/tourism
+
+# Путь к виртуальному окружению
+ExecStart=/var/www/calm-life/tourism/venv/bin/gunicorn \
+    --config /var/www/calm-life/tourism/gunicorn.conf.py \
+    app:app
+
+# Перезапуск при падении
+Restart=always
+RestartSec=10
+
+# Переменные окружения (если нужны)
+# Environment="PYTHONPATH=/var/www/calm-life/tourism"
+# Environment="FLASK_ENV=production"
+
+# Логирование
+StandardError=append:/var/log/tourism-dashboard/error.log
+StandardOutput=append:/var/log/tourism-dashboard/access.log
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

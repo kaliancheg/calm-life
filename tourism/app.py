@@ -1,0 +1,951 @@
+﻿from flask import Flask, render_template, jsonify, redirect, url_for, request, flash, session, g
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from functools import wraps
+from datetime import datetime, timedelta
+import pandas as pd
+import mysql.connector
+import bcrypt
+import logging
+from typing import List, Optional, Dict, Any
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
+app.config['SESSION_PERMANENT'] = True
+app.config['SESSION_TIMEOUT'] = timedelta(hours=8)
+
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+login_manager.session_protection = 'strong'
+
+MYSQL_CONFIG = {
+    'host': 'localhost', 'port': 3306, 'user': 'root', 'password': 'root123',
+    'database': 'daily_tourism', 'charset': 'utf8mb4',
+    'collation': 'utf8mb4_unicode_ci', 'use_unicode': True,
+}
+
+# Конфигурация прав по умолчанию
+DEFAULT_PERMISSIONS = {
+    'admin': {
+        'users': ['view', 'create', 'update', 'delete'],
+        'roles': ['view', 'create', 'update', 'delete'],
+        'permissions': ['view', 'create', 'update', 'delete'],
+        'data': ['view', 'export'],
+        'audit_log': ['view'],
+        'settings': ['view', 'update'],
+        'profile': ['update'],
+        '_can_view_all': True  # Админ видит всё по умолчанию
+    },
+    'manager': {
+        'users': ['view'],
+        'roles': ['view'],
+        'permissions': ['view'],
+        'data': ['view', 'export'],
+        'audit_log': [],
+        'settings': [],
+        'profile': ['update'],
+        '_can_view_all': False  # Менеджер видит только назначенное
+    },
+    'user': {
+        'users': [],
+        'roles': [],
+        'permissions': [],
+        'data': ['view'],
+        'audit_log': [],
+        'settings': [],
+        'profile': ['update'],
+        '_can_view_all': False  # Пользователь видит только назначенное
+    }
+}
+
+class User(UserMixin):
+    def __init__(self, id: int, username: str, full_name: str, role: str, is_active: bool = True):
+        self.id = id
+        self.username = username
+        self.full_name = full_name
+        self.role = role
+        self._is_active = is_active  # Используем приватное свойство
+        self.permissions: Dict[str, List[str]] = {}
+        self.last_login: Optional[datetime] = None
+
+    @property
+    def is_active(self) -> bool:
+        return self._is_active
+    
+    @property
+    def is_anonymous(self) -> bool:
+        return False
+    
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+    
+    def get_id(self) -> str:
+        return str(self.id)
+    
+    def has_permission(self, resource: str, action: str) -> bool:
+        """Проверка права доступа к ресурсу"""
+        return action in self.permissions.get(resource, [])
+    
+    def has_any_permission(self, resource: str, actions: List[str]) -> bool:
+        """Проверка наличия любого из указанных прав"""
+        return any(action in self.permissions.get(resource, []) for action in actions)
+
+@login_manager.user_loader
+def load_user(user_id: str):
+    """Загрузка пользователя по ID"""
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            'SELECT id, username, full_name, role, is_active FROM users WHERE id = %s AND is_active = TRUE',
+            (user_id,)
+        )
+        user_data = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if user_data:
+            user = User(
+                id=user_data['id'],
+                username=user_data['username'],
+                full_name=user_data['full_name'],
+                role=user_data['role'],
+                is_active=user_data['is_active']
+            )
+            # Загружаем права пользователя
+            user.permissions = get_user_permissions_dict(user.id)
+            return user
+    except Exception as e:
+        logger.error(f'Error loading user {user_id}: {e}')
+    return None
+
+def get_user_permissions_dict(user_id: int) -> Dict[str, List[str]]:
+    """Получение прав пользователя из БД"""
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        
+        # Получаем роль пользователя
+        cursor1 = conn.cursor(dictionary=True, buffered=True)
+        cursor1.execute('SELECT role FROM users WHERE id = %s', (user_id,))
+        user = cursor1.fetchone()
+        cursor1.close()
+        
+        if not user:
+            conn.close()
+            return {}
+    
+        role = user['role']
+        permissions = DEFAULT_PERMISSIONS.get(role, {}).copy()
+        
+        # Получаем кастомные права из БД
+        cursor2 = conn.cursor(dictionary=True, buffered=True)
+        cursor2.execute('SELECT can_view_all, can_export FROM permissions WHERE user_id = %s', (user_id,))
+        perm = cursor2.fetchone()
+        cursor2.close()
+        
+        # Если в БД нет записи, используем значения по умолчанию
+        if not perm:
+            can_view_all = permissions.pop('_can_view_all', False)
+            can_export = 'export' in permissions.get('data', [])
+        else:
+            can_view_all = bool(perm.get('can_view_all', 0))
+            can_export = bool(perm.get('can_export', 0))
+        
+        # Обновляем права на данные
+        if can_view_all:
+            permissions['data'] = ['view', 'export']
+        if can_export and 'export' not in permissions.get('data', []):
+            if 'view' in permissions.get('data', []):
+                permissions['data'].append('export')
+            else:
+                permissions['data'] = ['view', 'export']
+        
+        # Получаем разрешённые подразделения
+        cursor3 = conn.cursor(dictionary=True, buffered=True)
+        cursor3.execute('SELECT DISTINCT subdivision FROM permissions_subdivisions WHERE user_id = %s', (user_id,))
+        allowed_subs = [row['subdivision'] for row in cursor3.fetchall()]
+        cursor3.close()
+        
+        # Получаем разрешённые отделы
+        cursor4 = conn.cursor(dictionary=True, buffered=True)
+        cursor4.execute('SELECT DISTINCT otdel FROM permissions_otdels WHERE user_id = %s', (user_id,))
+        allowed_otdels = [row['otdel'] for row in cursor4.fetchall()]
+        cursor4.close()
+        
+        conn.close()
+
+        # Сохраняем ограничения по ресурсам
+        if can_view_all:
+            permissions['_allowed_subdivisions'] = None
+            permissions['_allowed_otdels'] = None
+        else:
+            if not allowed_subs and not allowed_otdels:
+                permissions['_allowed_subdivisions'] = None
+                permissions['_allowed_otdels'] = None
+            else:
+                permissions['_allowed_subdivisions'] = allowed_subs if allowed_subs else []
+                permissions['_allowed_otdels'] = allowed_otdels if allowed_otdels else []
+        
+        return permissions
+    except Exception as e:
+        logger.error(f'Error getting permissions for user {user_id}: {e}')
+        import traceback
+        traceback.print_exc()
+        return {}
+
+def log_action(user_id: int, action: str, resource: str, details: Optional[Dict] = None):
+    """Логирование действия пользователя"""
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute(
+            '''INSERT INTO audit_log (user_id, action, resource, details, created_at) 
+               VALUES (%s, %s, %s, %s, NOW())''',
+            (user_id, action, resource, str(details) if details else None)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        logger.error(f'Error logging action: {e}')
+
+def check_permission(resource: str, actions: List[str]):
+    """Декоратор для проверки прав доступа"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return redirect(url_for('login'))
+            
+            # Админ имеет все права
+            if current_user.role == 'admin':
+                return f(*args, **kwargs)
+            
+            # Проверяем права
+            if not current_user.has_any_permission(resource, actions):
+                logger.warning(f'User {current_user.username} denied access to {resource}:{actions}')
+                flash('У вас нет прав для выполнения этого действия', 'error')
+                return redirect(url_for('dashboard'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+@app.before_request
+def before_request():
+    """Middleware перед каждым запросом"""
+    if current_user.is_authenticated:
+        g.user = current_user
+        # Проверка таймаута сессии
+        if session.get('last_activity'):
+            last_activity = datetime.fromisoformat(session['last_activity'])
+            if datetime.now() - last_activity > app.config['SESSION_TIMEOUT']:
+                logout_user()
+                flash('Сессия истекла. Пожалуйста, войдите снова.', 'info')
+                return redirect(url_for('login'))
+        session['last_activity'] = datetime.now().isoformat()
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Страница входа"""
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        
+        if not username or not password:
+            error = 'Введите логин и пароль'
+        else:
+            try:
+                conn = mysql.connector.connect(**MYSQL_CONFIG)
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(
+                    'SELECT id, username, password_hash, full_name, role, is_active, last_login FROM users WHERE username = %s',
+                    (username,)
+                )
+                user = cursor.fetchone()
+                cursor.close()
+                conn.close()
+                
+                if not user:
+                    error = 'Пользователь не найден'
+                    try:
+                        log_action(None, 'failed_login', 'auth', {'username': username, 'reason': 'not_found'})
+                    except:
+                        pass
+                elif not user.get('is_active'):
+                    error = 'Пользователь заблокирован'
+                    try:
+                        log_action(None, 'failed_login', 'auth', {'username': username, 'reason': 'inactive'})
+                    except:
+                        pass
+                else:
+                    # Проверяем пароль - password_hash может быть в разных форматах
+                    password_hash = user['password_hash']
+                    if isinstance(password_hash, str):
+                        try:
+                            password_hash_bytes = password_hash.encode('utf-8')
+                        except:
+                            password_hash_bytes = password_hash
+                    
+                    try:
+                        password_valid = bcrypt.checkpw(password.encode('utf-8'), password_hash_bytes)
+                    except Exception as bcrypt_err:
+                        logger.error(f'Bcrypt error: {bcrypt_err}')
+                        password_valid = False
+                    
+                    if not password_valid:
+                        error = 'Неверный пароль'
+                        try:
+                            log_action(None, 'failed_login', 'auth', {'username': username, 'reason': 'wrong_password'})
+                        except:
+                            pass
+                    else:
+                        user_obj = User(
+                            id=user['id'],
+                            username=user['username'],
+                            full_name=user['full_name'],
+                            role=user['role'],
+                            is_active=user['is_active']
+                        )
+                        user_obj.permissions = get_user_permissions_dict(user['id'])
+                        
+                        login_user(user_obj)
+                        session.permanent = True
+                        
+                        # Обновляем last_login
+                        conn = mysql.connector.connect(**MYSQL_CONFIG)
+                        cursor = conn.cursor()
+                        cursor.execute('UPDATE users SET last_login = NOW() WHERE id = %s', (user['id'],))
+                        conn.commit()
+                        cursor.close()
+                        conn.close()
+                        
+                        log_action(user['id'], 'login', 'auth', {'username': username})
+                        return redirect(url_for('dashboard'))
+            except Exception as e:
+                logger.error(f'Login error: {e}')
+                error = 'Внутренняя ошибка сервера'
+    
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+@login_required
+def logout():
+    """Выход из системы"""
+    if current_user.is_authenticated:
+        log_action(current_user.id, 'logout', 'auth', {'username': current_user.username})
+    logout_user()
+    return redirect(url_for('login'))
+
+@app.route('/')
+@login_required
+def dashboard():
+    """Главная панель (дашборд)"""
+    # Проверяем права на экспорт
+    can_export = current_user.has_permission('data', 'export')
+    
+    return render_template(
+        'dashboard.html',
+        user_name=current_user.full_name,
+        role=current_user.role,
+        can_export=can_export
+    )
+
+@app.route('/api/data')
+@login_required
+def api_data():
+    """API для получения данных с учётом прав доступа"""
+    logger.info(f'API: User {current_user.username} ({current_user.role}) requesting data...')
+    conn = None
+    
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        
+        # Проверяем права на просмотр данных
+        if not current_user.has_permission('data', 'view'):
+            logger.warning(f'User {current_user.username} denied access to data view')
+            return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
+        
+        # Получаем ограничения из прав
+        permissions = current_user.permissions
+        allowed_subdivisions = permissions.get('_allowed_subdivisions', None)
+        allowed_otdels = permissions.get('_allowed_otdels', None)
+        
+        # Администраторы видят всё по умолчанию, если нет явных ограничений
+        is_admin = current_user.role == 'admin'
+        
+        # Формируем запрос с фильтрацией
+        if is_admin and allowed_subdivisions is None and allowed_otdels is None:
+            # Админ без ограничений - видит всё
+            query = 'SELECT fio, snils, podrazdelenie, otdel, dolzhnost, data, chasy, nachisleno, itogo FROM records ORDER BY data DESC'
+            df = pd.read_sql(query, conn)
+        elif allowed_subdivisions is None and allowed_otdels is None:
+            # Не админ без ограничений - тоже видит всё (для совместимости)
+            query = 'SELECT fio, snils, podrazdelenie, otdel, dolzhnost, data, chasy, nachisleno, itogo FROM records ORDER BY data DESC'
+            df = pd.read_sql(query, conn)
+        else:
+            # Есть ограничения - фильтруем
+            conditions = []
+            params = []
+            
+            # Если есть ограничения по подразделениям И отделам - используем AND
+            if allowed_subdivisions is not None and allowed_otdels is not None:
+                if len(allowed_subdivisions) > 0 and len(allowed_otdels) > 0:
+                    # (подразделение IN (...) AND отдел IN (...))
+                    sub_placeholders = ','.join(['%s'] * len(allowed_subdivisions))
+                    otdel_placeholders = ','.join(['%s'] * len(allowed_otdels))
+                    query = f'''
+                        SELECT fio, snils, podrazdelenie, otdel, dolzhnost, data, chasy, nachisleno, itogo 
+                        FROM records 
+                        WHERE podrazdelenie IN ({sub_placeholders}) 
+                        AND otdel IN ({otdel_placeholders})
+                        ORDER BY data DESC
+                    '''
+                    params.extend(allowed_subdivisions)
+                    params.extend(allowed_otdels)
+                    df = pd.read_sql(query, conn, params=params)
+                elif len(allowed_subdivisions) > 0:
+                    # Только подразделения
+                    placeholders = ','.join(['%s'] * len(allowed_subdivisions))
+                    query = f'''
+                        SELECT fio, snils, podrazdelenie, otdel, dolzhnost, data, chasy, nachisleno, itogo 
+                        FROM records 
+                        WHERE podrazdelenie IN ({placeholders})
+                        ORDER BY data DESC
+                    '''
+                    df = pd.read_sql(query, conn, params=allowed_subdivisions)
+                elif len(allowed_otdels) > 0:
+                    # Только отделы
+                    placeholders = ','.join(['%s'] * len(allowed_otdels))
+                    query = f'''
+                        SELECT fio, snils, podrazdelenie, otdel, dolzhnost, data, chasy, nachisleno, itogo 
+                        FROM records 
+                        WHERE otdel IN ({placeholders})
+                        ORDER BY data DESC
+                    '''
+                    df = pd.read_sql(query, conn, params=allowed_otdels)
+                else:
+                    # Нет ограничений
+                    query = 'SELECT fio, snils, podrazdelenie, otdel, dolzhnost, data, chasy, nachisleno, itogo FROM records ORDER BY data DESC'
+                    df = pd.read_sql(query, conn)
+            elif allowed_subdivisions is not None and len(allowed_subdivisions) > 0:
+                # Только подразделения
+                placeholders = ','.join(['%s'] * len(allowed_subdivisions))
+                query = f'SELECT fio, snils, podrazdelenie, otdel, dolzhnost, data, chasy, nachisleno, itogo FROM records WHERE podrazdelenie IN ({placeholders}) ORDER BY data DESC'
+                df = pd.read_sql(query, conn, params=allowed_subdivisions)
+            elif allowed_otdels is not None and len(allowed_otdels) > 0:
+                # Только отделы
+                placeholders = ','.join(['%s'] * len(allowed_otdels))
+                query = f'SELECT fio, snils, podrazdelenie, otdel, dolzhnost, data, chasy, nachisleno, itogo FROM records WHERE otdel IN ({placeholders}) ORDER BY data DESC'
+                df = pd.read_sql(query, conn, params=allowed_otdels)
+            else:
+                # Нет разрешённых ресурсов
+                df = pd.DataFrame(columns=['fio', 'snils', 'podrazdelenie', 'otdel', 'dolzhnost', 'data', 'chasy', 'nachisleno', 'itogo'])
+       
+        df['data'] = pd.to_datetime(df['data']).dt.strftime('%Y-%m-%d')
+        logger.info(f'API: Returning {len(df)} records for user {current_user.username}')
+        return jsonify(df.to_dict('records'))
+    
+    except Exception as e:
+        logger.error(f'API Error: {e}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        if conn and conn.is_connected():
+            conn.close()
+
+@app.route('/admin')
+@login_required
+def admin_panel():
+    """Главная страница админ-панели"""
+    # Проверяем: если у пользователя нет вообще никаких прав админки, перенаправляем на дашборд
+    if not (current_user.has_any_permission('users', ['view']) or 
+            current_user.has_any_permission('permissions', ['view']) or
+            current_user.has_any_permission('roles', ['view']) or
+            current_user.has_any_permission('audit_log', ['view']) or
+            current_user.has_any_permission('profile', ['update'])):
+        return redirect(url_for('dashboard'))
+    
+    log_action(current_user.id, 'view', 'admin_panel', {})
+    return render_template(
+        'admin_new.html',
+        user_name=current_user.full_name,
+        role=current_user.role,
+        current_user_id=current_user.id
+    )
+
+# ==================== USER MANAGEMENT ====================
+
+@app.route('/admin/users')
+@login_required
+@check_permission('users', ['view'])
+def get_users():
+    """Получение списка пользователей"""
+    log_action(current_user.id, 'view', 'users', {'action': 'list'})
+    
+    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute('''
+        SELECT id, username, full_name, role, is_active, last_login, created_at 
+        FROM users 
+        ORDER BY id
+    ''')
+    users = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    # Преобразуем даты в строки
+    for user in users:
+        if user.get('last_login'):
+            user['last_login'] = str(user['last_login'])
+        if user.get('created_at'):
+            user['created_at'] = str(user['created_at'])
+    
+    return jsonify(users)
+
+@app.route('/admin/users', methods=['POST'])
+@login_required
+@check_permission('users', ['create', 'update'])
+def create_or_update_user():
+    """Создание или обновление пользователя"""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    full_name = data.get('full_name', '').strip()
+    password = data.get('password', '')
+    role = data.get('role', 'user')
+    is_active = data.get('is_active', True)
+    user_id = data.get('id')
+
+    if not username:
+        return jsonify({'error': 'Логин обязателен'}), 400
+
+    # Валидация роли
+    valid_roles = ['admin', 'manager', 'user']
+    if role not in valid_roles:
+        return jsonify({'error': f'Неверная роль. Допустимые: {", ".join(valid_roles)}'}), 400
+
+    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        if user_id:
+            # Обновление существующего пользователя
+            cursor.execute('SELECT id, role FROM users WHERE id = %s', (user_id,))
+            user = cursor.fetchone()
+            if not user:
+                return jsonify({'error': 'Пользователь не найден'}), 404
+            
+            # Проверка: нельзя изменить роль другого админа на не-admin
+            if user_id == current_user.id and role != 'admin':
+                return jsonify({'error': 'Нельзя изменить свою роль на не-админ'}), 400
+            
+            if password:
+                password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                cursor.execute('''
+                    UPDATE users SET username=%s, full_name=%s, password_hash=%s, role=%s, is_active=%s 
+                    WHERE id=%s
+                ''', (username, full_name, password_hash, role, is_active, user_id))
+                log_action(current_user.id, 'update', 'user', {
+                    'user_id': user_id, 'action': 'update_with_password'
+                })
+            else:
+                cursor.execute('''
+                    UPDATE users SET username=%s, full_name=%s, role=%s, is_active=%s 
+                    WHERE id=%s
+                ''', (username, full_name, role, is_active, user_id))
+                log_action(current_user.id, 'update', 'user', {
+                    'user_id': user_id, 'action': 'update_without_password'
+                })
+        else:
+            # Создание нового пользователя
+            cursor.execute('SELECT id FROM users WHERE username = %s', (username,))
+            if cursor.fetchone():
+                return jsonify({'error': 'Пользователь с таким логином уже существует'}), 400
+
+            if not password:
+                return jsonify({'error': 'Пароль обязателен для нового пользователя'}), 400
+
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            cursor.execute('''
+                INSERT INTO users (username, password_hash, full_name, role, is_active) 
+                VALUES (%s, %s, %s, %s, %s)
+            ''', (username, password_hash, full_name, role, is_active))
+            
+            new_user_id = cursor.lastrowid
+            
+            # Создаём права по умолчанию для роли (используем INSERT IGNORE для избежания дубликатов)
+            default_perms = DEFAULT_PERMISSIONS.get(role, {})
+            can_view_all = 1 if default_perms.get('_can_view_all', False) else 0
+            can_export = 1 if 'export' in default_perms.get('data', []) else 0
+            cursor.execute('''
+                INSERT IGNORE INTO permissions (user_id, can_view_all, can_export)
+                VALUES (%s, %s, %s) 
+            ''', (new_user_id, can_view_all, can_export))
+            
+            log_action(current_user.id, 'create', 'user', {'user_id': new_user_id, 'username': username, 'role': role})
+        
+        conn.commit()
+        return jsonify({'success': True})
+    
+    except Exception as e:
+        conn.rollback()
+        logger.error(f'Error creating/updating user: {e}')
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/admin/users/<int:user_id>', methods=['DELETE'])
+@login_required
+@check_permission('users', ['delete'])
+def delete_user(user_id: int):
+    """Удаление пользователя"""
+    if user_id == current_user.id:
+        return jsonify({'error': 'Нельзя удалить самого себя'}), 400
+
+    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    cursor = conn.cursor()
+    try:
+        cursor.execute('DELETE FROM users WHERE id = %s', (user_id,))
+        conn.commit()
+        log_action(current_user.id, 'delete', 'user', {'user_id': user_id})
+    except Exception as e:
+        conn.rollback()
+        logger.error(f'Error deleting user: {e}')
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+    return jsonify({'success': True})
+
+# ==================== SUBDIVISIONS & OTDELS ====================
+
+@app.route('/admin/subdivisions')
+@login_required
+@check_permission('users', ['view'])
+def get_subdivisions():
+    """Получение списка подразделений и отделов"""
+    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT DISTINCT podrazdelenie FROM records WHERE podrazdelenie IS NOT NULL ORDER BY podrazdelenie')
+        subdivisions = [row[0] for row in cursor.fetchall()]
+        cursor.execute('SELECT DISTINCT otdel FROM records WHERE otdel IS NOT NULL ORDER BY otdel')
+        otdels = [row[0] for row in cursor.fetchall()]
+        return jsonify({'subdivisions': subdivisions, 'otdels': otdels})
+    finally:
+        cursor.close()
+        conn.close()
+
+# ==================== PERMISSIONS MANAGEMENT ====================
+
+@app.route('/admin/permissions/<int:user_id>')
+@login_required
+@check_permission('permissions', ['view'])
+def get_user_permissions(user_id: int):
+    """Получение прав пользователя"""
+    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    
+    try:
+        # Получаем основные права
+        cursor1 = conn.cursor(dictionary=True)
+        cursor1.execute('SELECT can_view_all, can_export FROM permissions WHERE user_id = %s', (user_id,))
+        perm = cursor1.fetchone()
+        cursor1.close()
+        
+        if not perm:
+            perm = {'can_view_all': False, 'can_export': False}
+        
+        # Получаем подразделения
+        cursor2 = conn.cursor(dictionary=True)
+        cursor2.execute('SELECT DISTINCT subdivision FROM permissions_subdivisions WHERE user_id = %s', (user_id,))
+        subdivisions = [row['subdivision'] for row in cursor2.fetchall()]
+        cursor2.close()
+        
+        # Получаем отделы
+        cursor3 = conn.cursor(dictionary=True)
+        cursor3.execute('SELECT DISTINCT otdel FROM permissions_otdels WHERE user_id = %s', (user_id,))
+        otdels = [row['otdel'] for row in cursor3.fetchall()]
+        cursor3.close()
+        
+        return jsonify({
+            'can_view_all': bool(perm.get('can_view_all', False)),
+            'can_export': bool(perm.get('can_export', False)),
+            'subdivisions': subdivisions,
+            'otdels': otdels
+        })
+    except Exception as e:
+        logger.error(f'Error getting user permissions: {e}')
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/admin/permissions', methods=['POST'])
+@login_required
+@check_permission('permissions', ['update'])
+def save_permissions():
+    """Сохранение прав пользователя"""
+    try:
+        data = request.get_json()
+        
+        user_id = data.get('user_id')
+        can_view_all = data.get('can_view_all', False)
+        can_export = data.get('can_export', False)
+        subdivisions = data.get('subdivisions', [])
+        otdels = data.get('otdels', [])
+
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor()
+        
+        try:
+            # Сохраняем основные права (используем INSERT ... ON DUPLICATE KEY UPDATE)
+            cursor.execute('''
+                INSERT INTO permissions (user_id, can_view_all, can_export) 
+                VALUES (%s, %s, %s) 
+                ON DUPLICATE KEY UPDATE can_view_all=VALUES(can_view_all), can_export=VALUES(can_export)
+            ''', (user_id, int(can_view_all), int(can_export)))
+            
+            # Удаляем старые права на подразделения и отделы
+            cursor.execute('DELETE FROM permissions_subdivisions WHERE user_id = %s', (user_id,))
+            cursor.execute('DELETE FROM permissions_otdels WHERE user_id = %s', (user_id,))
+            
+            # Добавляем новые права на подразделения
+            for sub in subdivisions:
+                sub_val = sub.get('subdivision') or sub.get('value') if isinstance(sub, dict) else sub
+                if sub_val:
+                    cursor.execute('''
+                        INSERT INTO permissions_subdivisions (user_id, subdivision) 
+                        VALUES (%s, %s)
+                    ''', (user_id, str(sub_val)))
+            
+            # Добавляем новые права на отделы
+            for otd in otdels:
+                otd_val = otd.get('otdel') or otd.get('value') if isinstance(otd, dict) else otd
+                if otd_val:
+                    cursor.execute('''
+                        INSERT INTO permissions_otdels (user_id, otdel) 
+                        VALUES (%s, %s)
+                    ''', (user_id, str(otd_val)))
+            
+            conn.commit()
+            log_action(current_user.id, 'update', 'permissions', {
+                'user_id': user_id,
+                'can_view_all': can_view_all,
+                'can_export': can_export,
+                'subdivisions_count': len(subdivisions),
+                'otdels_count': len(otdels)
+            })
+            
+            return jsonify({'success': True})
+        
+        except Exception as e:
+            conn.rollback()
+            logger.error(f'Error saving permissions: {e}')
+            return jsonify({'error': str(e)}), 500
+        
+        finally:
+            cursor.close()
+            conn.close()
+    
+    except Exception as e:
+        logger.error(f'Error in save_permissions: {e}')
+        return jsonify({'error': str(e)}), 500
+
+# ==================== PASSWORD CHANGE ====================
+
+@app.route('/admin/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """Смена пароля текущего пользователя"""
+    data = request.get_json()
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+
+    if not current_password or not new_password:
+        return jsonify({'error': 'Заполните все поля'}), 400
+
+    if len(new_password) < 6:
+        return jsonify({'error': 'Пароль должен быть не менее 6 символов'}), 400
+
+    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        cursor.execute('SELECT password_hash FROM users WHERE id = %s', (current_user.id,))
+        user = cursor.fetchone()
+        
+        if not user or not bcrypt.checkpw(current_password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+            return jsonify({'error': 'Неверный текущий пароль'}), 400
+
+        password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        cursor.execute('UPDATE users SET password_hash = %s WHERE id = %s', (password_hash, current_user.id))
+        conn.commit()
+        
+        log_action(current_user.id, 'update', 'password', {'user_id': current_user.id})
+        return jsonify({'success': True})
+    
+    except Exception as e:
+        logger.error(f'Error changing password: {e}')
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+# ==================== AUDIT LOG ====================
+
+@app.route('/admin/audit-log')
+@login_required
+@check_permission('audit_log', ['view'])
+def get_audit_log():
+    """Получение лога действий"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    user_id_filter = request.args.get('user_id', type=int)
+    action_filter = request.args.get('action', '')
+    
+    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # Базовый запрос
+        query = '''
+            SELECT al.*, u.username, u.full_name 
+            FROM audit_log al
+            LEFT JOIN users u ON al.user_id = u.id
+            WHERE 1=1
+        '''
+        params = []
+        
+        if user_id_filter:
+            query += ' AND al.user_id = %s'
+            params.append(user_id_filter)
+        
+        if action_filter:
+            query += ' AND al.action = %s'
+            params.append(action_filter)
+        
+        query += ' ORDER BY al.created_at DESC LIMIT %s OFFSET %s'
+        params.extend([per_page, (page - 1) * per_page])
+        
+        cursor.execute(query, params)
+        logs = cursor.fetchall()
+        
+        # Получаем общее количество записей
+        count_query = '''
+            SELECT COUNT(*) as total FROM audit_log al
+            WHERE 1=1
+        '''
+        count_params = []
+        
+        if user_id_filter:
+            count_query += ' AND al.user_id = %s'
+            count_params.append(user_id_filter)
+        
+        if action_filter:
+            count_query += ' AND al.action = %s'
+            count_params.append(action_filter)
+        
+        cursor.execute(count_query, count_params)
+        total = cursor.fetchone()['total']
+        
+        return jsonify({
+            'logs': logs,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page
+        })
+    
+    except Exception as e:
+        logger.error(f'Error getting audit log: {e}')
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+# ==================== ROLES MANAGEMENT ====================
+
+@app.route('/admin/roles')
+@login_required
+@check_permission('roles', ['view'])
+def get_roles():
+    """Получение списка ролей"""
+    roles = []
+    for role_name, permissions in DEFAULT_PERMISSIONS.items():
+        roles.append({
+            'name': role_name,
+            'permissions': permissions
+        })
+    return jsonify(roles)
+
+@app.route('/admin/stats')
+@login_required
+@check_permission('users', ['view'])
+def get_stats():
+    """Получение статистики"""
+    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # Количество пользователей по ролям
+        cursor.execute('''
+            SELECT role, COUNT(*) as count 
+            FROM users 
+            GROUP BY role
+        ''')
+        users_by_role = cursor.fetchall()
+        
+        # Количество записей в базе
+        cursor.execute('SELECT COUNT(*) as total FROM records')
+        records_count = cursor.fetchone()['total']
+        
+        # Последние логины
+        cursor.execute('''
+            SELECT username, full_name, last_login 
+            FROM users 
+            WHERE last_login IS NOT NULL 
+            ORDER BY last_login DESC 
+            LIMIT 10
+        ''')
+        recent_logins = cursor.fetchall()
+        
+        return jsonify({
+            'users_by_role': users_by_role,
+            'records_count': records_count,
+            'recent_logins': recent_logins
+        })
+    
+    except Exception as e:
+        logger.error(f'Error getting stats: {e}')
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+if __name__ == '__main__':
+    print('='*60)
+    print('Dashboard with Advanced RBAC Permissions System')
+    print('='*60)
+    print('http://localhost:5000')
+    print('Login: admin, Password: admin123')
+    print('='*60)
+    print('Features:')
+    print('  - Role-Based Access Control (RBAC)')
+    print('  - Granular permissions per resource')
+    print('  - Audit logging for all actions')
+    print('  - Session timeout protection')
+    print('  - Subdivision/Department-level access control')
+    print('='*60)
+    app.run(debug=True, host='0.0.0.0', port=5000)
