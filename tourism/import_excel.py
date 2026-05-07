@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Скрипт для импорта данных из Excel файла в базу данных Tourism Dashboard
-Поддерживает формат файла: Табель_ежедневный_туризм.xlsx, лист "Реестр"
+Поддерживает формат файла: Табель_ежедневный_туризм.xlsx, лист "Архив"
 """
 
 import pandas as pd
@@ -21,7 +21,7 @@ DB_CONFIG = {
     'collation': 'utf8mb4_unicode_ci'
 }
 
-def parse_excel(file_path, sheet_name='Реестр'):
+def parse_excel(file_path, sheet_name='Архив'):
     """Читает Excel файл и возвращает DataFrame"""
     try:
         print(f"📖 Чтение файла: {file_path}")
@@ -161,7 +161,7 @@ def main():
         print("  python import_excel.py C:/Users/Roman/Downloads/Табель.xlsx")
         print("  python import_excel.py /home/user/data/Табель.xlsx")
         print("\nФормат Excel файла:")
-        print("  - Лист: 'Реестр'")
+        print("  - Лист: 'Архив'")
         print("  - Колонки: ФИО, СНИЛС, Подразделение, Отдел, Должность, Дата, Часы, Начислено, Итого")
         sys.exit(1)
     
