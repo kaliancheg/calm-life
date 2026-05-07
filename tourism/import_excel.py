@@ -25,38 +25,79 @@ def parse_excel(file_path, sheet_name='Архив'):
     """Читает Excel файл и возвращает DataFrame"""
     try:
         print(f"📖 Чтение файла: {file_path}")
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
+        print(f"📄 Лист: {sheet_name}")
+        # skiprows=0 - заголовок в первой строке (как вы сказали)
+        df = pd.read_excel(file_path, sheet_name=sheet_name, skiprows=0)
         print(f"✅ Найдено строк: {len(df)}")
+        print(f"📊 Колонки: {list(df.columns)}")
         return df
     except Exception as e:
         print(f"❌ Ошибка чтения файла: {e}")
         return None
 
-def map_columns(df):
+def map_columns(df, sheet_name='Архив'):
     """Преобразует колонки Excel в формат базы данных"""
-    # Названия колонок в Excel (предполагаемые)
-    column_mapping = {
-        'ФИО': 'fio',
-        'СНИЛС': 'snils',
-        'Подразделение': 'podrazdelenie',
-        'Отдел': 'otdel',
-        'Должность': 'dolzhnost',
-        'Дата': 'data',
-        'Часы': 'chasy',
-        'Начислено': 'nachisleno',
-        'Итого': 'itogo'
-    }
+    if df is None or df.empty:
+        print("❌ Нет данных для маппинга")
+        return None
     
-    # Проверяем наличие колонок
-    missing_cols = [col for col in column_mapping.keys() if col not in df.columns]
-    if missing_cols:
-        print(f"⚠️  Предупреждение: отсутствуют колонки: {missing_cols}")
-        print(f"📋 Доступные колонки: {list(df.columns)}")
+    if sheet_name == 'Архив':
+        # Формат листа "Архив" - колонки по индексам (на основе анализа файла)
+        df_renamed = pd.DataFrame()
+        
+        # Индексы колонок (0-based):
+        # 0: СНИЛС (например "107-574-184 61")
+        # 1: Подразделение (краткое, например "Арт_Лайф")
+        # 2: Статус (сп/нсп)
+        # 3: ФИО (например "Задворнова Елена Игоревна")
+        # 4: Подразделение (детальное, например "Служба гостиничного хозяйства")
+        # 5: Руководитель номерного фонда
+        # 6: Руководитель (имя)
+        # 7: Активен
+        # 8: Дата (datetime)
+        # 9: Часы
+        # 10: Тип смены
+        # 11: Ставка/оклад
+        # 12: Начислено
+        
+        df_renamed['fio'] = df.iloc[:, 3].astype(str).str.strip()
+        df_renamed['snils'] = df.iloc[:, 0].astype(str).str.strip()
+        df_renamed['podrazdelenie'] = df.iloc[:, 4].astype(str).str.strip()
+        df_renamed['otdel'] = df.iloc[:, 1].astype(str).str.strip()
+        df_renamed['dolzhnost'] = df.iloc[:, 2].astype(str).str.strip()
+        df_renamed['data'] = pd.to_datetime(df.iloc[:, 8], errors='coerce')
+        df_renamed['chasy'] = pd.to_numeric(df.iloc[:, 9], errors='coerce').fillna(0)
+        df_renamed['nachisleno'] = pd.to_numeric(df.iloc[:, 11], errors='coerce').fillna(0)
+        df_renamed['itogo'] = pd.to_numeric(df.iloc[:, 12], errors='coerce').fillna(0)
+        
+        print(f"✅ Маппинг колонок для листа '{sheet_name}' завершен")
+        return df_renamed
     
-    # Переименовываем колонки
-    df_renamed = df.rename(columns={v: k for k, v in column_mapping.items() if v in df.columns})
-    
-    return df_renamed
+    else:
+        # Формат листа "Реестр" - по названиям колонок
+        column_mapping = {
+            'ФИО': 'fio',
+            'СНИЛС': 'snils',
+            'Подразделение': 'podrazdelenie',
+            'Отдел (служба)': 'otdel',
+            'Должность': 'dolzhnost',
+            'Дата': 'data',
+            'Часы': 'chasy',
+            'Ставка-оклад': 'nachisleno',
+            'Начислено': 'itogo'
+        }
+        
+        # Проверяем наличие колонок
+        missing_cols = [col for col in column_mapping.keys() if col not in df.columns]
+        if missing_cols:
+            print(f"⚠️  Предупреждение: отсутствуют колонки: {missing_cols}")
+            print(f"📋 Доступные колонки: {list(df.columns)}")
+        
+        # Переименовываем колонки
+        df_renamed = df.rename(columns={v: k for k, v in column_mapping.items() if v in df.columns})
+        
+        print(f"✅ Маппинг колонок для листа '{sheet_name}' завершен")
+        return df_renamed
 
 def insert_records(df):
     """Вставляет данные в базу данных"""
@@ -156,16 +197,19 @@ def main():
     
     # Проверяем аргументы командной строки
     if len(sys.argv) < 2:
-        print("\nИспользование: python import_excel.py <путь_к_файлу.xlsx>")
+        print("\nИспользование: python import_excel.py <путь_к_файлу.xlsx> [лист]")
         print("\nПример:")
         print("  python import_excel.py C:/Users/Roman/Downloads/Табель.xlsx")
-        print("  python import_excel.py /home/user/data/Табель.xlsx")
+        print("  python import_excel.py /home/user/data/Табель.xlsx Архив")
+        print("  python import_excel.py /home/user/data/Табель.xlsx Реестр")
+        print("\nДоступные листы: Архив, Реестр")
         print("\nФормат Excel файла:")
-        print("  - Лист: 'Архив'")
-        print("  - Колонки: ФИО, СНИЛС, Подразделение, Отдел, Должность, Дата, Часы, Начислено, Итого")
+        print("  Лист 'Архив': колонки по индексам (СНИЛС, Подразделение, Статус, ФИО, ..., Дата, Часы, ..., Начислено)")
+        print("  Лист 'Реестр': ФИО, СНИЛС, Подразделение, Отдел (служба), Должность, Дата, Часы, Ставка-оклад, Начислено")
         sys.exit(1)
-    
+
     file_path = sys.argv[1]
+    sheet_name = sys.argv[2] if len(sys.argv) > 2 else 'Архив'  # По умолчанию 'Архив'
     
     if not os.path.exists(file_path):
         print(f"❌ Файл не найден: {file_path}")
@@ -177,13 +221,15 @@ def main():
         sys.exit(1)
     
     # Читаем Excel
-    df = parse_excel(file_path)
+    df = parse_excel(file_path, sheet_name)
     if df is None:
         sys.exit(1)
     
     # Преобразуем колонки
-    df_mapped = map_columns(df)
-    
+    df_mapped = map_columns(df, sheet_name)
+    if df_mapped is None:
+        sys.exit(1)
+
     # Вставляем в БД
     inserted, skipped = insert_records(df_mapped)
     
