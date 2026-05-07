@@ -25,7 +25,7 @@ def parse_excel(file_path, sheet_name='Архив'):
     """Читает Excel файл и возвращает DataFrame"""
     try:
         print(f"📖 Чтение файла: {file_path}")
-        df = pd.read_excel(file_path, sheet_name=sheet_name, skiprows=1, header=0)
+        df = pd.read_excel(file_path, sheet_name=sheet_name)
         print(f"✅ Найдено строк: {len(df)}")
         return df
     except Exception as e:
