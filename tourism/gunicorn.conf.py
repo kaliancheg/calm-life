@@ -3,11 +3,11 @@
 import multiprocessing
 import os
 
-# Bind to this address
-bind = "127.0.0.1:5000"
+# Bind to this address - используем Unix socket для лучшей совместимости
+bind = "unix:/tmp/tourism-dashboard.sock"
 
 # Worker processes
-workers = 3
+workers = 2
 worker_class = "sync"
 worker_connections = 1000
 timeout = 30
@@ -23,7 +23,7 @@ proc_name = "tourism-dashboard"
 # Server mechanics
 daemon = False
 pidfile = "/var/run/tourism-dashboard.pid"
-umask = 0
+umask = 0o000
 user = "www-data"
 group = "www-data"
 
