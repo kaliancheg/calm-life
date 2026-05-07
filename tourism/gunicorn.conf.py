@@ -27,17 +27,8 @@ umask = 0
 user = "www-data"
 group = "www-data"
 
-# Создаем отдельную директорию для временных файлов Gunicorn
-# Примечание: директорию нужно создать вручную с правами www-data
-tmpdir = "/tmp/tourism-dashboard"
-try:
-    os.makedirs(tmpdir, exist_ok=True)
-except PermissionError:
-    # Если нет прав на создание, используем стандартный /tmp
-    tmpdir = None
-
-# Server mechanics (продолжение)
-tmp_upload_dir = tmpdir
+# Рабочая директория для временных файлов Gunicorn
+worker_tmp_dir = "/tmp/tourism-dashboard"
 
 # Logging
 errorlog = "/var/log/tourism-dashboard/error.log"
