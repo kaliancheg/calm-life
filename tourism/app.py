@@ -241,14 +241,25 @@ def check_permission(resource: str, actions: List[str]):
 @app.before_request
 def before_request():
     """Middleware перед каждым запросом"""
+    # Пропускаем проверку для страницы входа и API здоровья
+    if request.path in ['/login', '/health']:
+        return
+    
     if current_user.is_authenticated:
         g.user = current_user
         # Проверка таймаута сессии
         if session.get('last_activity'):
-            last_activity = datetime.fromisoformat(session['last_activity'])
-            if datetime.now() - last_activity > app.config['SESSION_TIMEOUT']:
+            try:
+                last_activity = datetime.fromisoformat(session['last_activity'])
+                if datetime.now() - last_activity > app.config['SESSION_TIMEOUT']:
+                    logout_user()
+                    session.clear()
+                    flash('Сессия истекла. Пожалуйста, войдите снова.', 'info')
+                    return redirect(url_for('login'))
+            except (ValueError, TypeError):
+                # Если дата некорректна, считаем сессию устаревшей
                 logout_user()
-                flash('Сессия истекла. Пожалуйста, войдите снова.', 'info')
+                session.clear()
                 return redirect(url_for('login'))
         session['last_activity'] = datetime.now().isoformat()
 
@@ -260,9 +271,12 @@ def login():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         
+        logger.info(f'Login attempt for user: {username}')
+        
         if not username or not password:
             error = 'Введите логин и пароль'
         else:
+            conn = None
             try:
                 conn = mysql.connector.connect(**MYSQL_CONFIG)
                 cursor = conn.cursor(dictionary=True)
@@ -272,20 +286,13 @@ def login():
                 )
                 user = cursor.fetchone()
                 cursor.close()
-                conn.close()
                 
                 if not user:
                     error = 'Пользователь не найден'
-                    try:
-                        log_action(None, 'failed_login', 'auth', {'username': username, 'reason': 'not_found'})
-                    except:
-                        pass
+                    logger.warning(f'Login failed: user {username} not found')
                 elif not user.get('is_active'):
                     error = 'Пользователь заблокирован'
-                    try:
-                        log_action(None, 'failed_login', 'auth', {'username': username, 'reason': 'inactive'})
-                    except:
-                        pass
+                    logger.warning(f'Login failed: user {username} is inactive')
                 else:
                     # Проверяем пароль - password_hash может быть в разных форматах
                     password_hash = user['password_hash']
@@ -297,17 +304,16 @@ def login():
                     
                     try:
                         password_valid = bcrypt.checkpw(password.encode('utf-8'), password_hash_bytes)
+                        logger.info(f'Password check result for {username}: {password_valid}')
                     except Exception as bcrypt_err:
-                        logger.error(f'Bcrypt error: {bcrypt_err}')
+                        logger.error(f'Bcrypt error for {username}: {bcrypt_err}')
                         password_valid = False
                     
                     if not password_valid:
                         error = 'Неверный пароль'
-                        try:
-                            log_action(None, 'failed_login', 'auth', {'username': username, 'reason': 'wrong_password'})
-                        except:
-                            pass
+                        logger.warning(f'Login failed: wrong password for {username}')
                     else:
+                        logger.info(f'User {username} authenticated successfully')
                         user_obj = User(
                             id=user['id'],
                             username=user['username'],
@@ -315,24 +321,46 @@ def login():
                             role=user['role'],
                             is_active=user['is_active']
                         )
-                        user_obj.permissions = get_user_permissions_dict(user['id'])
+                        
+                        # Загружаем права пользователя
+                        try:
+                            user_obj.permissions = get_user_permissions_dict(user['id'])
+                            logger.info(f'Permissions loaded for {username}: {user_obj.permissions}')
+                        except Exception as perm_err:
+                            logger.error(f'Error loading permissions for {username}: {perm_err}')
+                            user_obj.permissions = {}
                         
                         login_user(user_obj)
                         session.permanent = True
                         
-                        # Обновляем last_login
-                        conn = mysql.connector.connect(**MYSQL_CONFIG)
-                        cursor = conn.cursor()
-                        cursor.execute('UPDATE users SET last_login = NOW() WHERE id = %s', (user['id'],))
-                        conn.commit()
-                        cursor.close()
-                        conn.close()
+                        # Обновляем last_login и логируем в одном подключении
+                        try:
+                            update_conn = mysql.connector.connect(**MYSQL_CONFIG)
+                            update_cursor = update_conn.cursor()
+                            update_cursor.execute('UPDATE users SET last_login = NOW() WHERE id = %s', (user['id'],))
+                            update_cursor.execute(
+                                'INSERT INTO audit_log (user_id, action, resource, details, created_at) VALUES (%s, %s, %s, %s, NOW())',
+                                (user['id'], 'login', 'auth', str({'username': username}))
+                            )
+                            update_conn.commit()
+                            update_cursor.close()
+                            update_conn.close()
+                            logger.info(f'Login successful for {username}')
+                        except Exception as log_err:
+                            logger.error(f'Error during login update for {username}: {log_err}')
                         
-                        log_action(user['id'], 'login', 'auth', {'username': username})
-                        return redirect(url_for('dashboard'))
-            except Exception as e:
-                logger.error(f'Login error: {e}')
+                        return redirect('/dashboard.html')
+            except mysql.connector.Error as mysql_err:
+                logger.error(f'MySQL error during login for {username}: {mysql_err}')
                 error = 'Внутренняя ошибка сервера'
+            except Exception as e:
+                logger.error(f'Login error for {username}: {e}')
+                import traceback
+                traceback.print_exc()
+                error = 'Внутренняя ошибка сервера'
+            finally:
+                if conn and conn.is_connected():
+                    conn.close()
     
     return render_template('login.html', error=error)
 
@@ -345,10 +373,8 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-@app.route('/')
-@login_required
-def dashboard():
-    """Главная панель (дашборд)"""
+def render_dashboard():
+    """Общая функция отрисовки дашборда"""
     # Проверяем права на экспорт
     can_export = current_user.has_permission('data', 'export')
     
@@ -358,6 +384,18 @@ def dashboard():
         role=current_user.role,
         can_export=can_export
     )
+
+@app.route('/')
+@login_required
+def dashboard():
+    """Главная панель (дашборд) по маршруту /"""
+    return render_dashboard()
+
+@app.route('/dashboard.html')
+@login_required
+def dashboard_html():
+    """Главная панель (дашборд) по маршруту /dashboard.html"""
+    return render_dashboard()
 
 @app.route('/api/data')
 @login_required
@@ -459,7 +497,7 @@ def api_data():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-    
+
     finally:
         if conn and conn.is_connected():
             conn.close()
