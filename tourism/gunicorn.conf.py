@@ -1,7 +1,6 @@
 # Gunicorn configuration file
 
 import multiprocessing
-import tempfile
 import os
 
 # Bind to this address
@@ -29,9 +28,13 @@ user = "www-data"
 group = "www-data"
 
 # Создаем отдельную директорию для временных файлов Gunicorn
+# Примечание: директорию нужно создать вручную с правами www-data
 tmpdir = "/tmp/tourism-dashboard"
-os.makedirs(tmpdir, exist_ok=True)
-os.chown(tmpdir, 33, 33)  # www-data uid=33, gid=33
+try:
+    os.makedirs(tmpdir, exist_ok=True)
+except PermissionError:
+    # Если нет прав на создание, используем стандартный /tmp
+    tmpdir = None
 
 # Server mechanics (продолжение)
 tmp_upload_dir = tmpdir
