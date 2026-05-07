@@ -1,6 +1,8 @@
 # Gunicorn configuration file
 
 import multiprocessing
+import tempfile
+import os
 
 # Bind to this address
 bind = "127.0.0.1:5000"
@@ -25,7 +27,14 @@ pidfile = "/var/run/tourism-dashboard.pid"
 umask = 0
 user = "www-data"
 group = "www-data"
-tmp_upload_dir = None
+
+# Создаем отдельную директорию для временных файлов Gunicorn
+tmpdir = "/tmp/tourism-dashboard"
+os.makedirs(tmpdir, exist_ok=True)
+os.chown(tmpdir, 33, 33)  # www-data uid=33, gid=33
+
+# Server mechanics (продолжение)
+tmp_upload_dir = tmpdir
 
 # Logging
 errorlog = "/var/log/tourism-dashboard/error.log"

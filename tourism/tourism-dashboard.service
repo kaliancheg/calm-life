@@ -29,7 +29,8 @@ StandardOutput=append:/var/log/tourism-dashboard/access.log
 
 # Security
 NoNewPrivileges=true
-PrivateTmp=true
+# Отключаем PrivateTmp, чтобы www-data мог создавать файлы в /tmp
+PrivateTmp=false
 
 [Install]
 WantedBy=multi-user.target
