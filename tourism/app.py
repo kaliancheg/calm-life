@@ -1011,15 +1011,20 @@ def import_excel():
             # Маппинг колонок в зависимости от листа
             if sheet_name == 'Архив':
                 df_mapped = pd.DataFrame()
-                df_mapped['fio'] = df.iloc[:, 3].astype(str).str.strip()
                 df_mapped['snils'] = df.iloc[:, 0].astype(str).str.strip()
-                df_mapped['otdel'] = df.iloc[:, 1].astype(str).str.strip()
-                df_mapped['podrazdelenie'] = df.iloc[:, 4].astype(str).str.strip()
+                df_mapped['otdel'] = df.iloc[:, 1].astype(str).str.strip()  # Краткое подразделение
+                df_mapped['sp_nsp'] = df.iloc[:, 2].astype(str).str.strip()  # сп/нсп
+                df_mapped['fio'] = df.iloc[:, 3].astype(str).str.strip()
+                df_mapped['podrazdelenie'] = df.iloc[:, 4].astype(str).str.strip()  # Детальное подразделение
                 df_mapped['dolzhnost'] = df.iloc[:, 5].astype(str).str.strip()
+                df_mapped['rukovoditel'] = df.iloc[:, 6].astype(str).str.strip()
+                df_mapped['status_field'] = df.iloc[:, 7].astype(str).str.strip()
                 df_mapped['data'] = pd.to_datetime(df.iloc[:, 8], errors='coerce')
                 df_mapped['chasy'] = pd.to_numeric(df.iloc[:, 9], errors='coerce').fillna(0)
-                df_mapped['nachisleno'] = pd.to_numeric(df.iloc[:, 10], errors='coerce').fillna(0)
+                df_mapped['stavka_oklad'] = df.iloc[:, 10].astype(str).str.strip()
+                df_mapped['stavka'] = df.iloc[:, 11].astype(str).str.strip()
                 df_mapped['itogo'] = pd.to_numeric(df.iloc[:, 12], errors='coerce').fillna(0)
+                df_mapped['nachisleno'] = df_mapped['itogo']  # nachisleno = itogo для Архив
             else:
                 # Лист "Реестр" - по названиям колонок
                 column_mapping = {
@@ -1068,10 +1073,15 @@ def import_excel():
                     
                     fio = str(row.get('fio', '')).strip()
                     snils = str(row.get('snils', '')).strip() if pd.notna(row.get('snils')) else None
+                    sp_nsp = str(row.get('sp_nsp', '')).strip() if pd.notna(row.get('sp_nsp')) else None
                     podrazdelenie = str(row.get('podrazdelenie', '')).strip() if pd.notna(row.get('podrazdelenie')) else None
                     otdel = str(row.get('otdel', '')).strip() if pd.notna(row.get('otdel')) else None
                     dolzhnost = str(row.get('dolzhnost', '')).strip() if pd.notna(row.get('dolzhnost')) else None
+                    rukovoditel = str(row.get('rukovoditel', '')).strip() if pd.notna(row.get('rukovoditel')) else None
+                    status_field = str(row.get('status_field', '')).strip() if pd.notna(row.get('status_field')) else None
                     chasy = float(row.get('chasy', 0)) if pd.notna(row.get('chasy')) else 0.0
+                    stavka_oklad = str(row.get('stavka_oklad', '')).strip() if pd.notna(row.get('stavka_oklad')) else None
+                    stavka = str(row.get('stavka', '')).strip() if pd.notna(row.get('stavka')) else None
                     nachisleno = float(row.get('nachisleno', 0)) if pd.notna(row.get('nachisleno')) else 0.0
                     itogo = float(row.get('itogo', 0)) if pd.notna(row.get('itogo')) else 0.0
                     
@@ -1081,17 +1091,22 @@ def import_excel():
                     
                     query = """
                         INSERT INTO records 
-                        (fio, snils, podrazdelenie, otdel, dolzhnost, data, chasy, nachisleno, itogo)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        (fio, snils, sp_nsp, podrazdelenie, otdel, dolzhnost, rukovoditel, status_field, data, chasy, stavka_oklad, stavka, nachisleno, itogo)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON DUPLICATE KEY UPDATE
                         chasy = VALUES(chasy),
                         nachisleno = VALUES(nachisleno),
-                        itogo = VALUES(itogo)
+                        itogo = VALUES(itogo),
+                        sp_nsp = VALUES(sp_nsp),
+                        rukovoditel = VALUES(rukovoditel),
+                        status_field = VALUES(status_field),
+                        stavka_oklad = VALUES(stavka_oklad),
+                        stavka = VALUES(stavka)
                     """
                     
                     cursor.execute(query, (
-                        fio, snils, podrazdelenie, otdel, dolzhnost, 
-                        data_str, chasy, nachisleno, itogo
+                        fio, snils, sp_nsp, podrazdelenie, otdel, dolzhnost, rukovoditel, status_field, 
+                        data_str, chasy, stavka_oklad, stavka, nachisleno, itogo
                     ))
                     inserted += 1
                     
