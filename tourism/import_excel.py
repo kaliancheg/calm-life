@@ -47,24 +47,24 @@ def map_columns(df, sheet_name='Архив'):
         
         # Индексы колонок (0-based):
         # 0: СНИЛС (например "107-574-184 61")
-        # 1: Подразделение (краткое, например "Арт_Лайф")
-        # 2: Статус (сп/нсп)
+        # 1: Подразделение (краткое, например "Арт_Лайф") -> otdel
+        # 2: сп-нсп (статус) - не используем
         # 3: ФИО (например "Задворнова Елена Игоревна")
-        # 4: Подразделение (детальное, например "Служба гостиничного хозяйства")
-        # 5: Руководитель номерного фонда
-        # 6: Руководитель (имя)
-        # 7: Активен
+        # 4: Отдел (служба) (детальное, например "Служба гостиничного хозяйства") -> podrazdelenie
+        # 5: Должность (например "Смена")
+        # 6: Руководитель
+        # 7: Статус
         # 8: Дата (datetime)
         # 9: Часы
-        # 10: Тип смены
-        # 11: Ставка/оклад
+        # 10: Ставка-оклад
+        # 11: Ставка
         # 12: Начислено
         
         df_renamed['fio'] = df.iloc[:, 3].astype(str).str.strip()
         df_renamed['snils'] = df.iloc[:, 0].astype(str).str.strip()
-        df_renamed['podrazdelenie'] = df.iloc[:, 4].astype(str).str.strip()
-        df_renamed['otdel'] = df.iloc[:, 1].astype(str).str.strip()
-        df_renamed['dolzhnost'] = df.iloc[:, 2].astype(str).str.strip()
+        df_renamed['otdel'] = df.iloc[:, 1].astype(str).str.strip()  # Краткое подразделение
+        df_renamed['podrazdelenie'] = df.iloc[:, 4].astype(str).str.strip()  # Детальное подразделение
+        df_renamed['dolzhnost'] = df.iloc[:, 5].astype(str).str.strip()  # Должность
         df_renamed['data'] = pd.to_datetime(df.iloc[:, 8], errors='coerce')
         df_renamed['chasy'] = pd.to_numeric(df.iloc[:, 9], errors='coerce').fillna(0)
         df_renamed['nachisleno'] = pd.to_numeric(df.iloc[:, 11], errors='coerce').fillna(0)
