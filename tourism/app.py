@@ -1152,9 +1152,12 @@ def clear_records():
         logger.info(f'User {current_user.username} clearing records')
         
         conn = mysql.connector.connect(**MYSQL_CONFIG)
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         cursor.execute('SELECT COUNT(*) as count FROM records')
         count = cursor.fetchone()['count']
+        cursor.close()
+        
+        cursor = conn.cursor()
         cursor.execute('TRUNCATE TABLE records')
         conn.commit()
         cursor.close()
