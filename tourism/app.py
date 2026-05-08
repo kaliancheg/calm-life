@@ -516,7 +516,7 @@ def admin_panel():
     
     log_action(current_user.id, 'view', 'admin_panel', {})
     return render_template(
-        'admin_new.html',
+        'admin.html',
         user_name=current_user.full_name,
         role=current_user.role,
         current_user_id=current_user.id
