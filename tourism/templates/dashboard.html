@@ -441,7 +441,7 @@ empAgg[r.fio].days++;
 empAgg[r.fio].hours += r.chasy;
 empAgg[r.fio].money += r.itogo;
 });
-document.getElementById('empTable').innerHTML = Object.values(empAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.fio+'</td><td>'+r.otdel+'</td><td>'+r.dolzhnost+'</td><td>'+r.stavka+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
+document.getElementById('empTable').innerHTML = Object.values(empAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.fio+'</td><td>'+r.otdel+'</td><td>'+r.dolzhnost+'</td><td>'+(r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—')+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
 }
 
 console.log('=== SCRIPT FINISHED, calling loadData() ===');
