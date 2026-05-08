@@ -1116,20 +1116,6 @@ async function clearRecords() {
         showToast('Ошибка: ' + error.message, 'error');
     }
 }
-        });
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            showToast(result.error || 'Ошибка сохранения', 'error');
-            return;
-        }
-        
-        showToast('Права успешно сохранены', 'success');
-    } catch (error) {
-        showToast('Ошибка: ' + error.message, 'error');
-    }
-}
 
 function editPermissions(userId) {
     document.getElementById('userSelect').value = userId;
