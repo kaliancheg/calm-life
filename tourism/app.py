@@ -25,7 +25,7 @@ login_manager.login_view = 'login'
 login_manager.session_protection = 'strong'
 
 MYSQL_CONFIG = {
-    'host': 'localhost', 'port': 3306, 'user': 'root', 'password': 'root123',
+    'host': 'localhost', 'port': 3306, 'user': 'tourism', 'password': 'tourism123',
     'database': 'daily_tourism', 'charset': 'utf8mb4',
     'collation': 'utf8mb4_unicode_ci', 'use_unicode': True,
 }
