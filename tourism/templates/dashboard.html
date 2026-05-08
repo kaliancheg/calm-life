@@ -109,7 +109,7 @@ tr:hover td { background: rgba(0, 255, 255, 0.15); }
 <div class="chart-card"><h3>📊 Начисления по отделам (круговая)</h3><div id="chart4"></div></div>
 </div>
 <div class="aggregated"><h3>📋 Сводка по отделам</h3><table><thead><tr><th>Отдел</th><th>Сотрудников</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead><tbody id="otdelTable"></tbody></table></div>
-<div class="aggregated"><h3>📋 Сводка по сотрудникам</h3><table><thead><tr><th>ФИО</th><th>Отдел</th><th>Должность</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead><tbody id="empTable"></tbody></table></div>
+<div class="aggregated"><h3>📋 Сводка по сотрудникам</h3><table><thead><tr><th>ФИО</th><th>Отдел</th><th>Должность</th><th>Ставка</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead><tbody id="empTable"></tbody></table></div>
 </div>
 </div>
 <script>
@@ -436,12 +436,12 @@ document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((
 
 const empAgg = {};
 aggregatedData.forEach(r => {
-if (!empAgg[r.fio]) { empAgg[r.fio] = {fio: r.fio, otdel: r.otdel, dolzhnost: r.dolzhnost, days: 0, hours: 0, money: 0}; }
+if (!empAgg[r.fio]) { empAgg[r.fio] = {fio: r.fio, otdel: r.otdel, dolzhnost: r.dolzhnost, stavka: r.stavka, days: 0, hours: 0, money: 0}; }
 empAgg[r.fio].days++;
 empAgg[r.fio].hours += r.chasy;
 empAgg[r.fio].money += r.itogo;
 });
-document.getElementById('empTable').innerHTML = Object.values(empAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.fio+'</td><td>'+r.otdel+'</td><td>'+r.dolzhnost+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
+document.getElementById('empTable').innerHTML = Object.values(empAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.fio+'</td><td>'+r.otdel+'</td><td>'+r.dolzhnost+'</td><td>'+r.stavka+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
 }
 
 console.log('=== SCRIPT FINISHED, calling loadData() ===');
