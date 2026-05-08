@@ -460,6 +460,9 @@ tr:hover { background: rgba(99, 102, 241, 0.1); }
         {% if current_user.has_permission('audit_log', 'view') or role == 'admin' %}
         <button class="nav-tab" data-tab="audit">📜 Журнал действий</button>
         {% endif %}
+        {% if current_user.has_permission('data', 'view') or role == 'admin' %}
+        <button class="nav-tab" data-tab="import">📥 Импорт Excel</button>
+        {% endif %}
         {% if current_user.has_permission('profile', 'update') %}
         <button class="nav-tab {% if role != 'admin' and not current_user.has_permission('users', 'view') %}active{% endif %}" data-tab="profile">👤 Профиль</button>
         {% endif %}
@@ -648,6 +651,31 @@ tr:hover { background: rgba(99, 102, 241, 0.1); }
                 <input type="password" id="confirmPassword" class="form-control">
             </div>
             <button class="btn btn-success" onclick="changePassword()">🔐 Сменить пароль</button>
+        </div>
+    </div>
+
+    <!-- Tab: Import Excel -->
+    <div id="tab-import" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">📥 Импорт данных из Excel</h2>
+            </div>
+            <div class="form-group">
+                <label>Выберите файл Excel (.xlsx или .xls):</label>
+                <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls">
+            </div>
+            <div class="form-group">
+                <label>Лист для импорта:</label>
+                <select id="excelSheet" class="form-control">
+                    <option value="Архив">Архив</option>
+                    <option value="Реестр">Реестр</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn btn-primary" onclick="uploadExcel()">📤 Загрузить и импортировать</button>
+                <button class="btn btn-danger" onclick="clearRecords()">🗑️ Очистить все записи</button>
+            </div>
+            <div id="importResult" style="margin-top:20px; display:none;"></div>
         </div>
     </div>
 </div>
@@ -999,6 +1027,95 @@ async function savePermissions() {
                 subdivisions,
                 otdels
             })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            showToast(result.error || 'Ошибка сохранения', 'error');
+            return;
+        }
+        
+        showToast('Права сохранены', 'success');
+        loadUserPermissions();
+    } catch (error) {
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+}
+
+// ==================== EXCEL IMPORT ====================
+async function uploadExcel() {
+    const fileInput = document.getElementById('excelFile');
+    const sheetName = document.getElementById('excelSheet').value;
+    
+    if (!fileInput.files.length) {
+        showToast('Выберите файл', 'warning');
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('sheet', sheetName);
+    
+    showToast('Загрузка файла...', 'info');
+    
+    try {
+        const response = await fetch('/admin/import-excel', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            showToast(result.error || 'Ошибка импорта', 'error');
+            return;
+        }
+        
+        const resultDiv = document.getElementById('importResult');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `<div class="toast success">${result.message}</div>`;
+        
+        showToast(result.message, 'success');
+        
+        // Очищаем форму
+        fileInput.value = '';
+        
+        // Перезагружаем статистику
+        loadDashboardStats();
+        
+    } catch (error) {
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+}
+    
+async function clearRecords() {
+    if (!confirm('Вы уверены, что хотите УДАЛИТЬ ВСЕ записи из таблицы? Это действие нельзя отменить!')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/clear-records', {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            showToast(result.error || 'Ошибка очистки', 'error');
+            return;
+        }
+        
+        showToast(result.message, 'success');
+        
+        // Перезагружаем статистику
+        loadDashboardStats();
+        
+    } catch (error) {
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+}
         });
         
         const result = await response.json();

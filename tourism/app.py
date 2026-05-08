@@ -7,6 +7,8 @@ import mysql.connector
 import bcrypt
 import logging
 from typing import List, Optional, Dict, Any
+import os
+import tempfile
 
 # Настройка логирования
 logging.basicConfig(
@@ -971,6 +973,188 @@ def get_stats():
     finally:
         cursor.close()
         conn.close()
+
+# ==================== EXCEL IMPORT ====================
+
+@app.route('/admin/import-excel', methods=['POST'])
+@login_required
+@check_permission('data', ['view'])
+def import_excel():
+    """Загрузка и импорт Excel файла с данными туризма"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'Файл не найден'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'Файл не выбран'}), 400
+        
+        if not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'error': 'Неверный формат файла. Используйте .xlsx или .xls'}), 400
+        
+        sheet_name = request.form.get('sheet', 'Архив')
+        
+        logger.info(f'User {current_user.username} importing Excel file: {file.filename}, sheet: {sheet_name}')
+        
+        # Сохраняем файл во временную директорию
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp:
+            file.save(tmp.name)
+            tmp_path = tmp.name
+        
+        try:
+            # Читаем Excel файл
+            df = pd.read_excel(tmp_path, sheet_name=sheet_name)
+            
+            if df.empty:
+                return jsonify({'error': 'Файл пустой'}), 400
+            
+            # Маппинг колонок в зависимости от листа
+            if sheet_name == 'Архив':
+                df_mapped = pd.DataFrame()
+                df_mapped['fio'] = df.iloc[:, 3].astype(str).str.strip()
+                df_mapped['snils'] = df.iloc[:, 0].astype(str).str.strip()
+                df_mapped['otdel'] = df.iloc[:, 1].astype(str).str.strip()
+                df_mapped['podrazdelenie'] = df.iloc[:, 4].astype(str).str.strip()
+                df_mapped['dolzhnost'] = df.iloc[:, 5].astype(str).str.strip()
+                df_mapped['data'] = pd.to_datetime(df.iloc[:, 8], errors='coerce')
+                df_mapped['chasy'] = pd.to_numeric(df.iloc[:, 9], errors='coerce').fillna(0)
+                df_mapped['nachisleno'] = pd.to_numeric(df.iloc[:, 10], errors='coerce').fillna(0)
+                df_mapped['itogo'] = pd.to_numeric(df.iloc[:, 12], errors='coerce').fillna(0)
+            else:
+                # Лист "Реестр" - по названиям колонок
+                column_mapping = {
+                    'ФИО': 'fio',
+                    'СНИЛС': 'snils',
+                    'Подразделение': 'podrazdelenie',
+                    'Отдел (служба)': 'otdel',
+                    'Должность': 'dolzhnost',
+                    'Дата': 'data',
+                    'Часы': 'chasy',
+                    'Ставка-оклад': 'nachisleno',
+                    'Начислено': 'itogo'
+                }
+                df_mapped = df.rename(columns={v: k for k, v in column_mapping.items() if v in df.columns})
+            
+            # Проверяем наличие обязательных колонок
+            if df_mapped.empty or 'fio' not in df_mapped.columns:
+                return jsonify({'error': 'Неверный формат файла или отсутствуют обязательные колонки'}), 400
+            
+            # Подчищаем данные
+            df_mapped = df_mapped.dropna(subset=['fio'])
+            df_mapped['fio'] = df_mapped['fio'].str.strip()
+            df_mapped = df_mapped[df_mapped['fio'] != 'nan']
+            df_mapped = df_mapped[df_mapped['fio'] != '']
+            
+            if df_mapped.empty:
+                return jsonify({'error': 'Нет валидных данных для импорта'}), 400
+            
+            # Вставляем в БД
+            conn = mysql.connector.connect(**MYSQL_CONFIG)
+            cursor = conn.cursor()
+            inserted = 0
+            skipped = 0
+            
+            for idx, row in df_mapped.iterrows():
+                try:
+                    data = row.get('data')
+                    if pd.isna(data):
+                        skipped += 1
+                        continue
+                    
+                    if isinstance(data, datetime):
+                        data_str = data.strftime('%Y-%m-%d')
+                    else:
+                        data_str = str(data)
+                    
+                    fio = str(row.get('fio', '')).strip()
+                    snils = str(row.get('snils', '')).strip() if pd.notna(row.get('snils')) else None
+                    podrazdelenie = str(row.get('podrazdelenie', '')).strip() if pd.notna(row.get('podrazdelenie')) else None
+                    otdel = str(row.get('otdel', '')).strip() if pd.notna(row.get('otdel')) else None
+                    dolzhnost = str(row.get('dolzhnost', '')).strip() if pd.notna(row.get('dolzhnost')) else None
+                    chasy = float(row.get('chasy', 0)) if pd.notna(row.get('chasy')) else 0.0
+                    nachisleno = float(row.get('nachisleno', 0)) if pd.notna(row.get('nachisleno')) else 0.0
+                    itogo = float(row.get('itogo', 0)) if pd.notna(row.get('itogo')) else 0.0
+                    
+                    if not fio or fio == 'nan':
+                        skipped += 1
+                        continue
+                    
+                    query = """
+                        INSERT INTO records 
+                        (fio, snils, podrazdelenie, otdel, dolzhnost, data, chasy, nachisleno, itogo)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                        chasy = VALUES(chasy),
+                        nachisleno = VALUES(nachisleno),
+                        itogo = VALUES(itogo)
+                    """
+                    
+                    cursor.execute(query, (
+                        fio, snils, podrazdelenie, otdel, dolzhnost, 
+                        data_str, chasy, nachisleno, itogo
+                    ))
+                    inserted += 1
+                    
+                except Exception as row_error:
+                    skipped += 1
+                    continue
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            log_action(current_user.id, 'import', 'excel', {
+                'filename': file.filename,
+                'sheet': sheet_name,
+                'inserted': inserted,
+                'skipped': skipped
+            })
+            
+            return jsonify({
+                'success': True,
+                'inserted': inserted,
+                'skipped': skipped,
+                'message': f'Импортировано {inserted} записей, пропущено {skipped}'
+            })
+        
+        finally:
+            # Удаляем временный файл
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+    
+    except Exception as e:
+        logger.error(f'Error importing Excel: {e}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/clear-records', methods=['POST'])
+@login_required
+@check_permission('data', ['view'])
+def clear_records():
+    """Очистка всех записей из таблицы records"""
+    try:
+        logger.info(f'User {current_user.username} clearing records')
+        
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) as count FROM records')
+        count = cursor.fetchone()['count']
+        cursor.execute('TRUNCATE TABLE records')
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        log_action(current_user.id, 'clear', 'records', {'deleted_count': count})
+        
+        return jsonify({
+            'success': True,
+            'message': f'Удалено {count} записей'
+        })
+    
+    except Exception as e:
+        logger.error(f'Error clearing records: {e}')
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print('='*60)
