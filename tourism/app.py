@@ -978,9 +978,13 @@ def get_stats():
 
 @app.route('/admin/import-excel', methods=['POST'])
 @login_required
-@check_permission('data', ['view'])
 def import_excel():
-    """Загрузка и импорт Excel файла с данными туризма"""
+    """Загрузка и импорт Excel файла с данными туризма (только администраторы)"""
+    # Проверяем, что пользователь администратор
+    if current_user.role != 'admin':
+        logger.warning(f'User {current_user.username} tried to access import-excel without admin role')
+        return jsonify({'error': 'Доступ запрещён. Требуется роль администратора'}), 403
+    
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'Файл не найден'}), 400
@@ -1145,9 +1149,13 @@ def import_excel():
 
 @app.route('/admin/clear-records', methods=['POST'])
 @login_required
-@check_permission('data', ['view'])
 def clear_records():
-    """Очистка всех записей из таблицы records"""
+    """Очистка всех записей из таблицы records (только администраторы)"""
+    # Проверяем, что пользователь администратор
+    if current_user.role != 'admin':
+        logger.warning(f'User {current_user.username} tried to clear records without admin role')
+        return jsonify({'error': 'Доступ запрещён. Требуется роль администратора'}), 403
+    
     try:
         logger.info(f'User {current_user.username} clearing records')
         

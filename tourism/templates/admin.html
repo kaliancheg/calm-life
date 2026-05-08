@@ -460,7 +460,7 @@ tr:hover { background: rgba(99, 102, 241, 0.1); }
         {% if current_user.has_permission('audit_log', 'view') or role == 'admin' %}
         <button class="nav-tab" data-tab="audit">📜 Журнал действий</button>
         {% endif %}
-        {% if current_user.has_permission('data', 'view') or role == 'admin' %}
+        {% if role == 'admin' %}
         <button class="nav-tab" data-tab="import">📥 Импорт Excel</button>
         {% endif %}
         {% if current_user.has_permission('profile', 'update') %}
