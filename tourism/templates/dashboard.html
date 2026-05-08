@@ -406,15 +406,16 @@ textinfo: 'percent',
 textfont: {size: 14, color: '#ffffff'},
 textposition: 'inside',
 hole: 0.4,
-marker: {colors: Object.keys(otdelMoney).map((_, i) => 'hsl(' + (i * 360 / Object.keys(otdelMoney).length) + ', 70%, 60%)'), line: {width: 2, color: '#00ffff'}}
+marker: {colors: Object.keys(otdelMoney).map((_, i) => 'hsl(' + (i * 360 / Object.keys(otdelMoney).length) + ', 70%, 60%)'), line: {width: 2, color: '#00ffff'}},
+legendtraceorder: 'normal'
 }], {
 height: 300,
-margin: {t: 20, b: 20, l: 20, r: 20},
+margin: {t: 20, b: 20, l: 20, r: 150},
 paper_bgcolor: 'rgba(0,0,0,0)',
 plot_bgcolor: 'rgba(0,0,0,0)',
 font: {color: '#ffffff', family: 'Rajdhani', size: 14},
 showlegend: true,
-legend: {x: 1, xanchor: 'right', y: 0, yanchor: 'bottom', font: {color: '#b8b8ff'}}
+legend: {x: 1, xanchor: 'right', y: 0.5, yanchor: 'middle', font: {color: '#b8b8ff', size: 12}, orientation: 'v'}
 });
 
 const otdelAgg = {};
