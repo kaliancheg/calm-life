@@ -402,30 +402,26 @@ Plotly.newPlot('chart4', [{
 labels: Object.keys(otdelMoney),
 values: Object.values(otdelMoney),
 type: 'pie',
-textinfo: 'label+percent',
-textposition: 'outside',
-textfont: {size: 11, color: '#ffffff'},
-hole: 0.5,
-marker: {colors: Object.keys(otdelMoney).map((_, i) => 'hsl(' + (i * 360 / Object.keys(otdelMoney).length) + ', 70%, 60%)'), line: {width: 2, color: '#00ffff'}},
-textinfo: 'label+percent',
-textfont: {size: 11, color: '#ffffff'}
+textinfo: 'percent',
+textfont: {size: 14, color: '#ffffff'},
+textposition: 'inside',
+hole: 0.4,
+marker: {colors: Object.keys(otdelMoney).map((_, i) => 'hsl(' + (i * 360 / Object.keys(otdelMoney).length) + ', 70%, 60%)'), line: {width: 2, color: '#00ffff'}}
 }], {
-height: 400,
-margin: {t: 20, b: 20, l: 20, r: 300},
+height: 350,
+margin: {t: 20, b: 20, l: 20, r: 280},
 paper_bgcolor: 'rgba(0,0,0,0)',
 plot_bgcolor: 'rgba(0,0,0,0)',
-font: {color: '#ffffff', family: 'Rajdhani', size: 12},
+font: {color: '#ffffff', family: 'Rajdhani', size: 14},
 showlegend: true,
 legend: {
-    x: 1,
-    xanchor: 'right',
+    x: 1.02,
+    xanchor: 'left',
     y: 1,
     yanchor: 'top',
-    font: {color: '#b8b8ff', size: 10},
+    font: {color: '#b8b8ff', size: 11},
     orientation: 'v'
-},
-plot_bgcolor: 'rgba(0,0,0,0)',
-paper_bgcolor: 'rgba(0,0,0,0)'
+}
 });
 
 const otdelAgg = {};
