@@ -1016,10 +1016,10 @@ def import_excel():
             if sheet_name == 'Архив':
                 df_mapped = pd.DataFrame()
                 df_mapped['snils'] = df.iloc[:, 0].astype(str).str.strip()
-                df_mapped['otdel'] = df.iloc[:, 1].astype(str).str.strip()  # Краткое подразделение
+                df_mapped['podrazdelenie'] = df.iloc[:, 1].astype(str).str.strip()  # Краткое подразделение (Арт_Лайф, Волна)
                 df_mapped['sp_nsp'] = df.iloc[:, 2].astype(str).str.strip()  # сп/нсп
                 df_mapped['fio'] = df.iloc[:, 3].astype(str).str.strip()
-                df_mapped['podrazdelenie'] = df.iloc[:, 4].astype(str).str.strip()  # Детальное подразделение
+                df_mapped['otdel'] = df.iloc[:, 4].astype(str).str.strip()  # Отдел/служба
                 df_mapped['dolzhnost'] = df.iloc[:, 5].astype(str).str.strip()
                 df_mapped['rukovoditel'] = df.iloc[:, 6].astype(str).str.strip()
                 df_mapped['status_field'] = df.iloc[:, 7].astype(str).str.strip()
