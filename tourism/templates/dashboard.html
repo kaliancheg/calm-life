@@ -305,7 +305,7 @@ if (df && r.data < df) return false;
 if (dt && r.data > dt) return false;
 return true;
 });
-const csvContent = '\uFEFF' + 
+const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + 
 'ФИО,СНИЛС,Подразделение,Отдел,Должность,СП/НСП,Руководитель,Дата,Часы,Ставка-оклад,Ставка,Начислено,Итого\n' +
 filtered.map(r => r.fio + ',' + (r.snils || '') + ',' + r.podrazdelenie + ',' + r.otdel + ',' + r.dolzhnost + ',' + (r.sp_nsp || '') + ',' + (r.rukovoditel || '') + ',' + r.data + ',' + r.chasy + ',' + (r.stavka_oklad || '') + ',' + (r.stavka || '') + ',' + r.nachisleno + ',' + r.itogo).join('\n');
 const encodedUri = encodeURI(csvContent);
