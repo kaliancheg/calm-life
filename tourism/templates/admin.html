@@ -1270,7 +1270,7 @@ async function changePassword() {
 document.addEventListener('DOMContentLoaded', function() {
     const role = '{{ role }}';
     
-    // Если пользователь не администратор, показать только вкладку "Профиль" и скрыть активную вкладку "Обзор" или "Пользователи"
+    // Если пользователь не администратор, скрыть вкладку "Обзор" и показать "Профиль"
     if (role !== 'admin') {
         // Скрыть вкладку "Обзор" если есть
         const dashboardTab = document.querySelector('.nav-tab[data-tab="dashboard"]');
@@ -1286,6 +1286,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const profileTab = document.querySelector('.nav-tab[data-tab="profile"]');
             const profileContent = document.getElementById('tab-profile');
             if (profileTab && profileContent) {
+                // Убрать active со всех вкладок
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => {
+                    t.classList.remove('hidden');
+                    t.classList.remove('active');
+                });
+                // Показать профиль
                 profileTab.classList.add('active');
                 profileContent.classList.remove('hidden');
                 profileContent.classList.add('active');
@@ -1293,13 +1300,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Проверка прав для вкладки "Обзор"
+    // Загружаем данные для доступных вкладок
     const hasDashboardAccess = document.querySelector('.nav-tab[data-tab="dashboard"]') !== null;
     const hasUsersAccess = document.querySelector('.nav-tab[data-tab="users"]') !== null;
     
-    // Загружаем статистику, если есть доступ к "Обзору"
-    if (hasDashboardAccess) {
+    // Для администратора загружаем статистику сразу
+    if (role === 'admin' && hasDashboardAccess) {
         loadDashboardStats();
+    } else if (role !== 'admin' && hasDashboardAccess) {
+        // Для не-администраторов загружаем только если вкладка активна
+        const dashboardTab = document.querySelector('.nav-tab[data-tab="dashboard"]');
+        if (dashboardTab && dashboardTab.classList.contains('active')) {
+            loadDashboardStats();
+        }
     }
     
     // Загружаем пользователей, если есть доступ к вкладке "Пользователи"
