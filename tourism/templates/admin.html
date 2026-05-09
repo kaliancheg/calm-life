@@ -466,10 +466,10 @@ select.form-control:focus {
     <!-- Navigation -->
     <div class="nav-tabs">
         {% if role == 'admin' or current_user.has_permission('users', 'view') %}
-        <button class="nav-tab active" data-tab="dashboard">📊 Обзор</button>
+        <button class="nav-tab {% if role == 'admin' %}active{% endif %}" data-tab="dashboard">📊 Обзор</button>
         {% endif %}
         {% if current_user.has_permission('users', 'view') or role == 'admin' %}
-        <button class="nav-tab" data-tab="users">👥 Пользователи</button>
+        <button class="nav-tab {% if role != 'admin' %}active{% endif %}" data-tab="users">👥 Пользователи</button>
         {% endif %}
         {% if current_user.has_permission('permissions', 'view') or role == 'admin' %}
         <button class="nav-tab" data-tab="permissions">🔐 Права доступа</button>
@@ -484,7 +484,7 @@ select.form-control:focus {
         <button class="nav-tab" data-tab="import">📥 Импорт Excel</button>
         {% endif %}
         {% if current_user.has_permission('profile', 'update') %}
-        <button class="nav-tab" data-tab="profile">👤 Профиль</button>
+        <button class="nav-tab {% if role != 'admin' and not current_user.has_permission('users', 'view') %}active{% endif %}" data-tab="profile">👤 Профиль</button>
         {% endif %}
     </div>
 
@@ -1268,6 +1268,31 @@ async function changePassword() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+    const role = '{{ role }}';
+    
+    // Если пользователь не администратор, показать только вкладку "Профиль" и скрыть активную вкладку "Обзор" или "Пользователи"
+    if (role !== 'admin') {
+        // Скрыть вкладку "Обзор" если есть
+        const dashboardTab = document.querySelector('.nav-tab[data-tab="dashboard"]');
+        const dashboardContent = document.getElementById('tab-dashboard');
+        if (dashboardTab && dashboardContent) {
+            dashboardTab.classList.remove('active');
+            dashboardContent.classList.add('hidden');
+        }
+        
+        // Если нет доступа к "Пользователям", показать "Профиль"
+        const hasUsersAccess = document.querySelector('.nav-tab[data-tab="users"]') !== null;
+        if (!hasUsersAccess) {
+            const profileTab = document.querySelector('.nav-tab[data-tab="profile"]');
+            const profileContent = document.getElementById('tab-profile');
+            if (profileTab && profileContent) {
+                profileTab.classList.add('active');
+                profileContent.classList.remove('hidden');
+                profileContent.classList.add('active');
+            }
+        }
+    }
+    
     // Проверка прав для вкладки "Обзор"
     const hasDashboardAccess = document.querySelector('.nav-tab[data-tab="dashboard"]') !== null;
     const hasUsersAccess = document.querySelector('.nav-tab[data-tab="users"]') !== null;
