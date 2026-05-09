@@ -104,7 +104,7 @@ tr:hover td { background: rgba(0, 255, 255, 0.15); }
 </div>
 <div class="charts">
 <div class="chart-card"><h3>📈 Начисления по дням (последние 7 дней)</h3><div id="chart1"></div></div>
-<div class="chart-card"><h3>🏆 Топ-10 сотрудников</h3><div id="chart2"></div></div>
+<div class="chart-card"><h3>🏆 Топ-10 сотрудников (по затратам ФОТ)</h3><div id="chart2"></div></div>
 <div class="chart-card"><h3>💵 Начисления по отделам</h3><div id="chart3"></div></div>
 <div class="chart-card"><h3>📊 Начисления по отделам (круговая)</h3><div id="chart4"></div></div>
 </div>
@@ -362,7 +362,7 @@ showlegend: false
 
 const empMoney = {};
 aggregatedData.forEach(r => { if (!empMoney[r.fio]) empMoney[r.fio] = 0; empMoney[r.fio] += r.itogo; });
-const top10 = Object.entries(empMoney).sort((a, b) => b[1] - a[1]).slice(0, 10);
+const top10 = Object.entries(empMoney).sort((a, b) => a[1] - b[1]).slice(0, 10);
 Plotly.newPlot('chart2', [{
 x: top10.map(x => x[1]),
 y: top10.map(x => x[0]),
@@ -375,8 +375,8 @@ margin: {t: 20, b: 40, l: 250, r: 20},
 paper_bgcolor: 'rgba(0,0,0,0)',
 plot_bgcolor: 'rgba(0,0,0,0)',
 font: {color: '#b8b8ff', family: 'Rajdhani', size: 14},
-xaxis: {gridcolor: 'rgba(138, 43, 226, 0.2)', linecolor: 'rgba(138, 43, 226, 0.35)', color: '#b8b8ff'},
-yaxis: {automargin: true, gridcolor: 'rgba(138, 43, 226, 0.2)', linecolor: 'rgba(138, 43, 226, 0.35)', color: '#b8b8ff', tickfont: {size: 14}},
+xaxis: {gridcolor: 'rgba(138, 43, 256, 0.2)', linecolor: 'rgba(138, 43, 226, 0.35)', color: '#b8b8ff'},
+yaxis: {automargin: true, gridcolor: 'rgba(138, 43, 226, 0.2)', linecolor: 'rgba(138, 43, 226, 0.35)', color: '#b8b8ff', tickfont: {size: 14}, autorange: 'reversed'},
 showlegend: false
 });
 
