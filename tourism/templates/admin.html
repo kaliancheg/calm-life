@@ -438,10 +438,45 @@ select.form-control:focus {
 
 /* Responsive */
 @media (max-width: 768px) {
-    .header { flex-direction: column; gap: 15px; text-align: center; }
-    .nav-tabs { flex-direction: column; }
-    .stats-grid { grid-template-columns: 1fr; }
-    .form-grid { grid-template-columns: 1fr; }
+    .container { padding: 15px; }
+    .header { flex-direction: column; gap: 15px; text-align: center; padding: 15px; }
+    .header h1 { font-size: 1.5em; }
+    .user-info { flex-direction: column; gap: 10px; }
+    .user-avatar { width: 40px; height: 40px; font-size: 1em; }
+    .user-name { font-size: 0.95em; }
+    .btn { padding: 8px 16px; font-size: 0.9em; }
+    .nav-tabs { padding: 10px; gap: 8px; }
+    .nav-tab { padding: 10px 18px; font-size: 0.9em; }
+    .stats-grid { grid-template-columns: 1fr; gap: 15px; }
+    .stat-card { padding: 20px; }
+    .stat-value { font-size: 2em; }
+    .stat-label { font-size: 0.9em; }
+    .card { padding: 20px; }
+    .card-header { flex-direction: column; gap: 15px; align-items: flex-start; }
+    .card-title { font-size: 1.1em; }
+    table { font-size: 14px; }
+    th, td { padding: 12px 10px; }
+    .form-group { margin-bottom: 15px; }
+    .form-control { padding: 10px 14px; font-size: 0.95em; }
+    .perm-item { flex-direction: column; gap: 10px; text-align: left; }
+    .perm-item input[type="checkbox"] { align-self: flex-start; }
+    .resource-list { max-height: 250px; }
+    .modal { padding: 20px; width: 95%; }
+    .modal-title { font-size: 1.3em; }
+    .toast { padding: 12px 20px; font-size: 0.9em; }
+    .pagination button { padding: 6px 12px; font-size: 0.9em; }
+}
+
+@media (max-width: 480px) {
+    .container { padding: 10px; }
+    .header h1 { font-size: 1.3em; }
+    .btn { padding: 8px 14px; font-size: 0.85em; }
+    .nav-tab { padding: 8px 14px; font-size: 0.85em; }
+    .stat-value { font-size: 1.7em; }
+    .card { padding: 15px; }
+    table { font-size: 13px; }
+    th, td { padding: 10px 8px; }
+    .action-btn { padding: 5px 10px; font-size: 0.8em; }
 }
 
 .hidden { display: none !important; }
