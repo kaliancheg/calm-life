@@ -112,6 +112,10 @@ tr:hover td { background: rgba(0, 255, 255, 0.15); }
 <div class="aggregated"><h3>📋 Сводка по сотрудникам</h3><table><thead><tr><th>ФИО</th><th>Отдел</th><th>Должность</th><th>Ставка</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead><tbody id="empTable"></tbody></table></div>
 </div>
 </div>
+
+<!-- SheetJS library for Excel export -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
 <script>
 console.log('=== SCRIPT STARTED ===');
 let allData = [];
@@ -305,16 +309,73 @@ if (df && r.data < df) return false;
 if (dt && r.data > dt) return false;
 return true;
 });
-const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + 
-'ФИО,СНИЛС,Подразделение,Отдел,Должность,СП/НСП,Руководитель,Дата,Часы,Ставка-оклад,Ставка,Начислено,Итого\n' +
-filtered.map(r => r.fio + ',' + (r.snils || '') + ',' + r.podrazdelenie + ',' + r.otdel + ',' + r.dolzhnost + ',' + (r.sp_nsp || '') + ',' + (r.rukovoditel || '') + ',' + r.data + ',' + r.chasy + ',' + (r.stavka_oklad || '') + ',' + (r.stavka || '') + ',' + r.nachisleno + ',' + r.itogo).join('\n');
-const encodedUri = encodeURI(csvContent);
-const link = document.createElement('a');
-link.setAttribute('href', encodedUri);
-link.setAttribute('download', 'tourism_data_' + new Date().toISOString().slice(0,10) + '.csv');
-document.body.appendChild(link);
-link.click();
-document.body.removeChild(link);
+
+if (filtered.length === 0) {
+    alert('Нет данных для экспорта');
+    return;
+}
+
+// Подготовка данных для Excel
+const exportData = filtered.map(r => ({
+    'ФИО': r.fio,
+    'СНИЛС': r.snils || '',
+    'Подразделение': r.podrazdelenie,
+    'Отдел': r.otdel,
+    'Должность': r.dolzhnost,
+    'СП/НСП': r.sp_nsp || '',
+    'Руководитель': r.rukovoditel || '',
+    'Дата': r.data,
+    'Часы': r.chasy,
+    'Ставка-оклад': r.stavka_oklad || '',
+    'Ставка': r.stavka || '',
+    'Начислено': r.nachisleno,
+    'Итого': r.itogo
+}));
+
+// Создание новой книги Excel
+const wb = XLSX.utils.book_new();
+const ws = XLSX.utils.json_to_sheet(exportData);
+
+// Установка ширины колонок
+ws['!cols'] = [
+    {wch: 35},  // ФИО
+    {wch: 18},  // СНИЛС
+    {wch: 25},  // Подразделение
+    {wch: 30},  // Отдел
+    {wch: 35},  // Должность
+    {wch: 8},   // СП/НСП
+    {wch: 30},  // Руководитель
+    {wch: 12},  // Дата
+    {wch: 10},  // Часы
+    {wch: 15},  // Ставка-оклад
+    {wch: 12},  // Ставка
+    {wch: 12},  // Начислено
+    {wch: 12}   // Итого
+];
+
+// Форматирование заголовков (жирный шрифт)
+const range = XLSX.utils.decode_range(ws['!ref']);
+for (let C = range.s.c; C <= range.e.c; ++C) {
+    const address = XLSX.utils.encode_col(C) + "1";
+    if (!ws[address]) continue;
+    ws[address].s = {
+        font: {bold: true, color: {rgb: "FFFFFF"}},
+        fill: {fgColor: {rgb: "4472C4"}},
+        alignment: {horizontal: "center", vertical: "center"}
+    };
+}
+
+// Добавляем автофильтр
+ws['!autofilter'] = {ref: XLSX.utils.encode_range(range)};
+
+// Добавляем лист в книгу
+XLSX.utils.book_append_sheet(wb, ws, 'Данные туризма');
+
+// Генерируем имя файла
+const fileName = 'tourism_data_' + new Date().toISOString().slice(0,10) + '.xlsx';
+
+// Скачивание файла
+XLSX.writeFile(wb, fileName);
 }
 
 function updateDashboard(data) {
