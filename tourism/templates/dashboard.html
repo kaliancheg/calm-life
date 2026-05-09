@@ -362,20 +362,20 @@ showlegend: false
 
 const empMoney = {};
 aggregatedData.forEach(r => { if (!empMoney[r.fio]) empMoney[r.fio] = 0; empMoney[r.fio] += r.itogo; });
-const top10 = Object.entries(empMoney).sort((a, b) => a[1] - b[1]).slice(0, 10);
+const top10 = Object.entries(empMoney).sort((a, b) => b[1] - a[1]).slice(0, 10);
 Plotly.newPlot('chart2', [{
 x: top10.map(x => x[1]),
 y: top10.map(x => x[0]),
 type: 'bar',
 orientation: 'h',
-marker: {color: top10.map((_, i) => 'hsl(' + (280 - i * 15) + ', 70%, 60%)'), line: {width: 2, color: '#00ffff'}}
+marker: {color: top10.map((_, i) => 'hsl(' + (i * 28) + ', 80%, 50%)'), line: {width: 2, color: '#00ffff'}}
 }], {
 height: 450,
 margin: {t: 20, b: 40, l: 250, r: 20},
 paper_bgcolor: 'rgba(0,0,0,0)',
 plot_bgcolor: 'rgba(0,0,0,0)',
 font: {color: '#b8b8ff', family: 'Rajdhani', size: 14},
-xaxis: {gridcolor: 'rgba(138, 43, 256, 0.2)', linecolor: 'rgba(138, 43, 226, 0.35)', color: '#b8b8ff'},
+xaxis: {gridcolor: 'rgba(138, 43, 226, 0.2)', linecolor: 'rgba(138, 43, 226, 0.35)', color: '#b8b8ff'},
 yaxis: {automargin: true, gridcolor: 'rgba(138, 43, 226, 0.2)', linecolor: 'rgba(138, 43, 226, 0.35)', color: '#b8b8ff', tickfont: {size: 14}, autorange: 'reversed'},
 showlegend: false
 });
