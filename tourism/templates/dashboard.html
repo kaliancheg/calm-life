@@ -62,6 +62,24 @@ tr:hover td { background: rgba(0, 255, 255, 0.15); }
 .loading { text-align: center; padding: 50px; color: #00ffff; font-size: 1.5em; font-family: 'Orbitron', sans-serif; }
 .no-access { text-align: center; padding: 50px; color: #ff6b6b; font-size: 1.5em; }
 
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 30px 20px;
+    margin-top: 40px;
+    color: #b8b8ff;
+    font-size: 0.9em;
+    border-top: 1px solid rgba(0, 255, 255, 0.2);
+}
+.footer a {
+    color: #00ffff;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+.footer a:hover {
+    color: #8a2be2;
+}
+
 /* Mobile responsive styles */
 @media (max-width: 768px) {
     body { padding: 10px; }
@@ -145,6 +163,9 @@ tr:hover td { background: rgba(0, 255, 255, 0.15); }
 <div class="chart-card"><h3>📊 Начисления по отделам (круговая)</h3><div id="chart4"></div></div>
 </div>
 <div class="aggregated"><h3>📋 Сводка по сотрудникам</h3><table><thead><tr><th>ФИО</th><th>Отдел</th><th>Должность</th><th>Ставка</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead><tbody id="empTable"></tbody></table></div>
+<div class="footer">
+    © Created by Kalian Roman 2026 | Supported by <a href="https://fitofarm.ru" target="_blank">FitoFarm</a>
+</div>
 </div>
 </div>
 

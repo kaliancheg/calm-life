@@ -21,6 +21,23 @@ input:focus { outline: none; border-color: #00ffff; box-shadow: 0 0 10px rgba(0,
 .btn-login:hover { box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); }
 .error { background: rgba(255, 0, 0, 0.2); border: 1px solid rgba(255, 0, 0, 0.5); color: #ff6b6b; padding: 12px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
 
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 40px;
+    color: #b8b8ff;
+    font-size: 0.85em;
+}
+.footer a {
+    color: #00ffff;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+.footer a:hover {
+    color: #8a2be2;
+}
+
 /* Mobile responsive styles */
 @media (max-width: 480px) {
     body { padding: 15px; }
@@ -63,6 +80,9 @@ input:focus { outline: none; border-color: #00ffff; box-shadow: 0 0 10px rgba(0,
 </div>
 <button type="submit" class="btn-login">Войти</button>
 </form>
+<div class="footer">
+    © Created by Kalian Roman 2026 | Supported by <a href="https://fitofarm.ru" target="_blank">FitoFarm</a>
+</div>
 </div>
 </body>
 </html>
