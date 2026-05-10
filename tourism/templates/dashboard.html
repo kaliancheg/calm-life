@@ -485,15 +485,15 @@ x: top10.map(x => x[1]),
 y: top10.map(x => x[0]),
 type: 'bar',
 orientation: 'h',
-marker: {color: top10.map((_, i) => 'hsl(' + (i * 28) + ', 80%, 50%)'), line: {width: 2, color: '#00ffff'}}
+marker: {color: top10.map((_, i) => 'hsl(' + (220 + i * 15) + ', 45%, 65%)'), line: {width: 1.5, color: '#8a2be2'}}
 }], {
 height: 450,
 margin: {t: 20, b: 40, l: 250, r: 20},
 paper_bgcolor: 'rgba(0,0,0,0)',
 plot_bgcolor: 'rgba(0,0,0,0)',
 font: {color: '#b8b8ff', family: 'Rajdhani', size: 14},
-xaxis: {gridcolor: 'rgba(138, 43, 226, 0.2)', linecolor: 'rgba(138, 43, 226, 0.35)', color: '#b8b8ff'},
-yaxis: {automargin: true, gridcolor: 'rgba(138, 43, 226, 0.2)', linecolor: 'rgba(138, 43, 226, 0.35)', color: '#b8b8ff', tickfont: {size: 14}, autorange: 'reversed'},
+xaxis: {gridcolor: 'rgba(138, 43, 226, 0.15)', linecolor: 'rgba(138, 43, 226, 0.25)', color: '#b8b8ff'},
+yaxis: {automargin: true, gridcolor: 'rgba(138, 43, 226, 0.15)', linecolor: 'rgba(138, 43, 226, 0.25)', color: '#b8b8ff', tickfont: {size: 14}, autorange: 'reversed'},
 showlegend: false
 });
 
@@ -503,15 +503,15 @@ Plotly.newPlot('chart3', [{
 x: Object.keys(otdelMoney),
 y: Object.values(otdelMoney),
 type: 'bar',
-marker: {color: Object.keys(otdelMoney).map((_, i) => 'hsl(' + (120 + i * 20) + ', 70%, 55%)'), line: {width: 2, color: '#00ffff'}}
+marker: {color: Object.keys(otdelMoney).map((_, i) => 'hsl(' + (180 + i * 25) + ', 35%, 60%)'), line: {width: 1.5, color: '#8a2be2'}}
 }], {
 height: 300,
 margin: {t: 20, b: 80, l: 50, r: 20},
 paper_bgcolor: 'rgba(0,0,0,0)',
 plot_bgcolor: 'rgba(0,0,0,0)',
 font: {color: '#b8b8ff', family: 'Rajdhani'},
-xaxis: {tickmode: 'linear', gridcolor: 'rgba(0, 255, 136, 0.2)', linecolor: 'rgba(0, 255, 136, 0.35)', color: '#b8b8ff'},
-yaxis: {gridcolor: 'rgba(0, 255, 136, 0.2)', linecolor: 'rgba(0, 255, 136, 0.35)', color: '#b8b8ff'},
+xaxis: {tickmode: 'linear', gridcolor: 'rgba(0, 255, 136, 0.15)', linecolor: 'rgba(0, 255, 136, 0.25)', color: '#b8b8ff'},
+yaxis: {gridcolor: 'rgba(0, 255, 136, 0.15)', linecolor: 'rgba(0, 255, 136, 0.25)', color: '#b8b8ff'},
 showlegend: false
 });
 
@@ -523,7 +523,7 @@ textinfo: 'percent',
 textfont: {size: 14, color: '#ffffff'},
 textposition: 'inside',
 hole: 0.4,
-marker: {colors: Object.keys(otdelMoney).map((_, i) => 'hsl(' + (i * 360 / Object.keys(otdelMoney).length) + ', 70%, 60%)'), line: {width: 2, color: '#00ffff'}}
+marker: {colors: Object.keys(otdelMoney).map((_, i) => 'hsl(' + (200 + i * 30) + ', 30%, 65%)'), line: {width: 1.5, color: '#8a2be2'}}
 }], {
 height: 350,
 margin: {t: 20, b: 20, l: 20, r: 280},
