@@ -673,8 +673,8 @@ function renderEmpTable(data) {
             return { name, employees: emps, totalMoney, totalHours, totalDays, count: emps.length };
         }).sort((a, b) => b.totalMoney - a.totalMoney);
 
-        groupEntries.forEach(g => {
-            const groupId = 'otdel_' + g.name.replace(/[^a-zA-Z0-9]/g, '_');
+        groupEntries.forEach((g, index) => {
+            const groupId = 'otdel_' + index + '_' + g.name.replace(/[^a-zA-Z0-9]/g, '_');
             const isExpanded = expandedGroups[groupId] === true;
             const toggleClass = isExpanded ? '' : 'collapsed';
             const toggleIcon = isExpanded ? '▼' : '▶';
@@ -698,8 +698,8 @@ function renderEmpTable(data) {
             return { name, employees: emps, totalMoney, totalHours, totalDays, count: emps.length };
         }).sort((a, b) => b.totalMoney - a.totalMoney);
 
-        groupEntries.forEach(g => {
-            const groupId = 'dolzhnost_' + g.name.replace(/[^a-zA-Z0-9]/g, '_');
+        groupEntries.forEach((g, index) => {
+            const groupId = 'dolzhnost_' + index + '_' + g.name.replace(/[^a-zA-Z0-9]/g, '_');
             const isExpanded = expandedGroups[groupId] === true;
             const toggleClass = isExpanded ? '' : 'collapsed';
             const toggleIcon = isExpanded ? '▼' : '▶';
