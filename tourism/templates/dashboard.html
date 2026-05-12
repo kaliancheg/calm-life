@@ -62,6 +62,17 @@ tr:hover td { background: rgba(0, 255, 255, 0.15); }
 .loading { text-align: center; padding: 50px; color: #00ffff; font-size: 1.5em; font-family: 'Orbitron', sans-serif; }
 .no-access { text-align: center; padding: 50px; color: #ff6b6b; font-size: 1.5em; }
 
+/* Группировка сотрудников */
+.group-controls { margin-bottom:15px; display: flex; align-items: center; gap:10px; flex-wrap: wrap; }
+.group-controls span { color: #b8b8ff; font-weight: 500; }
+.group-header { background: rgba(0,255,255,0.15); font-weight:700; color: #00ffff; cursor: pointer; }
+.group-header td { border-top:2px solid rgba(0,255,255,0.4); padding:14px 12px; }
+.group-header td:first-child { font-family: 'Orbitron', sans-serif; font-size:1.05em; }
+.group-row { background: rgba(138,43,226,0.08); }
+.group-row:hover td { background: rgba(138,43,226,0.15); }
+.group-toggle { display: inline-block; width:20px; margin-right:8px; transition: transform 0.2s; }
+.group-toggle.collapsed { transform: rotate(-90deg); }
+
 /* Footer */
 .footer {
     text-align: center;
@@ -162,7 +173,29 @@ tr:hover td { background: rgba(0, 255, 255, 0.15); }
 <div class="chart-card"><h3>💵 Начисления по отделам</h3><div id="chart3"></div></div>
 <div class="chart-card"><h3>📊 Начисления по отделам (круговая)</h3><div id="chart4"></div></div>
 </div>
-<div class="aggregated"><h3>📋 Сводка по сотрудникам</h3><table><thead><tr><th>ФИО</th><th>Отдел</th><th>Должность</th><th>Ставка</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead><tbody id="empTable"></tbody></table></div>
+<div class="aggregated">
+    <h3>📋 Сводка по сотрудникам</h3>
+    <div class="group-controls">
+        <span>Группировка:</span>
+        <button class="filter-btn active" id="grpNone" onclick="setEmpGroup('none')">Без группировки</button>
+        <button class="filter-btn" id="grpOtdel" onclick="setEmpGroup('otdel')">По отделу</button>
+        <button class="filter-btn" id="grpDolzhnost" onclick="setEmpGroup('dolzhnost')">По должности</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>ФИО</th>
+                <th>Отдел</th>
+                <th>Должность</th>
+                <th>Ставка</th>
+                <th>Дней</th>
+                <th>Часы</th>
+                <th>Начислено</th>
+            </tr>
+        </thead>
+        <tbody id="empTable"></tbody>
+    </table>
+</div>
 <div class="footer">
     © Created by Kalian Roman 2026 | Supported by <a href="https://fitofarm.ru" target="_blank">FitoFarm</a>
 </div>
@@ -178,6 +211,8 @@ let allData = [];
 let selectedPod = '';
 let selectedOtdel = '';
 let canExport = {{ can_export|default(false)|tojson }};
+let empGroupMode = 'none'; // 'none', 'otdel', 'dolzhnost'
+let expandedGroups = {}; // Для хранения состояния сворачивания групп
 console.log('canExport:', canExport);
 
 async function loadData() {
@@ -551,14 +586,97 @@ otdelAgg[r.otdel].money += r.itogo;
 });
 document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
 
-const empAgg = {};
-aggregatedData.forEach(r => {
-if (!empAgg[r.fio]) { empAgg[r.fio] = {fio: r.fio, otdel: r.otdel, dolzhnost: r.dolzhnost, stavka: r.stavka, days: 0, hours: 0, money: 0}; }
-empAgg[r.fio].days++;
-empAgg[r.fio].hours += r.chasy;
-empAgg[r.fio].money += r.itogo;
-});
-document.getElementById('empTable').innerHTML = Object.values(empAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.fio+'</td><td>'+r.otdel+'</td><td>'+r.dolzhnost+'</td><td>'+(r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—')+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
+renderEmpTable(aggregatedData);
+}
+
+function setEmpGroup(mode) {
+    empGroupMode = mode;
+    document.getElementById('grpNone').classList.remove('active');
+    document.getElementById('grpOtdel').classList.remove('active');
+    document.getElementById('grpDolzhnost').classList.remove('active');
+    if (mode === 'none') document.getElementById('grpNone').classList.add('active');
+    if (mode === 'otdel') document.getElementById('grpOtdel').classList.add('active');
+    if (mode === 'dolzhnost') document.getElementById('grpDolzhnost').classList.add('active');
+    expandedGroups = {};
+    applyFilters();
+}
+
+function renderEmpTable(data) {
+    const empAgg = {};
+    data.forEach(r => {
+        if (!empAgg[r.fio]) {
+            empAgg[r.fio] = {fio: r.fio, otdel: r.otdel, dolzhnost: r.dolzhnost, stavka: r.stavka, days: 0, hours: 0, money: 0};
+        }
+        empAgg[r.fio].days++;
+        empAgg[r.fio].hours += r.chasy;
+        empAgg[r.fio].money += r.itogo;
+    });
+    const employees = Object.values(empAgg).sort((a, b) => b.money - a.money);
+
+    let html = '';
+
+    if (empGroupMode === 'none') {
+        employees.forEach(r => {
+            html += '<tr><td>' + r.fio + '</td><td>' + r.otdel + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+        });
+    } else if (empGroupMode === 'otdel') {
+        const groups = {};
+        employees.forEach(emp => {
+            if (!groups[emp.otdel]) groups[emp.otdel] = [];
+            groups[emp.otdel].push(emp);
+        });
+        const groupEntries = Object.entries(groups).map(([name, emps]) => {
+            const totalMoney = emps.reduce((s, e) => s + e.money, 0);
+            const totalHours = emps.reduce((s, e) => s + e.hours, 0);
+            const totalDays = emps.reduce((s, e) => s + e.days, 0);
+            return { name, employees: emps, totalMoney, totalHours, totalDays, count: emps.length };
+        }).sort((a, b) => b.totalMoney - a.totalMoney);
+
+        groupEntries.forEach(g => {
+            const groupId = 'otdel_' + g.name.replace(/[^a-zA-Z0-9]/g, '_');
+            const isExpanded = expandedGroups[groupId] !== false;
+            const toggleClass = isExpanded ? '' : 'collapsed';
+            const toggleIcon = isExpanded ? '▼' : '▶';
+            html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>📁 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
+            if (isExpanded) {
+                g.employees.forEach(r => {
+                    html += '<tr class="group-row"><td>' + r.fio + '</td><td>' + r.otdel + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                });
+            }
+        });
+    } else if (empGroupMode === 'dolzhnost') {
+        const groups = {};
+        employees.forEach(emp => {
+            if (!groups[emp.dolzhnost]) groups[emp.dolzhnost] = [];
+            groups[emp.dolzhnost].push(emp);
+        });
+        const groupEntries = Object.entries(groups).map(([name, emps]) => {
+            const totalMoney = emps.reduce((s, e) => s + e.money, 0);
+            const totalHours = emps.reduce((s, e) => s + e.hours, 0);
+            const totalDays = emps.reduce((s, e) => s + e.days, 0);
+            return { name, employees: emps, totalMoney, totalHours, totalDays, count: emps.length };
+        }).sort((a, b) => b.totalMoney - a.totalMoney);
+
+        groupEntries.forEach(g => {
+            const groupId = 'dolzhnost_' + g.name.replace(/[^a-zA-Z0-9]/g, '_');
+            const isExpanded = expandedGroups[groupId] !== false;
+            const toggleClass = isExpanded ? '' : 'collapsed';
+            const toggleIcon = isExpanded ? '▼' : '▶';
+            html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>💼 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
+            if (isExpanded) {
+                g.employees.forEach(r => {
+                    html += '<tr class="group-row"><td>' + r.fio + '</td><td>' + r.otdel + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                });
+            }
+        });
+    }
+
+    document.getElementById('empTable').innerHTML = html;
+}
+
+function toggleGroup(groupId) {
+    expandedGroups[groupId] = expandedGroups[groupId] === false;
+    applyFilters();
 }
 
 console.log('=== SCRIPT FINISHED, calling loadData() ===');
