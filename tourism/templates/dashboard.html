@@ -181,12 +181,6 @@ tr:hover td { background: rgba(0, 255, 255, 0.15); }
 <div class="stat-card"><div class="stat-value" id="records">0</div><div class="stat-label">📅 Записей</div></div>
 </div>
 <div class="aggregated"><h3>📋 Сводка по отделам</h3><table><thead><tr><th>Отдел</th><th>Сотрудников</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead><tbody id="otdelTable"></tbody></table></div>
-<div class="charts">
-<div class="chart-card"><h3>📈 Начисления по дням (последние 7 дней)</h3><div id="chart1"></div></div>
-<div class="chart-card"><h3>🏆 Топ-10 сотрудников (по затратам ФОТ)</h3><div id="chart2"></div></div>
-<div class="chart-card"><h3>💵 Начисления по отделам</h3><div id="chart3"></div></div>
-<div class="chart-card"><h3>📊 Начисления по отделам (круговая)</h3><div id="chart4"></div></div>
-</div>
 <div class="aggregated">
     <h3>📋 Сводка по сотрудникам</h3>
     <div class="group-controls">
@@ -210,6 +204,12 @@ tr:hover td { background: rgba(0, 255, 255, 0.15); }
         <tbody id="empTable"></tbody>
     </table>
 </div>
+<div class="charts">
+<div class="chart-card"><h3>📈 Начисления по дням (последние 7 дней)</h3><div id="chart1"></div></div>
+<div class="chart-card"><h3>🏆 Топ-10 сотрудников (по затратам ФОТ)</h3><div id="chart2"></div></div>
+<div class="chart-card"><h3>💵 Начисления по отделам</h3><div id="chart3"></div></div>
+<div class="chart-card"><h3>📊 Начисления по отделам (круговая)</h3><div id="chart4"></div></div>
+</div>
 <div class="footer">
     © Created by Kalian Roman 2026 | Supported by <a href="https://fitofarm.ru" target="_blank">FitoFarm</a>
 </div>
@@ -225,8 +225,8 @@ let allData = [];
 let selectedPod = '';
 let selectedOtdel = '';
 let canExport = {{ can_export|default(false)|tojson }};
-let empGroupMode = 'none'; // 'none', 'otdel', 'dolzhnost'
-let expandedGroups = {}; // Для хранения состояния сворачивания групп
+let empGroupMode = 'dolzhnost'; // 'none', 'otdel', 'dolzhnost'
+let expandedGroups = {}; // Для хранения состояния сворачивания групп (по умолчанию все свернуты)
 console.log('canExport:', canExport);
 
 async function loadData() {
@@ -635,8 +635,8 @@ function setEmpGroup(mode) {
     if (mode === 'none') document.getElementById('grpNone').classList.add('active');
     if (mode === 'otdel') document.getElementById('grpOtdel').classList.add('active');
     if (mode === 'dolzhnost') document.getElementById('grpDolzhnost').classList.add('active');
-    expandedGroups = {};
-    applyFilters();
+    expandedGroups = {}; // Сбрасываем состояние групп (все свёрнуты по умолчанию)
+    applyFilters(); // Пересчитываем и перерисовываем всё
 }
 
 function renderEmpTable(data) {
@@ -672,7 +672,7 @@ function renderEmpTable(data) {
 
         groupEntries.forEach(g => {
             const groupId = 'otdel_' + g.name.replace(/[^a-zA-Z0-9]/g, '_');
-            const isExpanded = expandedGroups[groupId] !== false;
+            const isExpanded = expandedGroups[groupId] === true;
             const toggleClass = isExpanded ? '' : 'collapsed';
             const toggleIcon = isExpanded ? '▼' : '▶';
             html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>📁 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
@@ -697,7 +697,7 @@ function renderEmpTable(data) {
 
         groupEntries.forEach(g => {
             const groupId = 'dolzhnost_' + g.name.replace(/[^a-zA-Z0-9]/g, '_');
-            const isExpanded = expandedGroups[groupId] !== false;
+            const isExpanded = expandedGroups[groupId] === true;
             const toggleClass = isExpanded ? '' : 'collapsed';
             const toggleIcon = isExpanded ? '▼' : '▶';
             html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>💼 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
