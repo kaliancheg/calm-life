@@ -227,6 +227,7 @@ let selectedOtdel = '';
 let canExport = {{ can_export|default(false)|tojson }};
 let empGroupMode = 'dolzhnost'; // 'none', 'otdel', 'dolzhnost'
 let expandedGroups = {}; // Для хранения состояния сворачивания групп (по умолчанию все свернуты)
+let currentAggregatedData = []; // Кэш данных для перерисовки без пересчёта
 console.log('canExport:', canExport);
 
 async function loadData() {
@@ -259,6 +260,8 @@ console.log('Calling initFilters()');
 initFilters();
 console.log('Calling applyFilters()');
 applyFilters();
+console.log('Calling initEmpGroup()');
+setEmpGroup(empGroupMode); // Устанавливаем группировку по умолчанию
 console.log('Hiding loading, showing dashboard');
 document.getElementById('loading').style.display = 'none';
 document.getElementById('dashboard').style.display = 'block';
@@ -515,12 +518,12 @@ if (!uniqueRecords[key]) { uniqueRecords[key] = { ...r, chasy: 0, itogo: 0 }; }
 uniqueRecords[key].chasy += parseFloat(r.chasy) || 0;
 uniqueRecords[key].itogo += parseFloat(r.itogo) || 0;
 });
-const aggregatedData = Object.values(uniqueRecords);
+currentAggregatedData = Object.values(uniqueRecords); // Кэшируем данные
 
-const hours = aggregatedData.reduce((s, r) => s + r.chasy, 0);
-const money = aggregatedData.reduce((s, r) => s + r.itogo, 0);
-const employees = new Set(aggregatedData.map(r => r.fio)).size;
-const records = aggregatedData.length;
+const hours = currentAggregatedData.reduce((s, r) => s + r.chasy, 0);
+const money = currentAggregatedData.reduce((s, r) => s + r.itogo, 0);
+const employees = new Set(currentAggregatedData.map(r => r.fio)).size;
+const records = currentAggregatedData.length;
 
 animateValue(document.getElementById('employees'), 0, employees, 200, false);
 animateValue(document.getElementById('hours'), 0, hours, 200, false);
@@ -528,7 +531,7 @@ animateValue(document.getElementById('money'), 0, money, 200, true);
 animateValue(document.getElementById('records'), 0, records, 200, false);
 
 const dateMap = {};
-aggregatedData.forEach(r => { if (!dateMap[r.data]) dateMap[r.data] = 0; dateMap[r.data] += r.itogo; });
+currentAggregatedData.forEach(r => { if (!dateMap[r.data]) dateMap[r.data] = 0; dateMap[r.data] += r.itogo; });
 const sortedDates = Object.keys(dateMap).sort().slice(-7);
 Plotly.newPlot('chart1', [{
 x: sortedDates.map(d => formatDate(d)),
@@ -551,7 +554,7 @@ showlegend: false
 });
 
 const empMoney = {};
-aggregatedData.forEach(r => { if (!empMoney[r.fio]) empMoney[r.fio] = 0; empMoney[r.fio] += r.itogo; });
+currentAggregatedData.forEach(r => { if (!empMoney[r.fio]) empMoney[r.fio] = 0; empMoney[r.fio] += r.itogo; });
 const top10 = Object.entries(empMoney).sort((a, b) => b[1] - a[1]).slice(0, 10);
 Plotly.newPlot('chart2', [{
 x: top10.map(x => x[1]),
@@ -571,7 +574,7 @@ showlegend: false
 });
 
 const otdelMoney = {};
-aggregatedData.forEach(r => { if (!otdelMoney[r.otdel]) otdelMoney[r.otdel] = 0; otdelMoney[r.otdel] += r.itogo; });
+currentAggregatedData.forEach(r => { if (!otdelMoney[r.otdel]) otdelMoney[r.otdel] = 0; otdelMoney[r.otdel] += r.itogo; });
 Plotly.newPlot('chart3', [{
 x: Object.keys(otdelMoney),
 y: Object.values(otdelMoney),
@@ -615,7 +618,7 @@ legend: {
 });
 
 const otdelAgg = {};
-aggregatedData.forEach(r => {
+currentAggregatedData.forEach(r => {
 if (!otdelAgg[r.otdel]) { otdelAgg[r.otdel] = {otdel: r.otdel, employees: new Set(), days: 0, hours: 0, money: 0}; }
 otdelAgg[r.otdel].employees.add(r.fio);
 otdelAgg[r.otdel].days++;
@@ -624,7 +627,7 @@ otdelAgg[r.otdel].money += r.itogo;
 });
 document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
 
-renderEmpTable(aggregatedData);
+renderEmpTable(currentAggregatedData);
 }
 
 function setEmpGroup(mode) {
@@ -636,7 +639,7 @@ function setEmpGroup(mode) {
     if (mode === 'otdel') document.getElementById('grpOtdel').classList.add('active');
     if (mode === 'dolzhnost') document.getElementById('grpDolzhnost').classList.add('active');
     expandedGroups = {}; // Сбрасываем состояние групп (все свёрнуты по умолчанию)
-    applyFilters(); // Пересчитываем и перерисовываем всё
+    renderEmpTable(currentAggregatedData); // Перерисовываем только таблицу, без пересчёта
 }
 
 function renderEmpTable(data) {
@@ -713,8 +716,8 @@ function renderEmpTable(data) {
 }
 
 function toggleGroup(groupId) {
-    expandedGroups[groupId] = expandedGroups[groupId] === false;
-    applyFilters();
+    expandedGroups[groupId] = !expandedGroups[groupId];
+    renderEmpTable(currentAggregatedData);
 }
 
 console.log('=== SCRIPT FINISHED, calling loadData() ===');
