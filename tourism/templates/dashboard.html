@@ -52,8 +52,8 @@ body { font-family: 'Rajdhani', sans-serif; background: linear-gradient(135deg, 
 .btn-export:hover { background: linear-gradient(135deg, rgba(0, 255, 136, 0.45), rgba(0, 255, 136, 0.45)); box-shadow: 0 0 20px rgba(0, 255, 136, 0.5); }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin: 25px 0; }
 .stat-card { background: rgba(25, 28, 58, 0.7); padding: 25px; border-radius: 20px; text-align: center; border: 1px solid rgba(0, 255, 255, 0.25); box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1); }
-.stat-value { font-family: 'Orbitron', sans-serif; font-size: 2.5em; font-weight: 700; color: #00ffff; text-shadow: 0 0 20px rgba(0, 255, 255, 0.6); transition: text-shadow 0.3s ease-out; }
-.stat-value.animating { text-shadow: 0 0 10px currentColor, 0 0 40px currentColor, 0 0 80px currentColor; }
+.stat-value { font-family: 'Orbitron', sans-serif; font-size: 2.5em; font-weight: 700; color: #00ffff; text-shadow: 0 0 20px rgba(0, 255, 255, 0.6); transition: text-shadow 0.2s ease-out; }
+.stat-card .stat-value.animating { text-shadow: 0 0 10px currentColor, 0 0 40px currentColor, 0 0 80px currentColor !important; }
 .stat-card:nth-child(2) .stat-value { color: #8a2be2; text-shadow: 0 0 20px rgba(138, 43, 226, 0.6); }
 .stat-card:nth-child(3) .stat-value { color: #00ff88; text-shadow: 0 0 20px rgba(0, 255, 136, 0.6); }
 .stat-card:nth-child(4) .stat-value { color: #ff9500; text-shadow: 0 0 20px rgba(255, 149, 0, 0.6); }
@@ -421,7 +421,7 @@ element.textContent = Math.floor(current).toLocaleString('ru-RU') + (isMoney ? '
 if (progress < 1) {
 requestAnimationFrame(update);
 } else {
-setTimeout(() => element.classList.remove('animating'), 150);
+setTimeout(() => element.classList.remove('animating'), 100);
 }
 }
 requestAnimationFrame(update);
@@ -522,10 +522,10 @@ const money = aggregatedData.reduce((s, r) => s + r.itogo, 0);
 const employees = new Set(aggregatedData.map(r => r.fio)).size;
 const records = aggregatedData.length;
 
-animateValue(document.getElementById('employees'), 0, employees, 400, false);
-animateValue(document.getElementById('hours'), 0, hours, 400, false);
-animateValue(document.getElementById('money'), 0, money, 400, true);
-animateValue(document.getElementById('records'), 0, records, 400, false);
+animateValue(document.getElementById('employees'), 0, employees, 200, false);
+animateValue(document.getElementById('hours'), 0, hours, 200, false);
+animateValue(document.getElementById('money'), 0, money, 200, true);
+animateValue(document.getElementById('records'), 0, records, 200, false);
 
 const dateMap = {};
 aggregatedData.forEach(r => { if (!dateMap[r.data]) dateMap[r.data] = 0; dateMap[r.data] += r.itogo; });
