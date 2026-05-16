@@ -17,7 +17,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+# Определяем базовую директорию проекта
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+app = Flask(__name__, 
+            static_folder=os.path.join(basedir, 'static'),
+            template_folder=os.path.join(basedir, 'templates'))
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TIMEOUT'] = timedelta(hours=8)

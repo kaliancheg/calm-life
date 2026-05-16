@@ -1,0 +1,200 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap');
+
+/* ========================================
+   BASE STYLES - Общие стили для всех страниц
+   ======================================== */
+
+/* Reset CSS */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Body - общие стили */
+body {
+    font-family: 'Rajdhani', sans-serif;
+    background: linear-gradient(135deg, #12162e 0%, #1e2052 50%, #151835 100%);
+    min-height: 100vh;
+    color: #e8e8ff;
+}
+
+/* Общие контейнеры */
+.container {
+    max-width: 1800px;
+    margin: 0 auto;
+}
+
+/* Заголовки */
+h1 {
+    font-family: 'Orbitron', sans-serif;
+    color: #00ffff;
+    text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+}
+
+/* Карточки */
+.card {
+    background: rgba(25, 28, 58, 0.7);
+    border-radius: 20px;
+    padding: 25px;
+    border: 1px solid rgba(0, 255, 255, 0.25);
+    box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
+}
+
+/* Кнопки - общие стили */
+.btn {
+    padding: 12px 25px;
+    border: 2px solid rgba(0, 255, 255, 0.55);
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn:hover {
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.25), rgba(0, 255, 255, 0.25));
+    color: #e8e8ff;
+    border-color: rgba(138, 43, 226, 0.55);
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.45), rgba(0, 255, 255, 0.45));
+}
+
+/* Инпуты */
+input[type="text"],
+input[type="password"],
+input[type="date"],
+input[type="email"],
+input[type="number"] {
+    padding: 12px;
+    border: 2px solid rgba(0, 255, 255, 0.35);
+    border-radius: 10px;
+    background: rgba(18, 20, 45, 0.85);
+    color: #ffffff;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+}
+
+input:focus {
+    outline: none;
+    border-color: #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+/* Таблицы */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: rgba(0, 255, 255, 0.35);
+    color: #00ffff;
+    padding: 15px;
+    text-align: left;
+    font-family: 'Orbitron', sans-serif;
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid rgba(0, 255, 255, 0.15);
+}
+
+tr:hover td {
+    background: rgba(0, 255, 255, 0.15);
+}
+
+/* Footer - общий для всех страниц */
+.footer {
+    text-align: center;
+    padding: 30px 20px;
+    margin-top: 40px;
+    color: #b8b8ff;
+    font-size: 0.9em;
+    border-top: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.footer a {
+    color: #00ffff;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.footer a:hover {
+    color: #8a2be2;
+}
+
+/* Loading */
+.loading {
+    text-align: center;
+    padding: 50px;
+    color: #00ffff;
+    font-size: 1.5em;
+    font-family: 'Orbitron', sans-serif;
+}
+
+/* Error messages */
+.error {
+    background: rgba(255, 0, 0, 0.2);
+    border: 1px solid rgba(255, 0, 0, 0.5);
+    color: #ff6b6b;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* ========================================
+   RESPONSIVE STYLES - Общие медиа запросы
+   ======================================== */
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    .container {
+        padding: 0 10px;
+    }
+    
+    h1 {
+        font-size: 1.8em;
+    }
+    
+    .footer {
+        padding: 20px 15px;
+        font-size: 0.85em;
+    }
+    
+    input[type="text"],
+    input[type="password"],
+    input[type="date"] {
+        font-size: 14px;
+        padding: 10px;
+    }
+    
+    table {
+        font-size: 14px;
+    }
+    
+    th, td {
+        padding: 10px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 1.4em;
+    }
+    
+    .footer {
+        font-size: 0.8em;
+    }
+}
