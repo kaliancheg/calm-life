@@ -227,6 +227,22 @@ body {
     justify-content: flex-start;
 }
 
+.btn-past,
+.btn-month,
+.btn-export,
+.btn-secondary {
+    padding: 10px 20px;
+    border: 2px solid;
+    border-radius: 10px;
+    cursor: pointer; 
+    background: rgba(18, 20, 45, 0.85);
+    color: #e8e8ff;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
 .btn-past {
     background: linear-gradient(135deg, rgba(255, 149, 0, 0.25), rgba(255, 149, 0, 0.25));
     border-color: rgba(255, 149, 0, 0.55);
