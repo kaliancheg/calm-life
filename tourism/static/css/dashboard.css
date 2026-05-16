@@ -235,7 +235,6 @@ body {
     border: 2px solid;
     border-radius: 10px;
     cursor: pointer; 
-    background: rgba(18, 20, 45, 0.85);
     color: #e8e8ff;
     font-family: 'Rajdhani', sans-serif;
     font-weight: 600;
@@ -246,7 +245,6 @@ body {
 .btn-past {
     background: linear-gradient(135deg, rgba(255, 149, 0, 0.25), rgba(255, 149, 0, 0.25));
     border-color: rgba(255, 149, 0, 0.55);
-    color: #e8e8ff;
 }
 
 .btn-past:hover {
@@ -254,14 +252,29 @@ body {
     box-shadow: 0 0 20px rgba(255, 149, 0, 0.5);
 }
 
+.btn-month {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.25), rgba(0, 255, 136, 0.25));
+    border-color: rgba(0, 255, 136, 0.55);
+}
+
 .btn-month:hover {
     background: linear-gradient(135deg, rgba(0, 255, 136, 0.45), rgba(0, 255, 136, 0.45));
     box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
 }
 
+.btn-export {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.25), rgba(0, 255, 136, 0.25));
+    border-color: rgba(0, 255, 136, 0.55);
+}
+
 .btn-export:hover {
     background: linear-gradient(135deg, rgba(0, 255, 136, 0.45), rgba(0, 255, 136, 0.45));
     box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.25), rgba(0, 255, 255, 0.25));
+    border-color: rgba(138, 43, 226, 0.55);
 }
 
 .btn-secondary:hover {
