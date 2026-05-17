@@ -419,13 +419,31 @@ marker: {size: 10, color: '#00ffff', line: {width: 2, color: '#8a2be2'}},
 fill: 'tozeroy',
 fillcolor: 'rgba(0, 255, 255, 0.1)'
 }], {
-height: 300,
-margin: {t: 20, b: 80, l: 60, r: 20},
+height: 380,
+margin: {t: 20, b: 100, l: 70, r: 30},
 paper_bgcolor: 'rgba(0,0,0,0)',
 plot_bgcolor: 'rgba(0,0,0,0)',
 font: {color: '#b8b8ff', family: 'Rajdhani'},
-xaxis: {tickmode: 'linear', gridcolor: 'rgba(0, 255, 255, 0.2)', linecolor: 'rgba(0, 255, 255, 0.35)', color: '#b8b8ff'},
-yaxis: {gridcolor: 'rgba(0, 255, 255, 0.2)', linecolor: 'rgba(0, 255, 255, 0.35)', color: '#b8b8ff'},
+xaxis: {
+    tickmode: 'array',
+    ticks: sortedDates.map(d => formatDate(d)),
+    ticktext: sortedDates.map(d => {
+        const parts = d.split('.');
+        return parts[0] + '.' + parts[1];
+    }),
+    tickangle: -15,
+    gridcolor: 'rgba(0, 255, 255, 0.2)',
+    linecolor: 'rgba(0, 255, 255, 0.35)',
+    color: '#b8b8ff',
+    tickfont: {size: 13}
+},
+yaxis: {
+    autorange: true,
+    gridcolor: 'rgba(0, 255, 255, 0.2)',
+    linecolor: 'rgba(0, 255, 255, 0.35)',
+    color: '#b8b8ff',
+    tickfont: {size: 13}
+},
 showlegend: false
 });
 
