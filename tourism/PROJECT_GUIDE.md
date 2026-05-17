@@ -236,6 +236,12 @@ static/css/
   - Фон: #12162e → #1e2052 (gradient)
 - **Эффекты:** box-shadow свечение при hover
 
+### UI Дашборда
+- **Заголовок:** 🌊 Volna Sea Village / Art-Life (ФОТ) — слева, с cyan-свечением
+- **User-info (ФИО, Админ-панель, Выйти):** справа, выровнены по правому краю с остальными блоками
+- **Контейнер:** padding 0 20px (на мобильных 10px/5px) для выравнивания всех блоков
+- **Анимация:** пульсирующее свечение заголовка (3s ease-in-out infinite)
+
 ### Фильтры на дашборде
 - **По умолчанию:** Текущий месяц
 - **Быстрый выбор:** Позавчера, Текущий месяц, Прошлый месяц, Последние 7 дней
@@ -285,6 +291,38 @@ location /dashboard.html {
 }
 ```
 
+### В `gunicorn.conf.py`
+```python
+# Bind to Unix socket
+bind = "unix:/tmp/tourism-dashboard.sock"
+
+# Worker processes
+workers = 2
+worker_class = "sync"
+
+# PID file (в /tmp для прав доступа www-data)
+pidfile = "/tmp/tourism-dashboard.pid"
+
+# Logging
+errorlog = "/var/log/tourism-dashboard/error.log"
+accesslog = "/var/log/tourism-dashboard/access.log"
+loglevel = "info"
+```
+```nginx
+# Статика (кэширование 30 дней)
+location /static {
+    alias /var/www/calm-life/tourism/static;
+    expires 30d;
+    add_header Cache-Control "public, immutable";
+}
+
+# Flask прокси
+location /dashboard.html {
+    proxy_pass http://unix:/tmp/tourism-dashboard.sock;
+    ...
+}
+```
+
 ---
 
 ## 🐛 Известные проблемы и решения
@@ -317,6 +355,12 @@ UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE username =
 
 ### Проблема: Кнопки "Последние 7 дней" и "Сбросить" не светятся
 **Решение:** Добавить `.btn-secondary:hover { box-shadow: ... }` в `dashboard.css`
+
+### Проблема: Ошибка 502 Bad Gateway при запуске Gunicorn
+**Решение:** PID файл Gunicorn должен быть в `/tmp/`, а не в `/var/run/` (нет прав у www-data). Изменить в `gunicorn.conf.py`:
+```python
+pidfile = "/tmp/tourism-dashboard.pid"
+```
 
 ---
 
@@ -390,6 +434,6 @@ journalctl -u tourism-dashboard -f --no-pager
 
 ---
 
-**Последнее обновление:** 2026-01-XX  
+**Последнее обновление:** 2026-05-17  
 **Версия:** 2.0  
 **Статус:** ✅ Production Ready
