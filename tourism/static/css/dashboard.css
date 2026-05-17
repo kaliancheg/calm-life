@@ -39,6 +39,9 @@ body {
     text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.4);
     animation: glow-cyan 3s ease-in-out infinite;
     margin: 20px 0;
+    /* GPU acceleration for smooth scrolling */
+    transform: translateZ(0);
+    will-change: text-shadow;
 }
 
 .user-info {
