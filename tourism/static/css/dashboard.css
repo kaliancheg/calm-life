@@ -19,10 +19,22 @@ body {
     font-size: 2.5em;
     text-align: center;
     flex-grow: 1;
+    color: #00ffff;
+    text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.4);
+    animation: glow-cyan 3s ease-in-out infinite;
+}
+
+@keyframes glow-cyan {
+    0%, 100% {
+        text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.4);
+    }
+    50% {
+        text-shadow: 0 0 30px rgba(0, 255, 255, 0.9), 0 0 60px rgba(0, 255, 255, 0.6), 0 0 80px rgba(0, 255, 255, 0.3);
+    }
 }
 
 .user-info {
-    display: flex;
+    display: flex; 
     align-items: center;
     gap: 15px;
     margin-right: 20px;
@@ -39,9 +51,9 @@ body {
     border: 2px solid rgba(0, 255, 255, 0.5);
     border-radius: 10px;
     background: rgba(18, 20, 45, 0.8);
-    color: #00ffff;
+    color: #00ffff; 
     font-family: 'Rajdhani', sans-serif;
-    cursor: pointer;
+    cursor: pointer; 
     transition: all 0.3s;
 }
 
