@@ -439,8 +439,11 @@ type: 'bar',
 orientation: 'h',
 marker: {
     color: top10.map((_, i) => 'hsl(' + (i * 13.33) + ', 75%, ' + (50 + i * 2) + '%)'),
-    line: {width: 1.5, color: '#8a2be2'}
-}
+    line: {width: 1.5, color: '#8a2be2'},
+    showscale: false
+},
+hoverinfo: 'text',
+text: top10.map(x => x[0] + ': ' + formatMoney(x[1]))
 }], {
 height: 450,
 margin: {t: 20, b: 40, l: 250, r: 20},
@@ -449,7 +452,21 @@ plot_bgcolor: 'rgba(0,0,0,0)',
 font: {color: '#b8b8ff', family: 'Rajdhani', size: 14},
 xaxis: {gridcolor: 'rgba(138, 43, 226, 0.15)', linecolor: 'rgba(138, 43, 226, 0.25)', color: '#b8b8ff'},
 yaxis: {automargin: true, gridcolor: 'rgba(138, 43, 226, 0.15)', linecolor: 'rgba(138, 43, 226, 0.25)', color: '#b8b8ff', tickfont: {size: 14}, autorange: 'reversed'},
-showlegend: false
+showlegend: false,
+// 3D эффект для баров
+bar: {
+    thickness: 0.8,
+    showbackground: false
+},
+// Освещение для 3D эффекта
+lighting: {
+    ambient: 0.5,
+    diffuse: 0.8,
+    specular: 0.4,
+    roughness: 0.3,
+    fresnel: 0.8
+},
+lightposition: {x: 50, y: 50, z: 100}
 });
 
 const otdelMoney = {};
