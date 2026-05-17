@@ -6,12 +6,11 @@ USE daily_tourism;
 -- ============================================
 -- Add security fields for brute-force protection
 -- ============================================
-ALTER TABLE users 
-ADD COLUMN IF NOT EXISTS failed_login_attempts INT NOT NULL DEFAULT 0 AFTER last_login,
-ADD COLUMN IF NOT EXISTS locked_until DATETIME NULL AFTER failed_login_attempts;
+ALTER TABLE users ADD COLUMN failed_login_attempts INT NOT NULL DEFAULT 0 AFTER last_login;
+ALTER TABLE users ADD COLUMN locked_until DATETIME NULL AFTER failed_login_attempts;
 
 -- Create index for locked_until queries (performance optimization)
-CREATE INDEX IF NOT EXISTS idx_users_locked_until ON users(locked_until);
+CREATE INDEX idx_users_locked_until ON users(locked_until);
 
 -- ============================================
 -- Initialize existing users with default values
