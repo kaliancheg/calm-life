@@ -362,6 +362,18 @@ UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE username =
 pidfile = "/tmp/tourism-dashboard.pid"
 ```
 
+### Проблема: Лаг и белый засвет при скролле до пульсирующего заголовка
+**Решение:** Добавлена GPU-акселерация для `.page-title` в `dashboard.css`:
+```css
+.page-title {
+    /* ... остальные стили ... */
+    transform: translateZ(0);
+    will-change: text-shadow;
+}
+```
+**Причина:** Анимация `text-shadow` без GPU-ускорения вызывала heavy repaint при скролле.  
+**Статус:** ✅ Исправлено (2026)
+
 ---
 
 ## 📝 Следующие шаги (Roadmap)
@@ -434,6 +446,6 @@ journalctl -u tourism-dashboard -f --no-pager
 
 ---
 
-**Последнее обновление:** 2026-05-17  
+**Последнее обновление:** 2026-05-17 (GPU-акселерация для .page-title)  
 **Версия:** 2.0  
 **Статус:** ✅ Production Ready
