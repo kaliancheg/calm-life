@@ -262,13 +262,12 @@ def check_user_lockout(user_id: int) -> tuple[bool, Optional[datetime], int]:
         logger.error(f'Error checking user lockout: {e}')
         return False, None, 0
 
-def record_failed_login(user_id: int) -> Optional[datetime]:
+def record_failed_login(conn, user_id: int) -> Optional[datetime]:
     """
-    Запись неудачной попытки входа
+    Запись неудачной попытки входа (использует существующее подключение)
     Возвращает время блокировки, если пользователь заблокирован
     """
     try:
-        conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor(dictionary=True)
         cursor.execute(
             'SELECT failed_login_attempts, locked_until FROM users WHERE id = %s',
@@ -278,7 +277,6 @@ def record_failed_login(user_id: int) -> Optional[datetime]:
         
         if not user:
             cursor.close()
-            conn.close()
             return None
         
         failed_attempts = (user['failed_login_attempts'] or 0) + 1
@@ -291,6 +289,8 @@ def record_failed_login(user_id: int) -> Optional[datetime]:
                 'UPDATE users SET failed_login_attempts = %s, locked_until = %s WHERE id = %s',
                 (failed_attempts, locked_until, user_id)
             )
+            conn.commit()
+            cursor.close()
             log_action(user_id, 'login_blocked', 'auth', {
                 'failed_attempts': failed_attempts,
                 'locked_until': str(locked_until)
@@ -300,20 +300,17 @@ def record_failed_login(user_id: int) -> Optional[datetime]:
                 'UPDATE users SET failed_login_attempts = %s WHERE id = %s',
                 (failed_attempts, user_id)
             )
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
+            conn.commit()
+            cursor.close()
         
         return locked_until
     except Exception as e:
         logger.error(f'Error recording failed login: {e}')
         return None
 
-def reset_login_attempts(user_id: int):
-    """Сброс счётчика неудачных попыток после успешного входа"""
+def reset_login_attempts(conn, user_id: int):
+    """Сброс счётчика неудачных попыток после успешного входа (использует существующее подключение)"""
     try:
-        conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
         cursor.execute(
             'UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = %s',
@@ -321,7 +318,6 @@ def reset_login_attempts(user_id: int):
         )
         conn.commit()
         cursor.close()
-        conn.close()
     except Exception as e:
         logger.error(f'Error resetting login attempts: {e}')
 
@@ -445,8 +441,8 @@ def login():
                         password_valid = False
                     
                     if not password_valid:
-                        # Записываем неудачную попытку
-                        locked_until = record_failed_login(user['id'])
+                        # Записываем неудачную попытку (используем существующее подключение)
+                        locked_until = record_failed_login(conn, user['id'])
                         error = 'Неверный пароль'
                         
                         if locked_until:
@@ -460,8 +456,8 @@ def login():
                         logger.warning(f'Login failed: wrong password for {username}')
                     else:
                         logger.info(f'User {username} authenticated successfully')
-                        # Сбрасываем счётчик неудачных попыток
-                        reset_login_attempts(user['id'])
+                        # Сбрасываем счётчик неудачных попыток (используем существующее подключение)
+                        reset_login_attempts(conn, user['id'])
                         
                         user_obj = User(
                             id=user['id'],

@@ -307,6 +307,9 @@ location /dashboard.html {
 UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE username = 'username';
 ```
 
+### Проблема: Ошибка 502 Bad Gateway после неудачных попыток
+**Решение:** Было исправлено - функции теперь используют существующее подключение к БД вместо создания нового. Обновите код через `git pull`.
+
 ### Проблема: Кнопки "Последние 7 дней" и "Сбросить" не светятся
 **Решение:** Добавить `.btn-secondary:hover { box-shadow: ... }` в `dashboard.css`
 
