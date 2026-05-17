@@ -18,11 +18,8 @@ max_requests = 1000
 max_requests_jitter = 50
 
 # Process naming
-proc_name = "tourism-dashboard"
-
-# Server mechanics
 daemon = False
-pidfile = "/var/run/tourism-dashboard.pid"
+pidfile = "/tmp/tourism-dashboard.pid"
 umask = 0o000
 user = "www-data"
 group = "www-data"
