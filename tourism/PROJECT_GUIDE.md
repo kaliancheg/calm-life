@@ -92,7 +92,8 @@ calm-life/
 ### Аутентификация
 - **bcrypt** для хеширования паролей (cost factor 12)
 - **Flask-Login** для управления сессиями
-- **Session timeout:** 8 часов неактивности
+- **Session timeout:** 1 час неактивности
+- **Защита от брутфорс:** блокировка на 15 минут после 3 неудачных попыток
 - **Сильные пароли:** минимум 6 символов
 
 ### Авторизация (RBAC)
@@ -245,7 +246,11 @@ static/css/
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 
 # Session timeout
-app.config['SESSION_TIMEOUT'] = timedelta(hours=8)
+app.config['SESSION_TIMEOUT'] = timedelta(hours=1)
+
+# Brute-force protection
+app.config['MAX_LOGIN_ATTEMPTS'] = 3  # Максимум неудачных попыток
+app.config['BLOCK_DURATION'] = timedelta(minutes=15)  # Блокировка на 15 минут
 
 # MySQL конфиг
 MYSQL_CONFIG = {
@@ -293,6 +298,14 @@ location /dashboard.html {
 
 ### Проблема: Сессия истекает слишком быстро
 **Решение:** Увеличить `SESSION_TIMEOUT` в `app.py`
+
+### Проблема: "Слишком много неудачных попыток. Пользователь заблокирован"
+**Решение:** 
+- Подождать 15 минут после блокировки
+- Или вручную сбросить в БД: 
+```sql
+UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE username = 'username';
+```
 
 ### Проблема: Кнопки "Последние 7 дней" и "Сбросить" не светятся
 **Решение:** Добавить `.btn-secondary:hover { box-shadow: ... }` в `dashboard.css`

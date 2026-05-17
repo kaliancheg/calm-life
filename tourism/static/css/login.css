@@ -76,6 +76,28 @@ h1 .title-sub {
     box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); 
 }
 
+/* Lockout warning style */
+.lockout-warning {
+    background: rgba(255, 82, 82, 0.15);
+    border: 2px solid rgba(255, 82, 82, 0.5);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    color: #ff5252;
+    font-weight: 600;
+    text-align: center;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(255, 82, 82, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 82, 82, 0.6);
+    }
+}
+
 /* Footer override для login */
 .footer {
     padding: 20px;

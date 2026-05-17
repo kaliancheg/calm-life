@@ -6,6 +6,35 @@
 <title>Вход в систему</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+<script>
+// Countdown timer for lockout
+function startCountdown(seconds) {
+    const lockoutMessage = document.getElementById('lockout-timer');
+    if (!lockoutMessage || seconds <= 0) return;
+    
+    const updateTimer = () => {
+        if (seconds <= 0) {
+            lockoutMessage.textContent = 'Блокировка снята. Попробуйте войти снова.';
+            return;
+        }
+        
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        lockoutMessage.textContent = `Осталось: ${minutes} мин. ${secs} сек.`;
+        seconds--;
+        setTimeout(updateTimer, 1000);
+    };
+    
+    updateTimer();
+}
+
+// Start countdown if lockout info is provided
+window.addEventListener('DOMContentLoaded', () => {
+    {% if lockout_info and lockout_info.remaining_seconds %}
+    startCountdown({{ lockout_info.remaining_seconds | int }});
+    {% endif %}
+});
+</script>
 </head>
 <body>
 <div class="login-container">
@@ -15,6 +44,11 @@
 </h1>
 {% if error %}
 <div class="error">{{ error }}</div>
+{% endif %}
+{% if lockout_info and lockout_info.remaining_seconds %}
+<div class="lockout-warning" id="lockout-timer">
+    ⏳ {{ error }}
+</div>
 {% endif %}
 <form method="POST">
 <div class="form-group">

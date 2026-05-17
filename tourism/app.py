@@ -27,6 +27,10 @@ app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TIMEOUT'] = timedelta(hours=1)
 
+# Security settings for brute-force protection
+app.config['MAX_LOGIN_ATTEMPTS'] = 3  # Максимум неудачных попыток
+app.config['BLOCK_DURATION'] = timedelta(minutes=15)  # Блокировка на 15 минут
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.session_protection = 'strong'
@@ -223,6 +227,104 @@ def log_action(user_id: int, action: str, resource: str, details: Optional[Dict]
     except Exception as e:
         logger.error(f'Error logging action: {e}')
 
+def check_user_lockout(user_id: int) -> tuple[bool, Optional[datetime], int]:
+    """
+    Проверка блокировки пользователя
+    Возвращает: (заблокирован, время разблокировки, оставшиеся попытки)
+    """
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            'SELECT failed_login_attempts, locked_until FROM users WHERE id = %s',
+            (user_id,)
+        )
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not user:
+            return False, None, 0
+        
+        failed_attempts = user['failed_login_attempts'] or 0
+        locked_until = user['locked_until']
+        
+        # Проверяем, истёк ли срок блокировки
+        if locked_until and datetime.now() < locked_until:
+            return True, locked_until, 0
+        
+        # Если блокировка истекла, сбрасываем счётчик
+        if locked_until and datetime.now() >= locked_until:
+            return False, None, max(0, app.config['MAX_LOGIN_ATTEMPTS'] - failed_attempts)
+        
+        return False, None, max(0, app.config['MAX_LOGIN_ATTEMPTS'] - failed_attempts)
+    except Exception as e:
+        logger.error(f'Error checking user lockout: {e}')
+        return False, None, 0
+
+def record_failed_login(user_id: int) -> Optional[datetime]:
+    """
+    Запись неудачной попытки входа
+    Возвращает время блокировки, если пользователь заблокирован
+    """
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            'SELECT failed_login_attempts, locked_until FROM users WHERE id = %s',
+            (user_id,)
+        )
+        user = cursor.fetchone()
+        
+        if not user:
+            cursor.close()
+            conn.close()
+            return None
+        
+        failed_attempts = (user['failed_login_attempts'] or 0) + 1
+        
+        locked_until = None
+        if failed_attempts >= app.config['MAX_LOGIN_ATTEMPTS']:
+            # Блокируем пользователя
+            locked_until = datetime.now() + app.config['BLOCK_DURATION']
+            cursor.execute(
+                'UPDATE users SET failed_login_attempts = %s, locked_until = %s WHERE id = %s',
+                (failed_attempts, locked_until, user_id)
+            )
+            log_action(user_id, 'login_blocked', 'auth', {
+                'failed_attempts': failed_attempts,
+                'locked_until': str(locked_until)
+            })
+        else:
+            cursor.execute(
+                'UPDATE users SET failed_login_attempts = %s WHERE id = %s',
+                (failed_attempts, user_id)
+            )
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return locked_until
+    except Exception as e:
+        logger.error(f'Error recording failed login: {e}')
+        return None
+
+def reset_login_attempts(user_id: int):
+    """Сброс счётчика неудачных попыток после успешного входа"""
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = %s',
+            (user_id,)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        logger.error(f'Error resetting login attempts: {e}')
+
 def check_permission(resource: str, actions: List[str]):
     """Декоратор для проверки прав доступа"""
     def decorator(f):
@@ -274,6 +376,8 @@ def before_request():
 def login():
     """Страница входа"""
     error = None
+    lockout_info = None
+    
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
@@ -288,7 +392,7 @@ def login():
                 conn = mysql.connector.connect(**MYSQL_CONFIG)
                 cursor = conn.cursor(dictionary=True)
                 cursor.execute(
-                    'SELECT id, username, password_hash, full_name, role, is_active, last_login FROM users WHERE username = %s',
+                    'SELECT id, username, password_hash, full_name, role, is_active, last_login, failed_login_attempts, locked_until FROM users WHERE username = %s',
                     (username,)
                 )
                 user = cursor.fetchone()
@@ -300,6 +404,30 @@ def login():
                 elif not user.get('is_active'):
                     error = 'Пользователь заблокирован'
                     logger.warning(f'Login failed: user {username} is inactive')
+                elif user.get('locked_until'):
+                    # Проверка, истёк ли срок блокировки
+                    locked_until = user['locked_until']
+                    if isinstance(locked_until, str):
+                        locked_until = datetime.fromisoformat(locked_until)
+                    
+                    if datetime.now() < locked_until:
+                        # Пользователь всё ещё заблокирован
+                        remaining = locked_until - datetime.now()
+                        minutes = int(remaining.total_seconds() // 60)
+                        seconds = int(remaining.total_seconds() % 60)
+                        error = f'Слишком много неудачных попыток. Попробуйте через {minutes} мин. {seconds} сек.'
+                        lockout_info = {'locked_until': locked_until, 'remaining_seconds': remaining.total_seconds()}
+                        logger.warning(f'Login failed: user {username} is locked until {locked_until}')
+                    else:
+                        # Блокировка истекла, сбрасываем
+                        cursor = conn.cursor()
+                        cursor.execute(
+                            'UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = %s',
+                            (user['id'],)
+                        )
+                        conn.commit()
+                        cursor.close()
+                        # Продолжаем проверку пароля
                 else:
                     # Проверяем пароль - password_hash может быть в разных форматах
                     password_hash = user['password_hash']
@@ -317,10 +445,24 @@ def login():
                         password_valid = False
                     
                     if not password_valid:
+                        # Записываем неудачную попытку
+                        locked_until = record_failed_login(user['id'])
                         error = 'Неверный пароль'
+                        
+                        if locked_until:
+                            # Пользователь заблокирован
+                            remaining = locked_until - datetime.now()
+                            minutes = int(remaining.total_seconds() // 60)
+                            seconds = int(remaining.total_seconds() % 60)
+                            error = f'Неверный пароль. Слишком много попыток. Блокировка на {minutes} мин. {seconds} сек.'
+                            lockout_info = {'locked_until': locked_until, 'remaining_seconds': remaining.total_seconds()}
+                        
                         logger.warning(f'Login failed: wrong password for {username}')
                     else:
                         logger.info(f'User {username} authenticated successfully')
+                        # Сбрасываем счётчик неудачных попыток
+                        reset_login_attempts(user['id'])
+                        
                         user_obj = User(
                             id=user['id'],
                             username=user['username'],
@@ -369,7 +511,7 @@ def login():
                 if conn and conn.is_connected():
                     conn.close()
     
-    return render_template('login.html', error=error)
+    return render_template('login.html', error=error, lockout_info=lockout_info)
 
 @app.route('/logout')
 @login_required

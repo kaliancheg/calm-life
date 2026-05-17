@@ -31,6 +31,16 @@ ADD COLUMN IF NOT EXISTS created_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN IF NOT EXISTS updated_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
 
 -- ============================================
+-- 2.1 Add security fields for brute-force protection
+-- ============================================
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS failed_login_attempts INT NOT NULL DEFAULT 0 AFTER last_login,
+ADD COLUMN IF NOT EXISTS locked_until DATETIME NULL AFTER failed_login_attempts;
+
+-- Create index for locked_until queries
+CREATE INDEX IF NOT EXISTS idx_users_locked_until ON users(locked_until);
+
+-- ============================================
 -- 3. Ensure permissions tables exist
 -- ============================================
 CREATE TABLE IF NOT EXISTS permissions (
