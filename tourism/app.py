@@ -25,7 +25,7 @@ app = Flask(__name__,
             template_folder=os.path.join(basedir, 'templates'))
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 app.config['SESSION_PERMANENT'] = True
-app.config['SESSION_TIMEOUT'] = timedelta(hours=8)
+app.config['SESSION_TIMEOUT'] = timedelta(hours=1)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
