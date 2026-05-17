@@ -32,14 +32,36 @@ h1 .title-line {
 h1 .title-main { 
     font-size: 1.4em; 
     font-weight: 700; 
+    color: #00ffff;
+    text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.4);
+    animation: glow-cyan 3s ease-in-out infinite;
+}
+
+@keyframes glow-cyan {
+    0%, 100% {
+        text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.4);
+    }
+    50% {
+        text-shadow: 0 0 30px rgba(0, 255, 255, 0.9), 0 0 60px rgba(0, 255, 255, 0.6), 0 0 80px rgba(0, 255, 255, 0.3);
+    }
 }
 
 h1 .title-sub {
     font-size: 1em;
     font-weight: 400;
     color: #8a2be2;
-    text-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+    text-shadow: 0 0 15px rgba(138, 43, 226, 0.6), 0 0 30px rgba(138, 43, 226, 0.4);
     margin-top: 5px;
+    animation: glow-purple 3s ease-in-out infinite;
+}
+
+@keyframes glow-purple {
+    0%, 100% {
+        text-shadow: 0 0 15px rgba(138, 43, 226, 0.6), 0 0 30px rgba(138, 43, 226, 0.4);
+    }
+    50% {
+        text-shadow: 0 0 25px rgba(138, 43, 226, 0.9), 0 0 50px rgba(138, 43, 226, 0.6), 0 0 70px rgba(138, 43, 226, 0.3);
+    }
 }
 
 .form-group { 
