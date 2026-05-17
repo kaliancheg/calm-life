@@ -7,6 +7,13 @@ body {
     padding: 20px;
 }
 
+/* Container для dashboard с padding */
+.container {
+    padding: 0 20px !important;
+    max-width: 1800px;
+    margin: 0 auto;
+}
+
 /* Header */
 .header {
     display: flex;
@@ -38,7 +45,6 @@ body {
     display: flex; 
     align-items: center; 
     gap: 15px;
-    margin-right: 20px;
 }
 
 .user-name {
@@ -440,6 +446,14 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
+    body { 
+        padding: 10px; 
+    }
+    
+    .container { 
+        padding: 0 10px !important;
+    }
+    
     .header { 
         flex-direction: column; 
         gap: 15px; 
@@ -529,6 +543,10 @@ body {
 }
 
 @media (max-width: 480px) {
+    .container { 
+        padding: 0 5px !important;
+    }
+    
     .stats { 
         grid-template-columns: 1fr; 
     }
