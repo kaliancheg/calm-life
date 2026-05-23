@@ -114,8 +114,15 @@ body {
     font-weight: 500; 
 }
 
+.filter-section label .hint {
+    color: #888;
+    font-size: 0.85em;
+    font-weight: 400;
+    margin-left: 8px;
+}
+
 .filter-buttons { 
-    display: flex; 
+    display: flex;
     flex-wrap: wrap; 
     gap: 10px; 
 }
@@ -124,7 +131,7 @@ body {
     padding: 10px 20px;
     border: 2px solid rgba(0, 255, 255, 0.35);
     border-radius: 10px;
-    cursor: pointer;
+    cursor: pointer; 
     background: rgba(18, 20, 45, 0.85);
     color: #b8b8ff;
     font-family: 'Rajdhani', sans-serif;

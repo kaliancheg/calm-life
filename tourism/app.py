@@ -680,7 +680,9 @@ def api_lfl():
     filter_from = request.args.get('filter_from')
     filter_to = request.args.get('filter_to')
     selected_pod = request.args.get('selected_pod')
-    selected_otdel = request.args.get('selected_otdel')
+    selected_otdels = request.args.getlist('selected_otdel')  # Множественный выбор отделов
+    # Убираем пустые строки
+    selected_otdels = [o for o in selected_otdels if o]
     
     logger.info(f'LFL Params: mode={mode}, custom_from={custom_from}, custom_to={custom_to}, prev_from={prev_from}, prev_to={prev_to}')
     
@@ -739,10 +741,11 @@ def api_lfl():
                 conditions.append("podrazdelenie = %s")
                 params.append(selected_pod)
                 logger.info(f'LFL {period_label}: Filter podrazdelenie={selected_pod}')
-            if selected_otdel:
-                conditions.append("otdel = %s")
-                params.append(selected_otdel)
-                logger.info(f'LFL {period_label}: Filter otdel={selected_otdel}')
+            if selected_otdels:
+                placeholders = ','.join(['%s'] * len(selected_otdels))
+                conditions.append(f"otdel IN ({placeholders})")
+                params.extend(selected_otdels)
+                logger.info(f'LFL {period_label}: Filter otdels={selected_otdels}')
             
             # Ограничения прав пользователя
             if allowed_subs is not None and len(allowed_subs) > 0:
@@ -1063,7 +1066,8 @@ def api_fot_summary():
     date_to = request.args.get('to')
     gran = request.args.get('granularity', 'day')
     pod = request.args.get('pod')
-    otdel = request.args.get('otdel')
+    otdels = request.args.getlist('otdel')  # Множественный выбор отделов
+    otdels = [o for o in otdels if o]  # Убираем пустые строки
 
     try:
         conn = mysql.connector.connect(**MYSQL_CONFIG)
@@ -1080,9 +1084,10 @@ def api_fot_summary():
         if pod:
             conditions.append('podrazdelenie = %s')
             params.append(pod)
-        if otdel:
-            conditions.append('otdel = %s')
-            params.append(otdel)
+        if otdels:
+            placeholders = ','.join(['%s'] * len(otdels))
+            conditions.append(f'otdel IN ({placeholders})')
+            params.extend(otdels)
 
         # Apply permission filters
         conditions, params = _apply_permission_filters(conditions, params)
@@ -1149,6 +1154,8 @@ def api_fot_breakdown():
     date_from = request.args.get('from')
     date_to = request.args.get('to')
     by = request.args.get('by', 'podrazdelenie')
+    otdels = request.args.getlist('otdel')  # Множественный выбор отделов
+    otdels = [o for o in otdels if o]
     limit = int(request.args.get('limit', 50))
 
     if by not in ('podrazdelenie', 'otdel', 'dolzhnost'):
@@ -1164,6 +1171,10 @@ def api_fot_breakdown():
         if date_to:
             conditions.append('data <= %s')
             params.append(date_to)
+        if otdels:
+            placeholders = ','.join(['%s'] * len(otdels))
+            conditions.append(f'otdel IN ({placeholders})')
+            params.extend(otdels)
 
         conditions, params = _apply_permission_filters(conditions, params)
 

@@ -24,7 +24,7 @@
 <div class="filters">
 <h2>🔍 Фильтры</h2>
 <div class="filter-section"><label>Подразделение</label><div class="filter-buttons" id="podButtons"></div></div>
-<div class="filter-section"><label>Отдел (служба)</label><div class="filter-buttons" id="otdelButtons"></div></div>
+<div class="filter-section"><label>Отдел (служба) <span class="hint">(можно выбрать несколько)</span></label><div class="filter-buttons" id="otdelButtons"></div></div>
 <div class="filter-row date-nav-row">
 <div class="filter-group date-group"><label>Дата с</label><input type="date" id="dateFrom" onchange="applyFilters()"></div>
 <div class="filter-group date-group"><label>Дата по</label><input type="date" id="dateTo" onchange="applyFilters()"></div>
@@ -208,7 +208,7 @@
 console.log('=== SCRIPT STARTED ===');
 let allData = [];
 let selectedPod = '';
-let selectedOtdel = '';
+let selectedOtdels = []; // Массив выбранных отделов (множественный выбор)
 let canExport = {{ can_export|default(false)|tojson }};
 let empGroupMode = 'dolzhnost'; // 'none', 'otdel', 'dolzhnost'
 let expandedGroups = {}; // Для хранения состояния сворачивания групп (по умолчанию все свернуты)
@@ -258,9 +258,17 @@ async function calculateLFL() {
         const df = document.getElementById('dateFrom').value;
         const dt = document.getElementById('dateTo').value;
         const podVal = selectedPod || '';
-        const otdelVal = selectedOtdel || '';
         
-        let params = `?mode=${lflMode}&filter_from=${df}&filter_to=${dt}&selected_pod=${encodeURIComponent(podVal)}&selected_otdel=${encodeURIComponent(otdelVal)}`;
+        let params = `?mode=${lflMode}&filter_from=${df}&filter_to=${dt}&selected_pod=${encodeURIComponent(podVal)}`;
+        
+        // Добавляем все выбранные отделы
+        if (selectedOtdels.length > 0) {
+            selectedOtdels.forEach(otdel => {
+                params += `&selected_otdel=${encodeURIComponent(otdel)}`;
+            });
+        } else {
+            params += `&selected_otdel=`;
+        }
         
         if (lflMode === 'custom') {
             const customFrom = document.getElementById('lflCurrentFrom').value;
@@ -406,12 +414,12 @@ function renderLFLDetails() {
     `;
     document.getElementById('lflModalSummary').innerHTML = summaryHtml;
     
-    // Filter allData by periods AND current filters (pod/otdel)
+    // Filter allData by periods AND current filters (pod/otdels)
     const filterData = (data, from, to) => {
         return data.filter(r => {
             if (r.data < from || r.data > to) return false;
             if (selectedPod && r.podrazdelenie !== selectedPod) return false;
-            if (selectedOtdel && r.otdel !== selectedOtdel) return false;
+            if (selectedOtdels.length > 0 && !selectedOtdels.includes(r.otdel)) return false;
             return true;
         });
     };
@@ -570,7 +578,7 @@ selectPod(e.target.dataset.pod);
 
 otdelContainer.addEventListener('click', function(e) {
 if (e.target.classList.contains('filter-btn')) {
-selectOtdel(e.target.dataset.otdel);
+toggleOtdel(e.target.dataset.otdel, e.target);
 }
 });
 }
@@ -584,11 +592,41 @@ if ((pod === '' && btn.dataset.pod === '') || btn.dataset.pod === pod) btn.class
 applyFilters();
 }
 
-function selectOtdel(otdel) {
-selectedOtdel = otdel;
-document.querySelectorAll('#otdelButtons .filter-btn').forEach(btn => {
+function toggleOtdel(otdel, btnElement) {
+    if (otdel === '') {
+        // "Все" — сбрасываем все выбранные отделы
+        selectedOtdels = [];
+        document.querySelectorAll('#otdelButtons .filter-btn').forEach(btn => btn.classList.remove('active'));
+        btnElement.classList.add('active');
+    } else {
+        // Убираем active с кнопки "Все"
+        document.querySelector('#otdelButtons .filter-btn[data-otdel=""]').classList.remove('active');
+        
+        // Toggle отдела в массиве
+        const index = selectedOtdels.indexOf(otdel);
+        if (index > -1) {
+            // Уже выбран — убираем
+            selectedOtdels.splice(index, 1);
+            btnElement.classList.remove('active');
+        } else {
+            // Не выбран — добавляем
+            selectedOtdels.push(otdel);
+            btnElement.classList.add('active');
+        }
+        
+        // Если ничего не выбрано — активируем "Все"
+        if (selectedOtdels.length === 0) {
+            document.querySelector('#otdelButtons .filter-btn[data-otdel=""]').classList.add('active');
+        }
+    }
+    applyFilters();
+}
+
+function selectPod(pod) {
+selectedPod = pod;
+document.querySelectorAll('#podButtons .filter-btn').forEach(btn => {
 btn.classList.remove('active');
-if ((otdel === '' && btn.dataset.otdel === '') || btn.dataset.otdel === otdel) btn.classList.add('active');
+if ((pod === '' && btn.dataset.pod === '') || btn.dataset.pod === pod) btn.classList.add('active');
 });
 applyFilters();
 }
@@ -632,7 +670,7 @@ applyFilters();
 
 function resetFilters() {
 selectedPod = '';
-selectedOtdel = '';
+selectedOtdels = [];
 document.querySelectorAll('#podButtons .filter-btn').forEach(btn => btn.classList.remove('active'));
 document.querySelector('#podButtons .filter-btn').classList.add('active');
 document.querySelectorAll('#otdelButtons .filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -665,7 +703,7 @@ const dt = document.getElementById('dateTo').value;
 
 let filtered = allData.filter(r => {
 if (selectedPod && r.podrazdelenie !== selectedPod) return false;
-if (selectedOtdel && r.otdel !== selectedOtdel) return false;
+if (selectedOtdels.length > 0 && !selectedOtdels.includes(r.otdel)) return false;
 if (df && r.data < df) return false;
 if (dt && r.data > dt) return false;
 return true;
@@ -708,7 +746,7 @@ const df = document.getElementById('dateFrom').value;
 const dt = document.getElementById('dateTo').value;
 let filtered = allData.filter(r => {
 if (selectedPod && r.podrazdelenie !== selectedPod) return false;
-if (selectedOtdel && r.otdel !== selectedOtdel) return false;
+if (selectedOtdels.length > 0 && !selectedOtdels.includes(r.otdel)) return false;
 if (df && r.data < df) return false;
 if (dt && r.data > dt) return false;
 return true;
@@ -1033,9 +1071,17 @@ async function fetchFotSummaryAndBreakdown() {
         const df = document.getElementById('dateFrom').value;
         const dt = document.getElementById('dateTo').value;
         const podVal = selectedPod || '';
-        const otdelVal = selectedOtdel || '';
 
-        const summaryParams = `?from=${df}&to=${dt}&granularity=day&pod=${encodeURIComponent(podVal)}&otdel=${encodeURIComponent(otdelVal)}`;
+        // Building summary params with multiple otdels
+        let summaryParams = `?from=${df}&to=${dt}&granularity=day&pod=${encodeURIComponent(podVal)}`;
+        if (selectedOtdels.length > 0) {
+            selectedOtdels.forEach(otdel => {
+                summaryParams += `&otdel=${encodeURIComponent(otdel)}`;
+            });
+        } else if (podVal) {
+            summaryParams += `&otdel=`;
+        }
+        
         const summaryResp = await fetch('/api/fot/summary' + summaryParams);
         if (summaryResp.ok) {
             const sdata = await summaryResp.json();
@@ -1047,7 +1093,13 @@ async function fetchFotSummaryAndBreakdown() {
             }
         }
 
-        const breakdownParams = `?from=${df}&to=${dt}&by=otdel&limit=50`;
+        // Building breakdown params with multiple otdels
+        let breakdownParams = `?from=${df}&to=${dt}&by=otdel&limit=50`;
+        if (selectedOtdels.length > 0) {
+            selectedOtdels.forEach(otdel => {
+                breakdownParams += `&otdel=${encodeURIComponent(otdel)}`;
+            });
+        }
         const brResp = await fetch('/api/fot/breakdown' + breakdownParams);
         if (brResp.ok) {
             const bdata = await brResp.json();
