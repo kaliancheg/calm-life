@@ -673,12 +673,16 @@ def api_lfl():
     mode = request.args.get('mode', 'month')  # month, week, custom
     custom_from = request.args.get('custom_from')
     custom_to = request.args.get('custom_to')
+    prev_from = request.args.get('prev_from')
+    prev_to = request.args.get('prev_to')
     
     # Получаем текущие фильтры (опционально)
     filter_from = request.args.get('filter_from')
     filter_to = request.args.get('filter_to')
     selected_pod = request.args.get('selected_pod')
     selected_otdel = request.args.get('selected_otdel')
+    
+    logger.info(f'LFL Params: mode={mode}, custom_from={custom_from}, custom_to={custom_to}, prev_from={prev_from}, prev_to={prev_to}')
     
     conn = None
     
@@ -687,17 +691,15 @@ def api_lfl():
         
         # Проверяем права на просмотр данных
         if not current_user.has_permission('data', 'view'):
+            logger.warning(f'LFL API: User {current_user.username} denied access')
             return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
         
         # Определяем периоды для сравнения
-        if mode == 'custom' and custom_from and custom_to:
-            # Пользовательский период для сравнения
+        if mode == 'custom' and custom_from and custom_to and prev_from and prev_to:
+            # Пользовательский период для сравнения (оба периода заданы вручную)
             period_to = (custom_from, custom_to)
-            # Предыдущий период такой же длины
-            period_length = (datetime.strptime(custom_to, '%Y-%m-%d') - datetime.strptime(custom_from, '%Y-%m-%d')).days
-            prev_end = datetime.strptime(custom_from, '%Y-%m-%d') - timedelta(days=1)
-            prev_start = prev_end - timedelta(days=period_length - 1)
-            period_prev = (prev_start.strftime('%Y-%m-%d'), prev_end.strftime('%Y-%m-%d'))
+            period_prev = (prev_from, prev_to)
+            logger.info(f'LFL Custom period: {period_to} vs {period_prev}')
         elif mode == 'week':
             # Неделя к неделе (последние 7 дней vs предыдущие 7 дней)
             today = datetime.now()
@@ -705,6 +707,7 @@ def api_lfl():
             prev_end = today - timedelta(days=7)
             prev_start = prev_end - timedelta(days=6)
             period_prev = (prev_start.strftime('%Y-%m-%d'), prev_end.strftime('%Y-%m-%d'))
+            logger.info(f'LFL Week mode: {period_to} vs {period_prev}')
         else:
             # Месяц к месяцу (текущий месяц vs предыдущий месяц) - по умолчанию
             today = datetime.now()
@@ -723,9 +726,10 @@ def api_lfl():
             
             period_to = (current_month_start.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d'))
             period_prev = (prev_month_start.strftime('%Y-%m-%d'), prev_month_end.strftime('%Y-%m-%d'))
+            logger.info(f'LFL Month mode: {period_to} vs {period_prev}')
         
         # Формируем базовый запрос
-        def get_period_data(period_start, period_end, allowed_subs, allowed_otdels):
+        def get_period_data(period_start, period_end, allowed_subs, allowed_otdels, period_label=''):
             """Получение данных за период с учётом прав"""
             conditions = ["data >= %s", "data <= %s"]
             params = [period_start, period_end]
@@ -734,17 +738,21 @@ def api_lfl():
             if selected_pod:
                 conditions.append("podrazdelenie = %s")
                 params.append(selected_pod)
+                logger.info(f'LFL {period_label}: Filter podrazdelenie={selected_pod}')
             if selected_otdel:
                 conditions.append("otdel = %s")
                 params.append(selected_otdel)
+                logger.info(f'LFL {period_label}: Filter otdel={selected_otdel}')
             
             # Ограничения прав пользователя
             if allowed_subs is not None and len(allowed_subs) > 0:
                 conditions.append("podrazdelenie IN (%s)" % ','.join(['%s'] * len(allowed_subs)))
                 params.extend(allowed_subs)
+                logger.info(f'LFL {period_label}: Permission filter subs={allowed_subs}')
             if allowed_otdels is not None and len(allowed_otdels) > 0:
                 conditions.append("otdel IN (%s)" % ','.join(['%s'] * len(allowed_otdels)))
                 params.extend(allowed_otdels)
+                logger.info(f'LFL {period_label}: Permission filter otdels={allowed_otdels}')
             
             query = f'''
                 SELECT 
@@ -754,7 +762,11 @@ def api_lfl():
                 WHERE {' AND '.join(conditions)}
             '''
             
+            logger.info(f'LFL {period_label}: SQL Query: {query[:200]}...')
+            logger.info(f'LFL {period_label}: SQL Params: {params}')
+            
             df = pd.read_sql(query, conn, params=params)
+            logger.info(f'LFL {period_label}: Retrieved {len(df)} records')
             return df
         
         # Получаем ограничения прав пользователя
@@ -762,25 +774,31 @@ def api_lfl():
         allowed_subs = permissions.get('_allowed_subdivisions', None)
         allowed_otdels = permissions.get('_allowed_otdels', None)
         
+        logger.info(f'LFL: Getting data for current period {period_to[0]} to {period_to[1]}')
+        logger.info(f'LFL: Getting data for previous period {period_prev[0]} to {period_prev[1]}')
+        
         # Получаем данные за оба периода
-        df_current = get_period_data(period_to[0], period_to[1], allowed_subs, allowed_otdels)
-        df_prev = get_period_data(period_prev[0], period_prev[1], allowed_subs, allowed_otdels)
+        df_current = get_period_data(period_to[0], period_to[1], allowed_subs, allowed_otdels, 'CURRENT')
+        df_prev = get_period_data(period_prev[0], period_prev[1], allowed_subs, allowed_otdels, 'PREVIOUS')
         
         # Рассчитываем агрегированные показатели
         def calc_metrics(df):
             if df.empty:
+                logger.warning('LFL: Empty DataFrame - returning zeros')
                 return {
                     'employees': 0,
                     'hours': 0,
                     'money': 0,
                     'records': 0
                 }
-            return {
-                'employees': df['fio'].nunique(),
+            result = {
+                'employees': int(df['fio'].nunique()),
                 'hours': float(df['chasy'].sum()),
                 'money': float(df['itogo'].sum()),
                 'records': len(df)
             }
+            logger.info(f'LFL: Metrics calculated: {result}')
+            return result
         
         metrics_current = calc_metrics(df_current)
         metrics_prev = calc_metrics(df_prev)

@@ -75,8 +75,8 @@
             </div>
             <div class="lfl-input-group">
                 <label>Сравниваемый период:</label>
-                <input type="date" id="lflPrevFrom" disabled>
-                <input type="date" id="lflPrevTo" disabled>
+                <input type="date" id="lflPrevFrom" onchange="calculateLFL()">
+                <input type="date" id="lflPrevTo" onchange="calculateLFL()">
             </div>
         </div>
         <button class="btn-secondary" onclick="calculateLFL()">🔄 Применить</button>
@@ -726,34 +726,58 @@ async function calculateLFL() {
         if (lflMode === 'custom') {
             const customFrom = document.getElementById('lflCurrentFrom').value;
             const customTo = document.getElementById('lflCurrentTo').value;
-            if (customFrom && customTo) {
-                params += `&custom_from=${customFrom}&custom_to=${customTo}`;
+            const prevFrom = document.getElementById('lflPrevFrom').value;
+            const prevTo = document.getElementById('lflPrevTo').value;
+            
+            if (customFrom && customTo && prevFrom && prevTo) {
+                params += `&custom_from=${customFrom}&custom_to=${customTo}&prev_from=${prevFrom}&prev_to=${prevTo}`;
             } else {
+                console.error('Missing custom dates:', { customFrom, customTo, prevFrom, prevTo });
                 setCustomPeriodDefaults();
                 return;
             }
         }
         
+        console.log('Fetching LFL with params:', params);
         const response = await fetch(`/api/lfl${params}`);
         if (!response.ok) {
             console.error('LFL API Error:', response.status);
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
             return;
         }
         
         const data = await response.json();
-        console.log('LFL Data:', data);
+        console.log('LFL Data received:', data);
+        
+        if (data.error) {
+            console.error('LFL API returned error:', data.error);
+            return;
+        }
         
         updateLFLDisplay(data);
     } catch (error) {
         console.error('Error calculating LFL:', error);
+        console.error('Error stack:', error.stack);
     }
 }
 
 function updateLFLDisplay(data) {
+    console.log('updateLFLDisplay called with:', data);
+    
+    if (!data || data.error) {
+        console.error('Invalid LFL data:', data);
+        return;
+    }
+    
     const cur = data.period_current;
     const prev = data.period_previous;
     const change = data.change;
     const delta = data.delta;
+    
+    console.log('Periods:', { cur, prev });
+    console.log('Change:', change);
+    console.log('Delta:', delta);
     
     // Format dates
     const formatDateRange = (from, to) => {
@@ -792,6 +816,8 @@ function updateLFLDisplay(data) {
     // Sub-metrics
     document.getElementById('lfl-change-employees').textContent = `${delta.employees > 0 ? '+' : ''}${delta.employees}`;
     document.getElementById('lfl-change-hours').textContent = `${delta.hours > 0 ? '+' : ''}${Math.round(delta.hours)} ч`;
+    
+    console.log('LFL display updated successfully');
 }
 
 // Calculate LFL on initial load and when filters change
