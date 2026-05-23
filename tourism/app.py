@@ -1033,6 +1033,179 @@ def get_subdivisions():
         cursor.close()
         conn.close()
 
+
+def _apply_permission_filters(base_conditions: list, params: list):
+    """Helper: применить ограничения пользователя (подразделения/отделы) к условию и параметрам."""
+    permissions = current_user.permissions if current_user.is_authenticated else {}
+    allowed_subs = permissions.get('_allowed_subdivisions', None)
+    allowed_otdels = permissions.get('_allowed_otdels', None)
+
+    if allowed_subs is not None and isinstance(allowed_subs, list) and len(allowed_subs) > 0:
+        base_conditions.append("podrazdelenie IN (%s)" % ','.join(['%s'] * len(allowed_subs)))
+        params.extend(allowed_subs)
+    if allowed_otdels is not None and isinstance(allowed_otdels, list) and len(allowed_otdels) > 0:
+        base_conditions.append("otdel IN (%s)" % ','.join(['%s'] * len(allowed_otdels)))
+        params.extend(allowed_otdels)
+
+    return base_conditions, params
+
+
+@app.route('/api/fot/summary')
+@login_required
+def api_fot_summary():
+    """Возвращает суммарные метрики ФОТ и series по периодам (day/week/month).
+    Параметры: from,to,granularity=day|week|month,pod,otdel
+    """
+    if not current_user.has_permission('data', 'view'):
+        return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
+
+    date_from = request.args.get('from')
+    date_to = request.args.get('to')
+    gran = request.args.get('granularity', 'day')
+    pod = request.args.get('pod')
+    otdel = request.args.get('otdel')
+
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+
+        # Базовые условия
+        conditions = []
+        params = []
+        if date_from:
+            conditions.append('data >= %s')
+            params.append(date_from)
+        if date_to:
+            conditions.append('data <= %s')
+            params.append(date_to)
+        if pod:
+            conditions.append('podrazdelenie = %s')
+            params.append(pod)
+        if otdel:
+            conditions.append('otdel = %s')
+            params.append(otdel)
+
+        # Apply permission filters
+        conditions, params = _apply_permission_filters(conditions, params)
+
+        # Granularity to expression
+        if gran == 'month':
+            grp = "DATE_FORMAT(data, '%%Y-%%m')"
+            label = 'month'
+        elif gran == 'week':
+            grp = "YEARWEEK(data, 1)"
+            label = 'week'
+        else:
+            grp = 'DATE(data)'
+            label = 'day'
+
+        where_clause = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
+
+        totals_q = f"SELECT SUM(itogo) AS total_money, SUM(chasy) AS total_hours, COUNT(DISTINCT fio) AS employees, SUM(nachisleno) AS total_nachisleno, COUNT(*) AS records FROM records {where_clause}"
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(totals_q, tuple(params))
+        totals = cursor.fetchone() or {'total_money': 0, 'total_hours': 0, 'employees': 0, 'total_nachisleno': 0, 'records': 0}
+
+        # Series
+        series_q = f"SELECT {grp} AS period, SUM(itogo) AS total_money, SUM(chasy) AS total_hours, COUNT(DISTINCT fio) AS employees FROM records {where_clause} GROUP BY {grp} ORDER BY {grp}"
+        df = pd.read_sql(series_q, conn, params=params)
+
+        # avg_rate safe
+        total_hours = float(totals.get('total_hours') or 0)
+        total_nach = float(totals.get('total_nachisleno') or 0)
+        avg_rate = (total_nach / total_hours) if total_hours > 0 else 0
+
+        result = {
+            'period': {'from': date_from, 'to': date_to},
+            'totals': {
+                'total_money': float(totals.get('total_money') or 0),
+                'total_hours': total_hours,
+                'employees': int(totals.get('employees') or 0),
+                'avg_rate': avg_rate,
+                'records': int(totals.get('records') or 0)
+            },
+            'series': df.to_dict('records')
+        }
+
+        cursor.close()
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f'API FOT Summary Error: {e}')
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn and conn.is_connected():
+            conn.close()
+
+
+@app.route('/api/fot/breakdown')
+@login_required
+def api_fot_breakdown():
+    """Возвращает разбивку ФОТ по подразделениям/отделам/должностям.
+    Параметры: from,to,by=podrazdelenie|otdel|dolzhnost,limit
+    """
+    if not current_user.has_permission('data', 'view'):
+        return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
+
+    date_from = request.args.get('from')
+    date_to = request.args.get('to')
+    by = request.args.get('by', 'podrazdelenie')
+    limit = int(request.args.get('limit', 50))
+
+    if by not in ('podrazdelenie', 'otdel', 'dolzhnost'):
+        by = 'podrazdelenie'
+
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        conditions = []
+        params = []
+        if date_from:
+            conditions.append('data >= %s')
+            params.append(date_from)
+        if date_to:
+            conditions.append('data <= %s')
+            params.append(date_to)
+
+        conditions, params = _apply_permission_filters(conditions, params)
+
+        where_clause = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
+
+        q = f"SELECT {by} AS key, SUM(itogo) AS total_money, SUM(chasy) AS total_hours, COUNT(DISTINCT fio) AS employees, SUM(nachisleno) AS total_nachisleno FROM records {where_clause} GROUP BY {by} ORDER BY total_money DESC LIMIT %s"
+        params_with_limit = list(params) + [limit]
+
+        df = pd.read_sql(q, conn, params=params_with_limit)
+
+        overall_q = f"SELECT SUM(itogo) AS overall_money FROM records {where_clause}"
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(overall_q, tuple(params))
+        overall = cursor.fetchone() or {'overall_money': 0}
+
+        overall_money = float(overall.get('overall_money') or 0)
+        breakdown = []
+        for row in df.to_dict('records'):
+            total_money = float(row.get('total_money') or 0)
+            total_hours = float(row.get('total_hours') or 0)
+            employees = int(row.get('employees') or 0)
+            avg_rate = (float(row.get('total_nachisleno') or 0) / total_hours) if total_hours > 0 else 0
+            share = (total_money / overall_money) if overall_money > 0 else 0
+            breakdown.append({
+                'key': row.get('key'),
+                'total_money': total_money,
+                'total_hours': total_hours,
+                'employees': employees,
+                'avg_rate': avg_rate,
+                'share': share
+            })
+
+        cursor.close()
+        return jsonify({'by': by, 'overall_money': overall_money, 'breakdown': breakdown})
+
+    except Exception as e:
+        logger.error(f'API FOT Breakdown Error: {e}')
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn and conn.is_connected():
+            conn.close()
+
 # ==================== PERMISSIONS MANAGEMENT ====================
 
 @app.route('/admin/permissions/<int:user_id>')

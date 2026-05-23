@@ -4,7 +4,7 @@
 
 **Название:** Tourism Dashboard (Волна Sea Village / Art-Life / ФОТ)  
 **Тип:** Веб-приложение для учёта ежедневного туризма сотрудников (ФОТ - фонд оплаты труда)  
-**Версия:** 2.3 (с RBAC системой прав, корректным часовым поясом, авто-вкладкой Обзор и LFL анализом)  
+**Версия:** 2.4 (с RBAC системой прав, корректным часовым поясом, авто-вкладкой Обзор и LFL анализом)  
 **Последнее обновление:** 2026-05-24
 
 ---
@@ -201,6 +201,11 @@ journalctl -u tourism-dashboard -f
 - `GET /` или `GET /dashboard.html` - Дашборд
 - `GET /api/data` - API данных с учётом прав
 - `GET /api/lfl` - API LFL анализа (сравнение периодов)
+  - `?mode=month` — Месяц к месяцу (по умолчанию)
+  - `?mode=week` — Неделя к неделе
+  - `?mode=custom&custom_from=YYYY-MM-DD&custom_to=YYYY-MM-DD&prev_from=YYYY-MM-DD&prev_to=YYYY-MM-DD` — Пользовательский период
+  - `?filter_from=YYYY-MM-DD&filter_to=YYYY-MM-DD` — Фильтр по датам
+  - `?selected_pod=Подразделение&selected_otdel=Отдел` — Фильтр по подразделениям
 - `GET /logout` - Выход
 
 ### Админ-панель
@@ -210,6 +215,107 @@ journalctl -u tourism-dashboard -f
 - `GET /admin/roles` - Роли
 - `GET /admin/audit-log` - Журнал аудита
 - `POST /admin/import-excel` - Импорт Excel
+
+---
+
+## 📡 LFL API Документация
+
+### Эндпоинт: `GET /api/lfl`
+
+**Описание:** Возвращает данные для сравнения периодов (Like-for-Like анализ)
+
+**Параметры запроса:**
+
+| Параметр | Тип | Обязательный | Описание |
+|----------|-----|--------------|----------|
+| `mode` | string | Нет | Режим сравнения: `month`, `week`, `custom` (по умолчанию: `month`) |
+| `custom_from` | string | Нет | Начало текущего периода (формат: `YYYY-MM-DD`) |
+| `custom_to` | string | Нет | Конец текущего периода (формат: `YYYY-MM-DD`) |
+| `prev_from` | string | Нет | Начало предыдущего периода (формат: `YYYY-MM-DD`) |
+| `prev_to` | string | Нет | Конец предыдущего периода (формат: `YYYY-MM-DD`) |
+| `filter_from` | string | Нет | Фильтр по датам (начало) |
+| `filter_to` | string | Нет | Фильтр по датам (конец) |
+| `selected_pod` | string | Нет | Фильтр по подразделению |
+| `selected_otdel` | string | Нет | Фильтр по отделу |
+
+**Примеры запросов:**
+
+```bash
+# Месяц к месяцу (по умолчанию)
+curl https://calm-life.ru/api/lfl?mode=month
+
+# Неделя к неделе
+curl https://calm-life.ru/api/lfl?mode=week
+
+# Пользовательский период
+curl "https://calm-life.ru/api/lfl?mode=custom&custom_from=2026-05-01&custom_to=2026-05-24&prev_from=2026-04-01&prev_to=2026-04-30"
+
+# С фильтрами
+curl "https://calm-life.ru/api/lfl?mode=month&selected_pod=Волна&selected_otdel=Администрация"
+```
+
+**Ответ API (успешный):**
+
+```json
+{
+  "period_current": {
+    "from": "2026-05-01",
+    "to": "2026-05-24",
+    "metrics": {
+      "employees": 45,
+      "hours": 720.5,
+      "money": 150000.0,
+      "records": 120
+    }
+  },
+  "period_previous": {
+    "from": "2026-04-01",
+    "to": "2026-04-30",
+    "metrics": {
+      "employees": 42,
+      "hours": 680.0,
+      "money": 142000.0,
+      "records": 115
+    }
+  },
+  "change": {
+    "employees": 7.14,
+    "hours": 5.96,
+    "money": 5.63,
+    "records": 4.35
+  },
+  "delta": {
+    "employees": 3,
+    "hours": 40.5,
+    "money": 8000.0,
+    "records": 5
+  }
+}
+```
+
+**Поля ответа:**
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `period_current.from` | string | Начало текущего периода |
+| `period_current.to` | string | Конец текущего периода |
+| `period_current.metrics.employees` | number | Количество уникальных сотрудников |
+| `period_current.metrics.hours` | number | Всего отработано часов |
+| `period_current.metrics.money` | number | Всего начислено (₽) |
+| `period_current.metrics.records` | number | Количество записей |
+| `period_previous.*` | ... | То же самое для предыдущего периода |
+| `change.*` | number | Изменение в % (относительно предыдущего периода) |
+| `delta.*` | number | Абсолютное изменение (current - previous) |
+
+**Ошибки:**
+
+```json
+{
+  "error": "У вас нет прав для просмотра данных"
+}
+```
+
+HTTP статус: `403 Forbidden`
 
 ---
 
@@ -578,8 +684,8 @@ journalctl -u tourism-dashboard -f --no-pager
 
 ---
 
-**Последнее обновление:** 2026-05-24 (Добавлен LFL анализ с сравнением периодов)  
-**Версия:** 2.3  
+**Последнее обновление:** 2026-05-24 (Добавлен LFL анализ с сравнением периодов, исправлена проблема инициализации переменных)  
+**Версия:** 2.4  
 **Статус:** ✅ Production Ready
 
 ---

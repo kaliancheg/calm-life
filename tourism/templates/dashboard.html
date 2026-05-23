@@ -824,14 +824,50 @@ function toggleGroup(groupId) {
 const originalApplyFilters = applyFilters;
 applyFilters = function() {
     originalApplyFilters();
-    // Recalculate LFL when main filters change
+    // Recalculate LFL and refresh server-side summary/breakdown when main filters change
     setTimeout(() => {
         if (lflMode === 'custom') {
             setCustomPeriodDefaults();
         }
         calculateLFL();
+        fetchFotSummaryAndBreakdown();
     }, 100);
 };
+
+// Fetch server-side summary and breakdown for current filters
+async function fetchFotSummaryAndBreakdown() {
+    try {
+        const df = document.getElementById('dateFrom').value;
+        const dt = document.getElementById('dateTo').value;
+        const podVal = selectedPod || '';
+        const otdelVal = selectedOtdel || '';
+
+        const summaryParams = `?from=${df}&to=${dt}&granularity=day&pod=${encodeURIComponent(podVal)}&otdel=${encodeURIComponent(otdelVal)}`;
+        const summaryResp = await fetch('/api/fot/summary' + summaryParams);
+        if (summaryResp.ok) {
+            const sdata = await summaryResp.json();
+            if (!sdata.error && sdata.totals) {
+                animateValue(document.getElementById('employees'), 0, sdata.totals.employees || 0, 200, false);
+                animateValue(document.getElementById('hours'), 0, sdata.totals.total_hours || 0, 200, false);
+                animateValue(document.getElementById('money'), 0, sdata.totals.total_money || 0, 200, true);
+                animateValue(document.getElementById('records'), 0, sdata.totals.records || 0, 200, false);
+            }
+        }
+
+        const breakdownParams = `?from=${df}&to=${dt}&by=otdel&limit=50`;
+        const brResp = await fetch('/api/fot/breakdown' + breakdownParams);
+        if (brResp.ok) {
+            const bdata = await brResp.json();
+            if (!bdata.error && bdata.breakdown) {
+                // Update otdel table from server-side data
+                const rows = bdata.breakdown.map(r => `<tr><td>${r.key || '—'}</td><td>${r.employees}</td><td>—</td><td>${Math.round(r.total_hours)}</td><td>${formatMoney(r.total_money)}</td></tr>`);
+                document.getElementById('otdelTable').innerHTML = rows.join('');
+            }
+        }
+    } catch (err) {
+        console.error('Error fetching FOT summary/breakdown:', err);
+    }
+}
 
 console.log('=== SCRIPT FINISHED, calling loadData() ===');
 loadData();
