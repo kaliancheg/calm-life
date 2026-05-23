@@ -617,8 +617,8 @@ body {
     border-radius: 20px;
     border: 1px solid rgba(0, 255, 255, 0.3);
     box-shadow: 0 10px 50px rgba(0, 255, 255, 0.15);
-    max-width: 900px;
-    width: 100%;
+    max-width: 1200px;
+    width: 95%;
     max-height: 85vh;
     overflow-y: auto;
     animation: slideIn 0.3s ease-out;
@@ -721,15 +721,16 @@ body {
 
 .lfl-modal-table th,
 .lfl-modal-table td {
-    padding: 12px 15px;
+    padding: 10px 12px;
     text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     color: #e8e8ff;
     white-space: nowrap;
+    font-size: 0.95em;
 }
 
 .lfl-modal-table th {
-    color: #00ffff;
+    color: #00ffff; 
     font-weight: 700;
     background: rgba(0, 255, 255, 0.1);
     font-size: 0.95em;
@@ -984,6 +985,7 @@ body {
     /* LFL Modal - Mobile */
     .lfl-modal-content {
         max-width: 100%;
+        width: 100%;
         max-height: 90vh;
         border-radius: 12px;
     }
@@ -1001,13 +1003,26 @@ body {
     }
     
     .lfl-modal-summary {
-        grid-template-columns: 1fr; 
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+    
+    .lfl-modal-summary-card {
+        padding: 10px;
+    }
+    
+    .lfl-modal-summary-value {
+        font-size: 1.1em;
     }
     
     .lfl-modal-table th,
     .lfl-modal-table td {
         padding: 8px 10px;
-        font-size: 0.9em;
+        font-size: 0.85em;
+    }
+    
+    .lfl-modal-section h4 {
+        font-size: 1em;
     }
 }
 
