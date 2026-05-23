@@ -4,8 +4,10 @@
 
 **Название:** Tourism Dashboard (Волна Sea Village / Art-Life / ФОТ)  
 **Тип:** Веб-приложение для учёта ежедневного туризма сотрудников (ФОТ - фонд оплаты труда)  
-**Версия:** 2.4 (с RBAC системой прав, корректным часовым поясом, авто-вкладкой Обзор и LFL анализом)  
-**Последнее обновление:** 2026-05-24
+**Версия:** 2.5 (с ФОТ-аналитикой, новыми API эндпоинтами `/api/fot/summary` и `/api/fot/breakdown`)  
+**Последнее обновление:** 2026-05-24  
+**Среда разработки:** MS VS Code + PowerShell (синтаксис команд адаптирован для Windows)  
+**Процесс деплоя:** локальные правки → git push в GitHub → деплой на production сервер
 
 ---
 
@@ -200,6 +202,14 @@ journalctl -u tourism-dashboard -f
 ### Защищённые
 - `GET /` или `GET /dashboard.html` - Дашборд
 - `GET /api/data` - API данных с учётом прав
+- `GET /api/fot/summary` - API ключевых метрик ФОТ (сотрудники, часы, начисления, средняя ставка)
+  - `?from=YYYY-MM-DD&to=YYYY-MM-DD` — фильтр по дате
+  - `?granularity=day|week|month` — уровень агрегации
+  - `?pod=Подразделение&otdel=Отдел` — фильтр по структурным единицам
+- `GET /api/fot/breakdown` - API разбивки ФОТ по подразделениям/отделам/должностям
+  - `?from=YYYY-MM-DD&to=YYYY-MM-DD` — фильтр по дате
+  - `?by=podrazdelenie|otdel|dolzhnost` — параметр группировки
+  - `?limit=50` — лимит строк
 - `GET /api/lfl` - API LFL анализа (сравнение периодов)
   - `?mode=month` — Месяц к месяцу (по умолчанию)
   - `?mode=week` — Неделя к неделе
@@ -614,7 +624,183 @@ GET /api/lfl?mode=custom&custom_from=2026-04-01&custom_to=2026-04-30
 
 ---
 
-## 📝 Следующие шаги (Roadmap)
+## � Изменения в версии 2.5 (2026-05-24)
+
+### Новые компоненты аналитики ФОТ
+
+#### Backend API
+- **`GET /api/fot/summary`** — возвращает суммарные метрики ФОТ за период:
+  - `total_money` — всего начислено (₽)
+  - `total_hours` — всего часов
+  - `employees` — уникальные сотрудники
+  - `avg_rate` — средняя ставка
+  - `records` — количество записей
+  - `series` — временной ряд (по дням/неделям/месяцам)
+
+- **`GET /api/fot/breakdown`** — разбивка ФОТ по структурным единицам:
+  - Группировка по: `podrazdelenie` / `otdel` / `dolzhnost`
+  - Для каждой группы: money, hours, employees, avg_rate, доля в общей сумме
+
+#### Frontend UI
+- **Секция «ФОТ — Обзор»** — KPI-карточки с анимацией:
+  - 👥 Сотрудников
+  - ⏰ Всего часов
+  - 💰 Начислено
+  - 📅 Записей
+
+- **Секция «ФОТ по подразделениям»** — интерактивная таблица разбивки по отделам
+  - Данные подтягиваются из `/api/fot/breakdown`
+  - Обновляются при смене фильтров
+
+- **Анимация LFL-блока** — плавное изменение значений процентов и дельт:
+  - Текущий период (анимация)
+  - Предыдущий период (анимация)
+  - Изменение в % (анимация с + / - знаком)
+  - Дельта в ₽ (анимация)
+
+#### Database
+- **SQL View `daily_records_agg`** — предварительно агрегированные данные для быстрых запросов
+  - Группировка по дате, подразделению, отделу, должности
+  - SUM(itogo), SUM(chasy), COUNT(DISTINCT fio)
+  - Расположение: `calm-life/tourism/migrations/2026_05_23_add_fot_views.sql`
+
+### Изменённые файлы
+
+| Файл | Изменение |
+|------|-----------|
+| `app.py` | + `_apply_permission_filters()` helper + `/api/fot/summary` + `/api/fot/breakdown` |
+| `dashboard.html` | + блоки «ФОТ — Обзор» и «ФОТ по подразделениям» + обновлённая `animateValue()` + `fetchFotSummaryAndBreakdown()` |
+| `dashboard.css` | + стили для `.fot-overview`, `.breakdown-section`, `.section-header` |
+| `migrations/` | + `2026_05_23_add_fot_views.sql` (View для агрегации) |
+
+### Особенности реализации
+
+- ✅ Учёт прав пользователя в обоих API (подразделения, отделы)
+- ✅ Анимация обновления KPI (3-секундный transition)
+- ✅ Поддержка фильтров (дата, подразделение, отдел)
+- ✅ Гармоничный дизайн, согласованный с существующим дашбордом
+- ✅ Мобильная адаптация (responsive grid)
+
+---
+
+## 🛠️ Среда разработки и процесс деплоя
+
+### Инструменты
+
+- **IDE:** Microsoft Visual Studio Code
+- **Terminal:** PowerShell 5.1 (Windows)
+- **Version Control:** Git (GitHub)
+- **Python:** 3.x (через терминал PowerShell)
+- **MySQL:** 8.0 (локальная разработка или подключение к удалённой БД)
+
+### Синтаксис команд
+
+Все команды в документации даны в формате **PowerShell** (для совместимости с Windows).
+
+**Примеры:**
+
+```powershell
+# Навигация
+cd c:\Projects\calm-life\tourism
+
+# Python
+python app.py
+python -m pip install -r requirements.txt
+
+# Git
+git add .
+git commit -m "Add FOT analytics API endpoints"
+git push origin main
+
+# MySQL
+mysql -u root -p -e "SHOW DATABASES;"
+```
+
+**Для Linux/Mac (bash):** используйте эквивалентные команды (`python3` вместо `python`, `cd` прямо без пути).
+
+### Процесс деплоя
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1️⃣  Локальная разработка (MS VS Code + PowerShell)        │
+│    ├─ Редактирование файлов (app.py, dashboard.html, css)  │
+│    ├─ Тестирование локально (python app.py)                │
+│    └─ Проверка в браузере (http://localhost:5000)          │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────────────────┐
+│  2️⃣  Коммит и Push в GitHub (локально)                     │
+│    ├─ git add .                                             │
+│    ├─ git commit -m "Description of changes"               │
+│    └─ git push origin main                                  │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────────────────┐
+│  3️⃣  Деплой на production сервер                            │
+│    ├─ SSH подключение                                       │
+│    ├─ cd /var/www/calm-life                                │
+│    ├─ git pull origin main                                 │
+│    ├─ (если нужна миграция БД)                            │
+│    │  mysql -u tourism -p daily_tourism < migrations/...   │
+│    ├─ sudo systemctl restart tourism-dashboard             │
+│    └─ sudo systemctl reload nginx                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Пример полного цикла (PowerShell)
+
+```powershell
+# === На локальной машине ===
+
+# 1. Открыть проект в VS Code
+cd c:\Projects\calm-life
+code .
+
+# 2. После редактирования файлов — тестирование локально
+cd tourism
+python app.py
+# Проверить в браузере: http://localhost:5000
+
+# 3. Коммит и push
+git add .
+git commit -m "Add FOT summary and breakdown analytics"
+git push origin main
+# Ввести GitHub credentials если требуется
+
+# === На production сервере (по SSH) ===
+# ssh -i C:\Users\Роман\.ssh\id_ed25519 kalianu@158.160.210.143
+
+# 1. Обновить код
+cd /var/www/calm-life
+git pull origin main
+
+# 2. Если были изменения в БД (миграции)
+mysql -u tourism -p daily_tourism < tourism/migrations/2026_05_23_add_fot_views.sql
+
+# 3. Если были изменения в Python зависимостях
+cd tourism
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 4. Перезапустить сервис
+sudo systemctl restart tourism-dashboard
+sudo systemctl reload nginx
+
+# 5. Проверить статус
+sudo systemctl status tourism-dashboard
+```
+
+### Важные правила
+
+1. **Все правки производятся локально** — не редактируйте файлы напрямую на сервере
+2. **Только через Git** — используйте git для синхронизации кода
+3. **Миграции БД** — перед деплоем проверьте, есть ли `.sql` файлы в `migrations/`
+4. **Тестируйте локально** — убедитесь, что код работает перед пушем в GitHub
+5. **Логируйте изменения** — в коммит-сообщение помещайте подробное описание
+
+---
+
+## �📝 Следующие шаги (Roadmap)
 
 ### Приоритет 1
 - [ ] Настройка мониторинга и алертов
