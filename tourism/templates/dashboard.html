@@ -293,17 +293,17 @@ function updateLFLDisplay(data) {
     
     // Current period
     document.getElementById('lfl-current-label').textContent = 'Текущий период';
-    document.getElementById('lfl-current-money').textContent = formatMoney(cur.metrics.money);
     document.getElementById('lfl-current-dates').textContent = formatDateRange(cur.from, cur.to);
-    document.getElementById('lfl-current-employees').textContent = cur.metrics.employees;
-    document.getElementById('lfl-current-hours').textContent = Math.round(cur.metrics.hours);
+    animateValue(document.getElementById('lfl-current-money'), 0, cur.metrics.money, 300, true);
+    animateValue(document.getElementById('lfl-current-employees'), 0, cur.metrics.employees, 300, false);
+    animateValue(document.getElementById('lfl-current-hours'), 0, Math.round(cur.metrics.hours), 300, false);
     
     // Previous period
     document.getElementById('lfl-previous-label').textContent = 'Предыдущий период';
-    document.getElementById('lfl-previous-money').textContent = formatMoney(prev.metrics.money);
     document.getElementById('lfl-previous-dates').textContent = formatDateRange(prev.from, prev.to);
-    document.getElementById('lfl-previous-employees').textContent = prev.metrics.employees;
-    document.getElementById('lfl-previous-hours').textContent = Math.round(prev.metrics.hours);
+    animateValue(document.getElementById('lfl-previous-money'), 0, prev.metrics.money, 300, true);
+    animateValue(document.getElementById('lfl-previous-employees'), 0, prev.metrics.employees, 300, false);
+    animateValue(document.getElementById('lfl-previous-hours'), 0, Math.round(prev.metrics.hours), 300, false);
     
     // Change
     const moneyChange = change.money;
