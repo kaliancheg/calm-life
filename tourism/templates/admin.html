@@ -339,6 +339,15 @@ function formatServerTime(timeString) {
             const [, year, month, day, hour, minute, second] = match;
             return `${day}.${month}.${year} ${hour}:${minute}`;
         }
+        // Проверяем формат GMT: "Sat, 23 May 2026 16:19:16 GMT"
+        const gmtMatch = timeString.match(/(\w+),\s+(\d+)\s+(\w+)\s+(\d{4})\s+(\d{2}):(\d{2}):(\d{2})\s+(\w+)/);
+        if (gmtMatch) {
+            const [, , day, monthName, year, hour, minute] = gmtMatch;
+            // Преобразуем название месяца
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = String(monthNames.indexOf(monthName) + 1).padStart(2, '0');
+            return `${day}.${month}.${year} ${hour}:${minute}`;
+        }
         // Если формат другой, возвращаем как есть
         return timeString;
     }
