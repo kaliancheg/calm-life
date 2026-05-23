@@ -164,6 +164,149 @@ let currentAggregatedData = []; // Кэш данных для перерисов
 let lflMode = 'month'; // 'month', 'week', 'custom'
 console.log('canExport:', canExport);
 
+// ==================== LFL ANALYSIS FUNCTIONS ====================
+
+function setLFLMode(mode) {
+    lflMode = mode;
+    
+    // Update button states
+    document.querySelectorAll('.lfl-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.mode === mode) btn.classList.add('active');
+    });
+    
+    // Show/hide custom period selector
+    const customSelector = document.getElementById('customPeriodSelector');
+    if (mode === 'custom') {
+        customSelector.style.display = 'block';
+        setCustomPeriodDefaults();
+    } else {
+        customSelector.style.display = 'none';
+        calculateLFL();
+    }
+}
+
+function setCustomPeriodDefaults() {
+    const today = new Date();
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    // Предыдущий месяц
+    const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+    
+    document.getElementById('lflCurrentFrom').value = formatDateForInput(currentMonthStart);
+    document.getElementById('lflCurrentTo').value = formatDateForInput(currentMonthEnd);
+    document.getElementById('lflPrevFrom').value = formatDateForInput(prevMonthStart);
+    document.getElementById('lflPrevTo').value = formatDateForInput(prevMonthEnd);
+}
+
+async function calculateLFL() {
+    try {
+        const df = document.getElementById('dateFrom').value;
+        const dt = document.getElementById('dateTo').value;
+        const podVal = selectedPod || '';
+        const otdelVal = selectedOtdel || '';
+        
+        let params = `?mode=${lflMode}&filter_from=${df}&filter_to=${dt}&selected_pod=${encodeURIComponent(podVal)}&selected_otdel=${encodeURIComponent(otdelVal)}`;
+        
+        if (lflMode === 'custom') {
+            const customFrom = document.getElementById('lflCurrentFrom').value;
+            const customTo = document.getElementById('lflCurrentTo').value;
+            const prevFrom = document.getElementById('lflPrevFrom').value;
+            const prevTo = document.getElementById('lflPrevTo').value;
+            
+            if (customFrom && customTo && prevFrom && prevTo) {
+                params += `&custom_from=${customFrom}&custom_to=${customTo}&prev_from=${prevFrom}&prev_to=${prevTo}`;
+            } else {
+                console.error('Missing custom dates:', { customFrom, customTo, prevFrom, prevTo });
+                setCustomPeriodDefaults();
+                return;
+            }
+        }
+        
+        console.log('Fetching LFL with params:', params);
+        const response = await fetch(`/api/lfl${params}`);
+        if (!response.ok) {
+            console.error('LFL API Error:', response.status);
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('LFL Data received:', data);
+        
+        if (data.error) {
+            console.error('LFL API returned error:', data.error);
+            return;
+        }
+        
+        updateLFLDisplay(data);
+    } catch (error) {
+        console.error('Error calculating LFL:', error);
+        console.error('Error stack:', error.stack);
+    }
+}
+
+function updateLFLDisplay(data) {
+    console.log('updateLFLDisplay called with:', data);
+    
+    if (!data || data.error) {
+        console.error('Invalid LFL data:', data);
+        return;
+    }
+    
+    const cur = data.period_current;
+    const prev = data.period_previous;
+    const change = data.change;
+    const delta = data.delta;
+    
+    console.log('Periods:', { cur, prev });
+    console.log('Change:', change);
+    console.log('Delta:', delta);
+    
+    // Format dates
+    const formatDateRange = (from, to) => {
+        const fromDate = new Date(from);
+        const toDate = new Date(to);
+        const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+        return `${fromDate.toLocaleDateString('ru-RU', options)} - ${toDate.toLocaleDateString('ru-RU', options)}`;
+    };
+    
+    // Current period
+    document.getElementById('lfl-current-label').textContent = 'Текущий период';
+    document.getElementById('lfl-current-money').textContent = formatMoney(cur.metrics.money);
+    document.getElementById('lfl-current-dates').textContent = formatDateRange(cur.from, cur.to);
+    document.getElementById('lfl-current-employees').textContent = cur.metrics.employees;
+    document.getElementById('lfl-current-hours').textContent = Math.round(cur.metrics.hours);
+    
+    // Previous period
+    document.getElementById('lfl-previous-label').textContent = 'Предыдущий период';
+    document.getElementById('lfl-previous-money').textContent = formatMoney(prev.metrics.money);
+    document.getElementById('lfl-previous-dates').textContent = formatDateRange(prev.from, prev.to);
+    document.getElementById('lfl-previous-employees').textContent = prev.metrics.employees;
+    document.getElementById('lfl-previous-hours').textContent = Math.round(prev.metrics.hours);
+    
+    // Change
+    const moneyChange = change.money;
+    const moneyDelta = delta.money;
+    const changeValue = document.getElementById('lfl-change-money');
+    const deltaValue = document.getElementById('lfl-delta-money');
+    
+    changeValue.textContent = `${moneyChange > 0 ? '+' : ''}${moneyChange.toFixed(1)}%`;
+    deltaValue.textContent = `${moneyDelta > 0 ? '+' : ''}${formatMoney(Math.abs(moneyDelta))}`;
+    
+    // Color based on change
+    changeValue.className = 'lfl-value ' + (moneyChange >= 0 ? 'positive' : 'negative');
+    
+    // Sub-metrics
+    document.getElementById('lfl-change-employees').textContent = `${delta.employees > 0 ? '+' : ''}${delta.employees}`;
+    document.getElementById('lfl-change-hours').textContent = `${delta.hours > 0 ? '+' : ''}${Math.round(delta.hours)} ч`;
+    
+    console.log('LFL display updated successfully');
+}
+
 async function loadData() {
 console.log('=== loadData() called ===');
 try {
@@ -675,149 +818,6 @@ function renderEmpTable(data) {
 function toggleGroup(groupId) {
     expandedGroups[groupId] = !expandedGroups[groupId];
     renderEmpTable(currentAggregatedData);
-}
-
-// ==================== LFL ANALYSIS FUNCTIONS ====================
-
-function setLFLMode(mode) {
-    lflMode = mode;
-    
-    // Update button states
-    document.querySelectorAll('.lfl-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.mode === mode) btn.classList.add('active');
-    });
-    
-    // Show/hide custom period selector
-    const customSelector = document.getElementById('customPeriodSelector');
-    if (mode === 'custom') {
-        customSelector.style.display = 'block';
-        setCustomPeriodDefaults();
-    } else {
-        customSelector.style.display = 'none';
-        calculateLFL();
-    }
-}
-
-function setCustomPeriodDefaults() {
-    const today = new Date();
-    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    
-    // Предыдущий месяц
-    const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-    
-    document.getElementById('lflCurrentFrom').value = formatDateForInput(currentMonthStart);
-    document.getElementById('lflCurrentTo').value = formatDateForInput(currentMonthEnd);
-    document.getElementById('lflPrevFrom').value = formatDateForInput(prevMonthStart);
-    document.getElementById('lflPrevTo').value = formatDateForInput(prevMonthEnd);
-}
-
-async function calculateLFL() {
-    try {
-        const df = document.getElementById('dateFrom').value;
-        const dt = document.getElementById('dateTo').value;
-        const selectedPod = selectedPod || '';
-        const selectedOtdel = selectedOtdel || '';
-        
-        let params = `?mode=${lflMode}&filter_from=${df}&filter_to=${dt}&selected_pod=${encodeURIComponent(selectedPod)}&selected_otdel=${encodeURIComponent(selectedOtdel)}`;
-        
-        if (lflMode === 'custom') {
-            const customFrom = document.getElementById('lflCurrentFrom').value;
-            const customTo = document.getElementById('lflCurrentTo').value;
-            const prevFrom = document.getElementById('lflPrevFrom').value;
-            const prevTo = document.getElementById('lflPrevTo').value;
-            
-            if (customFrom && customTo && prevFrom && prevTo) {
-                params += `&custom_from=${customFrom}&custom_to=${customTo}&prev_from=${prevFrom}&prev_to=${prevTo}`;
-            } else {
-                console.error('Missing custom dates:', { customFrom, customTo, prevFrom, prevTo });
-                setCustomPeriodDefaults();
-                return;
-            }
-        }
-        
-        console.log('Fetching LFL with params:', params);
-        const response = await fetch(`/api/lfl${params}`);
-        if (!response.ok) {
-            console.error('LFL API Error:', response.status);
-            const errorText = await response.text();
-            console.error('Error response:', errorText);
-            return;
-        }
-        
-        const data = await response.json();
-        console.log('LFL Data received:', data);
-        
-        if (data.error) {
-            console.error('LFL API returned error:', data.error);
-            return;
-        }
-        
-        updateLFLDisplay(data);
-    } catch (error) {
-        console.error('Error calculating LFL:', error);
-        console.error('Error stack:', error.stack);
-    }
-}
-
-function updateLFLDisplay(data) {
-    console.log('updateLFLDisplay called with:', data);
-    
-    if (!data || data.error) {
-        console.error('Invalid LFL data:', data);
-        return;
-    }
-    
-    const cur = data.period_current;
-    const prev = data.period_previous;
-    const change = data.change;
-    const delta = data.delta;
-    
-    console.log('Periods:', { cur, prev });
-    console.log('Change:', change);
-    console.log('Delta:', delta);
-    
-    // Format dates
-    const formatDateRange = (from, to) => {
-        const fromDate = new Date(from);
-        const toDate = new Date(to);
-        const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
-        return `${fromDate.toLocaleDateString('ru-RU', options)} - ${toDate.toLocaleDateString('ru-RU', options)}`;
-    };
-    
-    // Current period
-    document.getElementById('lfl-current-label').textContent = 'Текущий период';
-    document.getElementById('lfl-current-money').textContent = formatMoney(cur.metrics.money);
-    document.getElementById('lfl-current-dates').textContent = formatDateRange(cur.from, cur.to);
-    document.getElementById('lfl-current-employees').textContent = cur.metrics.employees;
-    document.getElementById('lfl-current-hours').textContent = Math.round(cur.metrics.hours);
-    
-    // Previous period
-    document.getElementById('lfl-previous-label').textContent = 'Предыдущий период';
-    document.getElementById('lfl-previous-money').textContent = formatMoney(prev.metrics.money);
-    document.getElementById('lfl-previous-dates').textContent = formatDateRange(prev.from, prev.to);
-    document.getElementById('lfl-previous-employees').textContent = prev.metrics.employees;
-    document.getElementById('lfl-previous-hours').textContent = Math.round(prev.metrics.hours);
-    
-    // Change
-    const moneyChange = change.money;
-    const moneyDelta = delta.money;
-    const changeValue = document.getElementById('lfl-change-money');
-    const deltaValue = document.getElementById('lfl-delta-money');
-    
-    changeValue.textContent = `${moneyChange > 0 ? '+' : ''}${moneyChange.toFixed(1)}%`;
-    deltaValue.textContent = `${moneyDelta > 0 ? '+' : ''}${formatMoney(Math.abs(moneyDelta))}`;
-    
-    // Color based on change
-    changeValue.className = 'lfl-value ' + (moneyChange >= 0 ? 'positive' : 'negative');
-    
-    // Sub-metrics
-    document.getElementById('lfl-change-employees').textContent = `${delta.employees > 0 ? '+' : ''}${delta.employees}`;
-    document.getElementById('lfl-change-hours').textContent = `${delta.hours > 0 ? '+' : ''}${Math.round(delta.hours)} ч`;
-    
-    console.log('LFL display updated successfully');
 }
 
 // Calculate LFL on initial load and when filters change
