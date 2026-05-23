@@ -740,6 +740,40 @@ const safeId = 'sub_' + index + '_' + s.replace(/[^a-zA-Z0-9]/g, '_');
 
 **Статус:** ✅ Улучшено (2026-05-24) — блок "Изменение" интуитивно кликабелен
 
+### Проблема: Модальное окно LFL показывает все данные, игнорируя фильтры
+
+**Причина:** Функция `renderLFLDetails()` фильтровала данные только по датам периодов, но не учитывала выбранные подразделение (`selectedPod`) и отдел (`selectedOtdel`).
+
+**Решение:** Добавлена фильтрация по текущим выбранным фильтрам подразделения и отдела.
+
+**Изменения в коде:**
+- `dashboard.html`: добавлена функция `filterData(data, from, to)` которая фильтрует по:
+  - Датам периода
+  - `selectedPod` (подразделение)
+  - `selectedOtdel` (отдел)
+
+**Было:**
+```javascript
+const curData = allData.filter(r => r.data >= cur.from && r.data <= cur.to);
+```
+
+**Стало:**
+```javascript
+const filterData = (data, from, to) => {
+    return data.filter(r => {
+        if (r.data < from || r.data > to) return false;
+        if (selectedPod && r.podrazdelenie !== selectedPod) return false;
+        if (selectedOtdel && r.otdel !== selectedOtdel) return false;
+        return true;
+    });
+};
+
+const curData = filterData(allData, cur.from, cur.to);
+const prevData = filterData(allData, prev.from, prev.to);
+```
+
+**Статус:** ✅ Исправлено (2026-05-24) — модалка показывает данные с учётом выбранных фильтров
+
 ---
 
 ## � Изменения в версии 2.5 (2026-05-24)
@@ -994,8 +1028,8 @@ journalctl -u tourism-dashboard -f --no-pager
 
 ---
 
-**Последнее обновление:** 2026-05-24 (Hover-эффект на блоке "Изменение" LFL, правила коммитов на русском, широкая модалка LFL, добавлен LFL анализ с детализацией, улучшен UI админ-панели)  
-**Версия:** 2.5.5  
+**Последнее обновление:** 2026-05-24 (Исправлена фильтрация в модалке LFL, hover-эффект на блоке Изменение, правила коммитов на русском)  
+**Версия:** 2.5.6  
 **Статус:** ✅ Production Ready
 
 ---

@@ -406,9 +406,18 @@ function renderLFLDetails() {
     `;
     document.getElementById('lflModalSummary').innerHTML = summaryHtml;
     
-    // Filter allData by periods
-    const curData = allData.filter(r => r.data >= cur.from && r.data <= cur.to);
-    const prevData = allData.filter(r => r.data >= prev.from && r.data <= prev.to);
+    // Filter allData by periods AND current filters (pod/otdel)
+    const filterData = (data, from, to) => {
+        return data.filter(r => {
+            if (r.data < from || r.data > to) return false;
+            if (selectedPod && r.podrazdelenie !== selectedPod) return false;
+            if (selectedOtdel && r.otdel !== selectedOtdel) return false;
+            return true;
+        });
+    };
+    
+    const curData = filterData(allData, cur.from, cur.to);
+    const prevData = filterData(allData, prev.from, prev.to);
     
     // Aggregate by otdel
     const aggByOtdel = (data) => {
