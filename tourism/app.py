@@ -46,18 +46,14 @@ MYSQL_CONFIG = {
 SERVER_TIMEZONE = timezone('Europe/Moscow')
 
 def format_datetime_to_server(dt):
-    """Конвертация naive datetime в часовой пояс сервера и форматирование"""
+    """Форматирование datetime в строку (MySQL NOW() возвращает время в часовом поясе сервера БД)"""
     if dt is None:
         return None
     if isinstance(dt, str):
-        try:
-            dt = datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
-        except:
-            return dt
-    # Предполагаем, что MySQL возвращает время в часовом поясе сервера
-    # Поэтому локализруем naive datetime как Moscow time
-    localized_dt = SERVER_TIMEZONE.localize(dt)
-    return localized_dt.strftime('%Y-%m-%d %H:%M:%S')
+        return dt
+    # MySQL NOW() возвращает время в часовом поясе сервера БД
+    # Поэтому просто форматируем naive datetime как есть
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 # Конфигурация прав по умолчанию
 DEFAULT_PERMISSIONS = {
