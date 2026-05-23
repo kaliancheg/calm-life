@@ -687,12 +687,18 @@ def get_users():
     cursor.close()
     conn.close()
     
-    # Преобразуем даты в строки
+    # Преобразуем даты в строки с явным указанием формата (YYYY-MM-DD HH:MM:SS)
     for user in users:
         if user.get('last_login'):
-            user['last_login'] = str(user['last_login'])
+            if isinstance(user['last_login'], datetime):
+                user['last_login'] = user['last_login'].strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                user['last_login'] = str(user['last_login'])
         if user.get('created_at'):
-            user['created_at'] = str(user['created_at'])
+            if isinstance(user['created_at'], datetime):
+                user['created_at'] = user['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                user['created_at'] = str(user['created_at'])
     
     return jsonify(users)
 
@@ -1103,6 +1109,14 @@ def get_stats():
             LIMIT 10
         ''')
         recent_logins = cursor.fetchall()
+        
+        # Преобразуем last_login в строку с форматом
+        for login in recent_logins:
+            if login.get('last_login'):
+                if isinstance(login['last_login'], datetime):
+                    login['last_login'] = login['last_login'].strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    login['last_login'] = str(login['last_login'])
         
         return jsonify({
             'users_by_role': users_by_role,

@@ -327,6 +327,24 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 4000);
 }
 
+// Форматирование времени с сервера (YYYY-MM-DD HH:MM:SS) как есть, без перевода часового пояса
+function formatServerTime(timeString) {
+    if (!timeString) return '—';
+    // Если время уже в формате строки, просто возвращаем его
+    if (typeof timeString === 'string') {
+        // Проверяем формат YYYY-MM-DD HH:MM:SS
+        const match = timeString.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+        if (match) {
+            // Форматируем в DD.MM.YYYY HH:MM
+            const [, year, month, day, hour, minute] = match;
+            return `${day}.${month}.${year} ${hour}:${minute}`;
+        }
+        // Если формат другой, возвращаем как есть
+        return timeString;
+    }
+    return '—';
+}
+
 // Tabs
 document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', function() {
@@ -380,7 +398,7 @@ async function loadDashboardStats() {
         // Последние логины
         const recentLoginsTable = document.getElementById('recentLoginsTable').querySelector('tbody');
         recentLoginsTable.innerHTML = (stats.recent_logins || []).map(u => 
-            `<tr><td>${u.username}</td><td><span class="badge badge-${u.role}">${u.role}</span></td><td>${u.last_login ? new Date(u.last_login).toLocaleString('ru-RU') : '—'}</td></tr>`
+            `<tr><td>${u.username}</td><td><span class="badge badge-${u.role}">${u.role}</span></td><td>${u.last_login ? formatServerTime(u.last_login) : '—'}</td></tr>`
         ).join('');
     } catch (error) {
         console.error('Error loading dashboard:', error);
@@ -414,7 +432,7 @@ function renderUsersTable() {
         const roleClass = `badge-${u.role}`;
         const statusClass = u.is_active ? 'badge-active' : 'badge-inactive';
         const statusText = u.is_active ? 'Активен' : 'Неактивен';
-        const lastLogin = u.last_login ? new Date(u.last_login).toLocaleString('ru-RU') : '—';
+        const lastLogin = u.last_login ? formatServerTime(u.last_login) : '—';
         
         return `<tr>
             <td>${u.id}</td>
@@ -764,7 +782,7 @@ async function loadAuditLog(page = 1) {
                 <td>${log.action}</td>
                 <td>${log.resource}</td>
                 <td>${log.details ? log.details.substring(0, 100) + '...' : '—'}</td>
-                <td>${log.created_at ? new Date(log.created_at).toLocaleString('ru-RU') : '—'}</td>
+                <td>${log.created_at ? formatServerTime(log.created_at) : '—'}</td>
             </tr>
         `).join('');
         
