@@ -694,14 +694,12 @@ def api_lfl():
             # Пользовательский период для сравнения
             period_to = (custom_from, custom_to)
             # Предыдущий период такой же длины
-            from datetime import timedelta
             period_length = (datetime.strptime(custom_to, '%Y-%m-%d') - datetime.strptime(custom_from, '%Y-%m-%d')).days
             prev_end = datetime.strptime(custom_from, '%Y-%m-%d') - timedelta(days=1)
             prev_start = prev_end - timedelta(days=period_length - 1)
             period_prev = (prev_start.strftime('%Y-%m-%d'), prev_end.strftime('%Y-%m-%d'))
         elif mode == 'week':
             # Неделя к неделе (последние 7 дней vs предыдущие 7 дней)
-            from datetime import timedelta
             today = datetime.now()
             period_to = ((today - timedelta(days=6)).strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d'))
             prev_end = today - timedelta(days=7)
