@@ -126,16 +126,16 @@
                 <div class="perm-section">
                     <h3>📋 Основные права</h3>
                     <div class="perm-item">
+                        <input type="checkbox" id="canViewAll">
                         <label for="canViewAll" style="cursor:pointer; flex-grow:1;">
                             👁️ Просмотр всех данных (без ограничений по подразделениям)
                         </label>
-                        <input type="checkbox" id="canViewAll">
                     </div>
                     <div class="perm-item">
+                        <input type="checkbox" id="canExport">
                         <label for="canExport" style="cursor:pointer; flex-grow:1;">
                             📥 Экспорт данных в Excel
                         </label>
-                        <input type="checkbox" id="canExport">
                     </div>
                 </div>
                 <div class="perm-section">
@@ -587,9 +587,30 @@ async function loadUserPermissions() {
         document.getElementById('canExport').checked = perms.can_export || false;
         
         renderPermissionLists(perms);
+        attachResourceItemClickHandlers();
     } catch (error) {
         showToast('Ошибка: ' + error.message, 'error');
     }
+}
+
+function attachResourceItemClickHandlers() {
+    // Делегирование кликов на строки ресурсов
+    ['subdivisionList', 'otdelList'].forEach(listId => {
+        const list = document.getElementById(listId);
+        if (!list) return;
+        
+        list.querySelectorAll('.resource-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                // Если клик был по самому чекбоксу или label — не дублируем
+                if (e.target.type === 'checkbox' || e.target.tagName === 'LABEL') return;
+                
+                const checkbox = this.querySelector('input[type="checkbox"]');
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        });
+    });
 }
 
 function renderPermissionLists(perms) {
