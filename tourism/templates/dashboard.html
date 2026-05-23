@@ -48,11 +48,17 @@
 </div>
 </div>
 </div>
-<div class="stats">
-<div class="stat-card"><div class="stat-value" id="employees">0</div><div class="stat-label">👥 Сотрудников</div></div>
-<div class="stat-card"><div class="stat-value" id="hours">0</div><div class="stat-label">⏰ Всего часов</div></div>
-<div class="stat-card"><div class="stat-value" id="money">0 ₽</div><div class="stat-label">💰 Начислено</div></div>
-<div class="stat-card"><div class="stat-value" id="records">0</div><div class="stat-label">📅 Записей</div></div>
+<div class="fot-overview">
+    <div class="section-header">
+        <h2>📌 ФОТ — Обзор</h2>
+        <p class="section-subtitle">Ключевые метрики ФОТ за выбранный период. Здесь видно общий объём начислений, часы, число сотрудников и записи.</p>
+    </div>
+    <div class="stats">
+        <div class="stat-card"><div class="stat-value" id="employees">0</div><div class="stat-label">👥 Сотрудников</div></div>
+        <div class="stat-card"><div class="stat-value" id="hours">0</div><div class="stat-label">⏰ Всего часов</div></div>
+        <div class="stat-card"><div class="stat-value" id="money">0 ₽</div><div class="stat-label">💰 Начислено</div></div>
+        <div class="stat-card"><div class="stat-value" id="records">0</div><div class="stat-label">📅 Записей</div></div>
+    </div>
 </div>
 
 <!-- LFL Analysis Block -->
@@ -113,7 +119,18 @@
     </div>
 </div>
 
-<div class="aggregated"><h3>📋 Сводка по отделам</h3><table><thead><tr><th>Отдел</th><th>Сотрудников</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead><tbody id="otdelTable"></tbody></table></div>
+<div class="aggregated breakdown-section">
+    <div class="section-header">
+        <h2>🏢 ФОТ по подразделениям</h2>
+        <p class="section-subtitle">Разбивка ФОТ по отделам с данными по сотрудникам, часам и начислениям.</p>
+    </div>
+    <div class="breakdown-table-wrap">
+        <table>
+            <thead><tr><th>Отдел</th><th>Сотрудников</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead>
+            <tbody id="otdelTable"></tbody>
+        </table>
+    </div>
+</div>
 <div class="aggregated">
     <h3>📋 Сводка по сотрудникам</h3>
     <div class="group-controls">

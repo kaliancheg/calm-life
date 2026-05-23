@@ -349,6 +349,68 @@ body {
     margin-top: 5px; 
 }
 
+/* FOT Overview Section */
+.fot-overview,
+.breakdown-section {
+    background: rgba(25, 28, 58, 0.75);
+    padding: 25px;
+    border-radius: 22px;
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    box-shadow: 0 10px 35px rgba(0, 255, 255, 0.07);
+    margin: 25px 0;
+}
+
+.section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.section-header h2 {
+    font-size: 1.8em;
+    color: #00ffff;
+    margin: 0;
+}
+
+.section-subtitle {
+    color: #cbd4ff;
+    font-size: 0.95em;
+    line-height: 1.5em;
+    max-width: 780px;
+}
+
+.breakdown-table-wrap {
+    overflow-x: auto;
+}
+
+.breakdown-table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.breakdown-table-wrap th,
+.breakdown-table-wrap td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #e8e8ff;
+}
+
+.breakdown-table-wrap th {
+    color: #00ffff;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.breakdown-table-wrap tr:hover {
+    background: rgba(0, 255, 255, 0.08);
+}
+
+.breakdown-table-wrap td {
+    white-space: nowrap;
+}
+
 /* LFL Analysis Block */
 .lfl-block {
     background: rgba(25, 28, 58, 0.7);
