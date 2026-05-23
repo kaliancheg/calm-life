@@ -311,8 +311,8 @@ function updateLFLDisplay(data) {
     const changeValue = document.getElementById('lfl-change-money');
     const deltaValue = document.getElementById('lfl-delta-money');
     
-    changeValue.textContent = `${moneyChange > 0 ? '+' : ''}${moneyChange.toFixed(1)}%`;
-    deltaValue.textContent = `${moneyDelta > 0 ? '+' : ''}${formatMoney(Math.abs(moneyDelta))}`;
+    animateValue(changeValue, 0, moneyChange, 300, false, '%', true);
+    animateValue(deltaValue, 0, moneyDelta, 300, true, '', true);
     
     // Color based on change
     changeValue.className = 'lfl-value ' + (moneyChange >= 0 ? 'positive' : 'negative');
@@ -507,23 +507,25 @@ return String(date.getDate()).padStart(2, '0') + '.' + String(date.getMonth()+1)
 
 function formatMoney(amount) { return Math.round(amount).toLocaleString('ru-RU') + ' ₽'; }
 
-function animateValue(element, start, end, duration, isMoney) {
-const startTime = performance.now();
-element.classList.add('animating');
-function update(currentTime) {
-const elapsed = currentTime - startTime;
-const progress = Math.min(elapsed / duration, 1);
-// easeOutQuart — быстрый старт, плавное окончание
-const easeOut = 1 - Math.pow(1 - progress, 4);
-const current = start + (end - start) * easeOut;
-element.textContent = Math.floor(current).toLocaleString('ru-RU') + (isMoney ? ' ₽' : '');
-if (progress < 1) {
-requestAnimationFrame(update);
-} else {
-setTimeout(() => element.classList.remove('animating'), 100);
-}
-}
-requestAnimationFrame(update);
+function animateValue(element, start, end, duration, isMoney, suffix = '', showSign = false) {
+    const startTime = performance.now();
+    element.classList.add('animating');
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // easeOutQuart — быстрый старт, плавное окончание
+        const easeOut = 1 - Math.pow(1 - progress, 4);
+        const current = start + (end - start) * easeOut;
+        const displays = Math.floor(Math.abs(current)).toLocaleString('ru-RU');
+        const sign = showSign ? (current > 0 ? '+' : current < 0 ? '-' : '') : (current < 0 ? '-' : '');
+        element.textContent = `${sign}${displays}${isMoney ? ' ₽' : ''}${suffix}`;
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        } else {
+            setTimeout(() => element.classList.remove('animating'), 100);
+        }
+    }
+    requestAnimationFrame(update);
 }
 
 function exportData() {
