@@ -107,13 +107,48 @@
                 <div class="lfl-sub-metric">⏰ <span id="lfl-previous-hours">0</span> ч</div>
             </div>
         </div>
-        <div class="lfl-card lfl-change">
-            <div class="lfl-label">Изменение</div>
+        <div class="lfl-card lfl-change" onclick="openLFLDetails()" style="cursor: pointer;">
+            <div class="lfl-label">Изменение (клик для деталей)</div>
             <div class="lfl-value" id="lfl-change-money">0%</div>
             <div class="lfl-delta" id="lfl-delta-money">0 ₽</div>
             <div class="lfl-sub-metrics">
                 <div class="lfl-sub-metric">👥 <span id="lfl-change-employees">0</span></div>
                 <div class="lfl-sub-metric">⏰ <span id="lfl-change-hours">0</span> ч</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LFL Details Modal -->
+<div class="modal-overlay" id="lflModal" style="display:none;">
+    <div class="modal-content lfl-modal-content">
+        <div class="modal-header">
+            <h3>📊 Детализация изменений</h3>
+            <span class="modal-close" onclick="closeLFLDetails()">&times;</span>
+        </div>
+        <div class="modal-body" id="lflModalBody">
+            <div class="lfl-modal-summary" id="lflModalSummary"></div>
+            <div class="lfl-modal-section">
+                <h4>🏢 По отделам</h4>
+                <div class="lfl-modal-table-wrap">
+                    <table class="lfl-modal-table" id="lflModalOtdelTable">
+                        <thead>
+                            <tr><th>Отдел</th><th>Текущий</th><th>Предыдущий</th><th>Изменение</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="lfl-modal-section">
+                <h4>👤 Топ изменений по сотрудникам</h4>
+                <div class="lfl-modal-table-wrap">
+                    <table class="lfl-modal-table" id="lflModalEmpTable">
+                        <thead>
+                            <tr><th>Сотрудник</th><th>Отдел</th><th>Текущий</th><th>Предыдущий</th><th>Изменение</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -268,6 +303,7 @@ async function calculateLFL() {
 
 function updateLFLDisplay(data) {
     console.log('updateLFLDisplay called with:', data);
+    lastLFLData = data; // Cache for modal details
     
     if (!data || data.error) {
         console.error('Invalid LFL data:', data);
@@ -323,6 +359,135 @@ function updateLFLDisplay(data) {
     
     console.log('LFL display updated successfully');
 }
+
+// ==================== LFL DETAILS MODAL ====================
+let lastLFLData = null;
+
+function openLFLDetails() {
+    if (!lastLFLData) {
+        console.warn('No LFL data available yet');
+        return;
+    }
+    renderLFLDetails();
+    document.getElementById('lflModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLFLDetails() {
+    document.getElementById('lflModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function renderLFLDetails() {
+    const cur = lastLFLData.period_current;
+    const prev = lastLFLData.period_previous;
+    const change = lastLFLData.change;
+    
+    // Summary cards
+    const summaryHtml = `
+        <div class="lfl-modal-summary-card">
+            <div class="lfl-modal-summary-label">Начислено</div>
+            <div class="lfl-modal-summary-value ${change.money >= 0 ? 'positive' : 'negative'}">
+                ${change.money >= 0 ? '+' : ''}${change.money.toFixed(1)}%
+            </div>
+        </div>
+        <div class="lfl-modal-summary-card">
+            <div class="lfl-modal-summary-label">Сотрудники</div>
+            <div class="lfl-modal-summary-value ${change.employees >= 0 ? 'positive' : 'negative'}">
+                ${change.employees >= 0 ? '+' : ''}${change.employees.toFixed(1)}%
+            </div>
+        </div>
+        <div class="lfl-modal-summary-card">
+            <div class="lfl-modal-summary-label">Часы</div>
+            <div class="lfl-modal-summary-value ${change.hours >= 0 ? 'positive' : 'negative'}">
+                ${change.hours >= 0 ? '+' : ''}${change.hours.toFixed(1)}%
+            </div>
+        </div>
+    `;
+    document.getElementById('lflModalSummary').innerHTML = summaryHtml;
+    
+    // Filter allData by periods
+    const curData = allData.filter(r => r.data >= cur.from && r.data <= cur.to);
+    const prevData = allData.filter(r => r.data >= prev.from && r.data <= prev.to);
+    
+    // Aggregate by otdel
+    const aggByOtdel = (data) => {
+        const agg = {};
+        data.forEach(r => {
+            if (!agg[r.otdel]) agg[r.otdel] = { money: 0, hours: 0, employees: new Set() };
+            agg[r.otdel].money += r.itogo;
+            agg[r.otdel].hours += r.chasy;
+            agg[r.otdel].employees.add(r.fio);
+        });
+        return agg;
+    };
+    
+    const curOtdel = aggByOtdel(curData);
+    const prevOtdel = aggByOtdel(prevData);
+    const allOtdels = new Set([...Object.keys(curOtdel), ...Object.keys(prevOtdel)]);
+    
+    // Build otdel table sorted by absolute change
+    const otdelRows = Array.from(allOtdels).map(otdel => {
+        const c = curOtdel[otdel] || { money: 0, hours: 0, employees: new Set() };
+        const p = prevOtdel[otdel] || { money: 0, hours: 0, employees: new Set() };
+        const changePct = p.money > 0 ? ((c.money - p.money) / p.money * 100) : (c.money > 0 ? 100 : 0);
+        const sign = changePct > 0 ? '▲' : changePct < 0 ? '▼' : '—';
+        const colorClass = changePct > 0 ? 'positive' : changePct < 0 ? 'negative' : '';
+        return { html: `<tr>
+            <td>${otdel}</td>
+            <td>${formatMoney(c.money)}</td>
+            <td>${formatMoney(p.money)}</td>
+            <td class="${colorClass}">${changePct > 0 ? '+' : ''}${changePct.toFixed(1)}% ${sign}</td>
+        </tr>`, absChange: Math.abs(changePct) };
+    }).sort((a, b) => b.absChange - a.absChange).map(r => r.html).join('');
+    
+    document.querySelector('#lflModalOtdelTable tbody').innerHTML = otdelRows;
+    
+    // Aggregate by employee
+    const aggByEmp = (data) => {
+        const agg = {};
+        data.forEach(r => {
+            if (!agg[r.fio]) agg[r.fio] = { fio: r.fio, otdel: r.otdel, money: 0, hours: 0 };
+            agg[r.fio].money += r.itogo;
+            agg[r.fio].hours += r.chasy;
+        });
+        return agg;
+    };
+    
+    const curEmp = aggByEmp(curData);
+    const prevEmp = aggByEmp(prevData);
+    const allEmps = new Set([...Object.keys(curEmp), ...Object.keys(prevEmp)]);
+    
+    // Build employee table sorted by absolute change, top 20
+    const empRows = Array.from(allEmps).map(fio => {
+        const c = curEmp[fio] || { fio, otdel: prevEmp[fio]?.otdel || '—', money: 0, hours: 0 };
+        const p = prevEmp[fio] || { fio, otdel: curEmp[fio]?.otdel || '—', money: 0, hours: 0 };
+        const changePct = p.money > 0 ? ((c.money - p.money) / p.money * 100) : (c.money > 0 ? 100 : 0);
+        const sign = changePct > 0 ? '▲' : changePct < 0 ? '▼' : '—';
+        const colorClass = changePct > 0 ? 'positive' : changePct < 0 ? 'negative' : '';
+        return { html: `<tr>
+            <td>${c.fio}</td>
+            <td>${c.otdel}</td>
+            <td>${formatMoney(c.money)}</td>
+            <td>${formatMoney(p.money)}</td>
+            <td class="${colorClass}">${changePct > 0 ? '+' : ''}${changePct.toFixed(1)}% ${sign}</td>
+        </tr>`, absChange: Math.abs(changePct) };
+    }).sort((a, b) => b.absChange - a.absChange).slice(0, 20).map(r => r.html).join('');
+    
+    document.querySelector('#lflModalEmpTable tbody').innerHTML = empRows;
+}
+
+// Close modal on Escape or click outside
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLFLDetails();
+});
+
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('lflModal');
+    if (modal && modal.style.display === 'flex' && e.target === modal) {
+        closeLFLDetails();
+    }
+});
 
 async function loadData() {
 console.log('=== loadData() called ===');
