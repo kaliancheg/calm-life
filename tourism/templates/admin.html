@@ -620,21 +620,21 @@ function renderPermissionLists(perms) {
     const userSub = Array.isArray(perms.subdivisions) ? perms.subdivisions : [];
     const userOtd = Array.isArray(perms.otdels) ? perms.otdels : [];
     
-    subList.innerHTML = allSubdivisions.map(s => {
-        const safeId = s.replace(/[^a-zA-Z0-9]/g, '_');
+    subList.innerHTML = allSubdivisions.map((s, index) => {
+        const safeId = 'sub_' + index + '_' + s.replace(/[^a-zA-Z0-9]/g, '_');
         const checked = userSub.includes(s) ? 'checked' : '';
         return `<div class="resource-item">
-            <input type="checkbox" id="sub_${safeId}" ${checked} value="${s}">
-            <label for="sub_${safeId}" style="cursor:pointer; flex-grow:1;">${s}</label>
+            <input type="checkbox" id="${safeId}" ${checked} value="${s}">
+            <label for="${safeId}" style="cursor:pointer; flex-grow:1;">${s}</label>
         </div>`;
     }).join('');
     
-    otdList.innerHTML = allOtdels.map(o => {
-        const safeId = o.replace(/[^a-zA-Z0-9]/g, '_');
+    otdList.innerHTML = allOtdels.map((o, index) => {
+        const safeId = 'otd_' + index + '_' + o.replace(/[^a-zA-Z0-9]/g, '_');
         const checked = userOtd.includes(o) ? 'checked' : '';
         return `<div class="resource-item">
-            <input type="checkbox" id="otd_${safeId}" ${checked} value="${o}">
-            <label for="otd_${safeId}" style="cursor:pointer; flex-grow:1;">${o}</label>
+            <input type="checkbox" id="${safeId}" ${checked} value="${o}">
+            <label for="${safeId}" style="cursor:pointer; flex-grow:1;">${o}</label>
         </div>`;
     }).join('');
 }
