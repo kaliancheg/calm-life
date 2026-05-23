@@ -22,26 +22,21 @@ body {
     margin-bottom: 20px;
 }
 
-@keyframes glow-cyan {
-    0%, 100% {
-        text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.4);
-    }
-    50% {
-        text-shadow: 0 0 30px rgba(0, 255, 255, 0.9), 0 0 60px rgba(0, 255, 255, 0.6), 0 0 80px rgba(0, 255, 255, 0.3);
-    }
+/* Header */
+.header {
+    display: flex; 
+    justify-content: flex-end;
+    align-items: center; 
+    margin-bottom: 20px; 
 }
 
-/* Main page title - left aligned with glow */
+/* Main page title - left aligned with static glow */
 .page-title {
     font-size: 2.5em;
     text-align: left;
     color: #00ffff;
     text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.4);
-    animation: glow-cyan 3s ease-in-out infinite;
     margin: 20px 0;
-    /* GPU acceleration for smooth scrolling */
-    transform: translateZ(0);
-    will-change: text-shadow;
 }
 
 .user-info {
