@@ -327,7 +327,7 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 4000);
 }
 
-// Форматирование времени с сервера (YYYY-MM-DD HH:MM:SS) как есть, без перевода часового пояса
+// Форматирование времени с сервера (YYYY-MM-DD HH:MM:SS) в формат DD.MM.YYYY HH:MM
 function formatServerTime(timeString) {
     if (!timeString) return '—';
     // Если время уже в формате строки, просто возвращаем его
@@ -336,7 +336,7 @@ function formatServerTime(timeString) {
         const match = timeString.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
         if (match) {
             // Форматируем в DD.MM.YYYY HH:MM
-            const [, year, month, day, hour, minute] = match;
+            const [, year, month, day, hour, minute, second] = match;
             return `${day}.${month}.${year} ${hour}:${minute}`;
         }
         // Если формат другой, возвращаем как есть
