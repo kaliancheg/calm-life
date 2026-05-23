@@ -661,6 +661,177 @@ def api_data():
         if conn and conn.is_connected():
             conn.close()
 
+# ==================== LFL ANALYSIS API ====================
+
+@app.route('/api/lfl')
+@login_required
+def api_lfl():
+    """API для LFL (Like-for-Like) анализа сравнения периодов"""
+    logger.info(f'LFL API: User {current_user.username} requesting LFL data...')
+    
+    # Получаем параметры из запроса
+    mode = request.args.get('mode', 'month')  # month, week, custom
+    custom_from = request.args.get('custom_from')
+    custom_to = request.args.get('custom_to')
+    
+    # Получаем текущие фильтры (опционально)
+    filter_from = request.args.get('filter_from')
+    filter_to = request.args.get('filter_to')
+    selected_pod = request.args.get('selected_pod')
+    selected_otdel = request.args.get('selected_otdel')
+    
+    conn = None
+    
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        
+        # Проверяем права на просмотр данных
+        if not current_user.has_permission('data', 'view'):
+            return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
+        
+        # Определяем периоды для сравнения
+        if mode == 'custom' and custom_from and custom_to:
+            # Пользовательский период для сравнения
+            period_to = (custom_from, custom_to)
+            # Предыдущий период такой же длины
+            from datetime import timedelta
+            period_length = (datetime.strptime(custom_to, '%Y-%m-%d') - datetime.strptime(custom_from, '%Y-%m-%d')).days
+            prev_end = datetime.strptime(custom_from, '%Y-%m-%d') - timedelta(days=1)
+            prev_start = prev_end - timedelta(days=period_length - 1)
+            period_prev = (prev_start.strftime('%Y-%m-%d'), prev_end.strftime('%Y-%m-%d'))
+        elif mode == 'week':
+            # Неделя к неделе (последние 7 дней vs предыдущие 7 дней)
+            from datetime import timedelta
+            today = datetime.now()
+            period_to = ((today - timedelta(days=6)).strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d'))
+            prev_end = today - timedelta(days=7)
+            prev_start = prev_end - timedelta(days=6)
+            period_prev = (prev_start.strftime('%Y-%m-%d'), prev_end.strftime('%Y-%m-%d'))
+        else:
+            # Месяц к месяцу (текущий месяц vs предыдущий месяц) - по умолчанию
+            today = datetime.now()
+            # Текущий месяц
+            current_month_start = today.replace(day=1)
+            if today.month == 1:
+                prev_month_start = today.replace(year=today.year-1, month=12, day=1)
+            else:
+                prev_month_start = today.replace(month=today.month-1, day=1)
+            
+            # Конец предыдущего месяца
+            if today.month == 1:
+                prev_month_end = prev_month_start.replace(year=today.year, month=1, day=1) - timedelta(days=1)
+            else:
+                prev_month_end = today.replace(month=today.month, day=1) - timedelta(days=1)
+            
+            period_to = (current_month_start.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d'))
+            period_prev = (prev_month_start.strftime('%Y-%m-%d'), prev_month_end.strftime('%Y-%m-%d'))
+        
+        # Формируем базовый запрос
+        def get_period_data(period_start, period_end, allowed_subs, allowed_otdels):
+            """Получение данных за период с учётом прав"""
+            conditions = ["data >= %s", "data <= %s"]
+            params = [period_start, period_end]
+            
+            # Фильтры из UI
+            if selected_pod:
+                conditions.append("podrazdelenie = %s")
+                params.append(selected_pod)
+            if selected_otdel:
+                conditions.append("otdel = %s")
+                params.append(selected_otdel)
+            
+            # Ограничения прав пользователя
+            if allowed_subs is not None and len(allowed_subs) > 0:
+                conditions.append("podrazdelenie IN (%s)" % ','.join(['%s'] * len(allowed_subs)))
+                params.extend(allowed_subs)
+            if allowed_otdels is not None and len(allowed_otdels) > 0:
+                conditions.append("otdel IN (%s)" % ','.join(['%s'] * len(allowed_otdels)))
+                params.extend(allowed_otdels)
+            
+            query = f'''
+                SELECT 
+                    fio, snils, podrazdelenie, otdel, dolzhnost, 
+                    data, chasy, nachisleno, itogo
+                FROM records 
+                WHERE {' AND '.join(conditions)}
+            '''
+            
+            df = pd.read_sql(query, conn, params=params)
+            return df
+        
+        # Получаем ограничения прав пользователя
+        permissions = current_user.permissions
+        allowed_subs = permissions.get('_allowed_subdivisions', None)
+        allowed_otdels = permissions.get('_allowed_otdels', None)
+        
+        # Получаем данные за оба периода
+        df_current = get_period_data(period_to[0], period_to[1], allowed_subs, allowed_otdels)
+        df_prev = get_period_data(period_prev[0], period_prev[1], allowed_subs, allowed_otdels)
+        
+        # Рассчитываем агрегированные показатели
+        def calc_metrics(df):
+            if df.empty:
+                return {
+                    'employees': 0,
+                    'hours': 0,
+                    'money': 0,
+                    'records': 0
+                }
+            return {
+                'employees': df['fio'].nunique(),
+                'hours': float(df['chasy'].sum()),
+                'money': float(df['itogo'].sum()),
+                'records': len(df)
+            }
+        
+        metrics_current = calc_metrics(df_current)
+        metrics_prev = calc_metrics(df_prev)
+        
+        # Рассчитываем изменение в %
+        def calc_change(current, previous):
+            if previous == 0:
+                return 100.0 if current > 0 else 0.0
+            return ((current - previous) / previous) * 100
+        
+        # Формируем ответ
+        result = {
+            'period_current': {
+                'from': period_to[0],
+                'to': period_to[1],
+                'metrics': metrics_current
+            },
+            'period_previous': {
+                'from': period_prev[0],
+                'to': period_prev[1],
+                'metrics': metrics_prev
+            },
+            'change': {
+                'employees': calc_change(metrics_current['employees'], metrics_prev['employees']),
+                'hours': calc_change(metrics_current['hours'], metrics_prev['hours']),
+                'money': calc_change(metrics_current['money'], metrics_prev['money']),
+                'records': calc_change(metrics_current['records'], metrics_prev['records'])
+            },
+            'delta': {
+                'employees': metrics_current['employees'] - metrics_prev['employees'],
+                'hours': metrics_current['hours'] - metrics_prev['hours'],
+                'money': metrics_current['money'] - metrics_prev['money'],
+                'records': metrics_current['records'] - metrics_prev['records']
+            }
+        }
+        
+        logger.info(f'LFL API: Returning data for periods {period_to} vs {period_prev}')
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f'LFL API Error: {e}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if conn and conn.is_connected():
+            conn.close()
+
 @app.route('/admin')
 @login_required
 def admin_panel():

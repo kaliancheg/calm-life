@@ -54,6 +54,65 @@
 <div class="stat-card"><div class="stat-value" id="money">0 ₽</div><div class="stat-label">💰 Начислено</div></div>
 <div class="stat-card"><div class="stat-value" id="records">0</div><div class="stat-label">📅 Записей</div></div>
 </div>
+
+<!-- LFL Analysis Block -->
+<div class="lfl-block">
+    <div class="lfl-header">
+        <h3>📊 LFL Анализ (Like-for-Like)</h3>
+        <div class="lfl-controls">
+            <button class="lfl-btn active" data-mode="month" onclick="setLFLMode('month')">Месяц к месяцу</button>
+            <button class="lfl-btn" data-mode="week" onclick="setLFLMode('week')">Неделя к неделе</button>
+            <button class="lfl-btn" data-mode="custom" onclick="setLFLMode('custom')">Свой период</button>
+        </div>
+    </div>
+    
+    <div class="lfl-period-selectors" id="customPeriodSelector" style="display:none;">
+        <div class="lfl-custom-inputs">
+            <div class="lfl-input-group">
+                <label>Текущий период:</label>
+                <input type="date" id="lflCurrentFrom" onchange="calculateLFL()">
+                <input type="date" id="lflCurrentTo" onchange="calculateLFL()">
+            </div>
+            <div class="lfl-input-group">
+                <label>Сравниваемый период:</label>
+                <input type="date" id="lflPrevFrom" disabled>
+                <input type="date" id="lflPrevTo" disabled>
+            </div>
+        </div>
+        <button class="btn-secondary" onclick="calculateLFL()">🔄 Применить</button>
+    </div>
+    
+    <div class="lfl-comparison">
+        <div class="lfl-card">
+            <div class="lfl-label" id="lfl-current-label">Текущий период</div>
+            <div class="lfl-value" id="lfl-current-money">0 ₽</div>
+            <div class="lfl-dates" id="lfl-current-dates"></div>
+            <div class="lfl-sub-metrics">
+                <div class="lfl-sub-metric">👥 <span id="lfl-current-employees">0</span></div>
+                <div class="lfl-sub-metric">⏰ <span id="lfl-current-hours">0</span> ч</div>
+            </div>
+        </div>
+        <div class="lfl-card">
+            <div class="lfl-label" id="lfl-previous-label">Предыдущий период</div>
+            <div class="lfl-value" id="lfl-previous-money">0 ₽</div>
+            <div class="lfl-dates" id="lfl-previous-dates"></div>
+            <div class="lfl-sub-metrics">
+                <div class="lfl-sub-metric">👥 <span id="lfl-previous-employees">0</span></div>
+                <div class="lfl-sub-metric">⏰ <span id="lfl-previous-hours">0</span> ч</div>
+            </div>
+        </div>
+        <div class="lfl-card lfl-change">
+            <div class="lfl-label">Изменение</div>
+            <div class="lfl-value" id="lfl-change-money">0%</div>
+            <div class="lfl-delta" id="lfl-delta-money">0 ₽</div>
+            <div class="lfl-sub-metrics">
+                <div class="lfl-sub-metric">👥 <span id="lfl-change-employees">0</span></div>
+                <div class="lfl-sub-metric">⏰ <span id="lfl-change-hours">0</span> ч</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="aggregated"><h3>📋 Сводка по отделам</h3><table><thead><tr><th>Отдел</th><th>Сотрудников</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead><tbody id="otdelTable"></tbody></table></div>
 <div class="aggregated">
     <h3>📋 Сводка по сотрудникам</h3>
@@ -102,6 +161,7 @@ let canExport = {{ can_export|default(false)|tojson }};
 let empGroupMode = 'dolzhnost'; // 'none', 'otdel', 'dolzhnost'
 let expandedGroups = {}; // Для хранения состояния сворачивания групп (по умолчанию все свернуты)
 let currentAggregatedData = []; // Кэш данных для перерисовки без пересчёта
+let lflMode = 'month'; // 'month', 'week', 'custom'
 console.log('canExport:', canExport);
 
 async function loadData() {
@@ -616,6 +676,136 @@ function toggleGroup(groupId) {
     expandedGroups[groupId] = !expandedGroups[groupId];
     renderEmpTable(currentAggregatedData);
 }
+
+// ==================== LFL ANALYSIS FUNCTIONS ====================
+
+function setLFLMode(mode) {
+    lflMode = mode;
+    
+    // Update button states
+    document.querySelectorAll('.lfl-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.mode === mode) btn.classList.add('active');
+    });
+    
+    // Show/hide custom period selector
+    const customSelector = document.getElementById('customPeriodSelector');
+    if (mode === 'custom') {
+        customSelector.style.display = 'block';
+        setCustomPeriodDefaults();
+    } else {
+        customSelector.style.display = 'none';
+        calculateLFL();
+    }
+}
+
+function setCustomPeriodDefaults() {
+    const today = new Date();
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    // Предыдущий месяц
+    const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+    
+    document.getElementById('lflCurrentFrom').value = formatDateForInput(currentMonthStart);
+    document.getElementById('lflCurrentTo').value = formatDateForInput(currentMonthEnd);
+    document.getElementById('lflPrevFrom').value = formatDateForInput(prevMonthStart);
+    document.getElementById('lflPrevTo').value = formatDateForInput(prevMonthEnd);
+}
+
+async function calculateLFL() {
+    try {
+        const df = document.getElementById('dateFrom').value;
+        const dt = document.getElementById('dateTo').value;
+        const selectedPod = selectedPod || '';
+        const selectedOtdel = selectedOtdel || '';
+        
+        let params = `?mode=${lflMode}&filter_from=${df}&filter_to=${dt}&selected_pod=${encodeURIComponent(selectedPod)}&selected_otdel=${encodeURIComponent(selectedOtdel)}`;
+        
+        if (lflMode === 'custom') {
+            const customFrom = document.getElementById('lflCurrentFrom').value;
+            const customTo = document.getElementById('lflCurrentTo').value;
+            if (customFrom && customTo) {
+                params += `&custom_from=${customFrom}&custom_to=${customTo}`;
+            } else {
+                setCustomPeriodDefaults();
+                return;
+            }
+        }
+        
+        const response = await fetch(`/api/lfl${params}`);
+        if (!response.ok) {
+            console.error('LFL API Error:', response.status);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('LFL Data:', data);
+        
+        updateLFLDisplay(data);
+    } catch (error) {
+        console.error('Error calculating LFL:', error);
+    }
+}
+
+function updateLFLDisplay(data) {
+    const cur = data.period_current;
+    const prev = data.period_previous;
+    const change = data.change;
+    const delta = data.delta;
+    
+    // Format dates
+    const formatDateRange = (from, to) => {
+        const fromDate = new Date(from);
+        const toDate = new Date(to);
+        const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+        return `${fromDate.toLocaleDateString('ru-RU', options)} - ${toDate.toLocaleDateString('ru-RU', options)}`;
+    };
+    
+    // Current period
+    document.getElementById('lfl-current-label').textContent = 'Текущий период';
+    document.getElementById('lfl-current-money').textContent = formatMoney(cur.metrics.money);
+    document.getElementById('lfl-current-dates').textContent = formatDateRange(cur.from, cur.to);
+    document.getElementById('lfl-current-employees').textContent = cur.metrics.employees;
+    document.getElementById('lfl-current-hours').textContent = Math.round(cur.metrics.hours);
+    
+    // Previous period
+    document.getElementById('lfl-previous-label').textContent = 'Предыдущий период';
+    document.getElementById('lfl-previous-money').textContent = formatMoney(prev.metrics.money);
+    document.getElementById('lfl-previous-dates').textContent = formatDateRange(prev.from, prev.to);
+    document.getElementById('lfl-previous-employees').textContent = prev.metrics.employees;
+    document.getElementById('lfl-previous-hours').textContent = Math.round(prev.metrics.hours);
+    
+    // Change
+    const moneyChange = change.money;
+    const moneyDelta = delta.money;
+    const changeValue = document.getElementById('lfl-change-money');
+    const deltaValue = document.getElementById('lfl-delta-money');
+    
+    changeValue.textContent = `${moneyChange > 0 ? '+' : ''}${moneyChange.toFixed(1)}%`;
+    deltaValue.textContent = `${moneyDelta > 0 ? '+' : ''}${formatMoney(Math.abs(moneyDelta))}`;
+    
+    // Color based on change
+    changeValue.className = 'lfl-value ' + (moneyChange >= 0 ? 'positive' : 'negative');
+    
+    // Sub-metrics
+    document.getElementById('lfl-change-employees').textContent = `${delta.employees > 0 ? '+' : ''}${delta.employees}`;
+    document.getElementById('lfl-change-hours').textContent = `${delta.hours > 0 ? '+' : ''}${Math.round(delta.hours)} ч`;
+}
+
+// Calculate LFL on initial load and when filters change
+const originalApplyFilters = applyFilters;
+applyFilters = function() {
+    originalApplyFilters();
+    // Recalculate LFL when main filters change
+    setTimeout(() => {
+        if (lflMode === 'custom') {
+            setCustomPeriodDefaults();
+        }
+        calculateLFL();
+    }, 100);
+};
 
 console.log('=== SCRIPT FINISHED, calling loadData() ===');
 loadData();
