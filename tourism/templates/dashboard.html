@@ -538,6 +538,8 @@ console.log('Setting current month as default filter');
 setCurrentMonth(); // Устанавливаем текущий месяц по умолчанию
 console.log('Calling applyFilters()');
 applyFilters();
+console.log('Calling calculateLFL() for default month mode');
+calculateLFL(); // Пересчитываем LFL для режима по умолчанию "Месяц к месяцу"
 console.log('Calling initEmpGroup()');
 setEmpGroup(empGroupMode); // Устанавливаем группировку по умолчанию
 console.log('Hiding loading, showing dashboard');
