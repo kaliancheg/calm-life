@@ -620,6 +620,8 @@ function toggleOtdel(otdel, btnElement) {
         }
     }
     applyFilters();
+    // Пересчитываем LFL, т.к. изменился фильтр отдела
+    calculateLFL();
 }
 
 function selectPod(pod) {
@@ -629,6 +631,8 @@ btn.classList.remove('active');
 if ((pod === '' && btn.dataset.pod === '') || btn.dataset.pod === pod) btn.classList.add('active');
 });
 applyFilters();
+// Пересчитываем LFL, т.к. изменился фильтр подразделения
+calculateLFL();
 }
 
 function formatDateForInput(date) {
@@ -1051,16 +1055,12 @@ function toggleGroup(groupId) {
     renderEmpTable(currentAggregatedData);
 }
 
-// Calculate LFL on initial load and when filters change
+// Calculate LFL only when pod/otdel filters change (not date filters)
 const originalApplyFilters = applyFilters;
 applyFilters = function() {
     originalApplyFilters();
-    // Recalculate LFL and refresh server-side summary/breakdown when main filters change
+    // Refresh server-side summary/breakdown when main filters change (dates only affect these)
     setTimeout(() => {
-        if (lflMode === 'custom') {
-            setCustomPeriodDefaults();
-        }
-        calculateLFL();
         fetchFotSummaryAndBreakdown();
     }, 100);
 };

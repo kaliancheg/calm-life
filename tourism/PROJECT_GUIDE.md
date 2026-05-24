@@ -805,6 +805,56 @@ const prevData = filterData(allData, prev.from, prev.to);
 
 **Статус:** ✅ Реализовано (2026-05-24) — можно выбирать несколько отделов одновременно
 
+### Проблема: При смене дат в основных фильтрах LFL показывает «пустую» анимацию
+
+**Причина:** Основные фильтры «Дата с/по» не задают периоды LFL — они определяются только внутри самого LFL-блока (Месяц/Неделя/Свой период). Но при смене дат вызывался `calculateLFL()`, которая шлёт запрос и запускает анимацию чисел. Данные при этом не менялись, т.к. API берёт периоды из `mode`, а не из основных дат.
+
+**Решение:** 
+1. Убрать `calculateLFL()` из переопределённой `applyFilters()`
+2. Оставить `calculateLFL()` только там, где периоды реально меняются:
+   - `setLFLMode()` — смена режима LFL
+   - Инпуты дат внутри LFL-блока (`onchange="calculateLFL()"`)
+   - `selectPod()` — смена подразделения влияет на данные внутри LFL-периодов
+   - `toggleOtdel()` — смена отдела влияет на данные внутри LFL-периодов
+
+**Изменения в коде:**
+- `dashboard.html` (`applyFilters`): убран `calculateLFL()` и `setCustomPeriodDefaults()`
+- `dashboard.html` (`selectPod`): добавлен вызов `calculateLFL()` после `applyFilters()`
+- `dashboard.html` (`toggleOtdel`): добавлен вызов `calculateLFL()` после `applyFilters()`
+- Удалён дублирующийся `selectPod()`
+
+**Было:**
+```javascript
+applyFilters = function() {
+    originalApplyFilters();
+    setTimeout(() => {
+        if (lflMode === 'custom') {
+            setCustomPeriodDefaults();
+        }
+        calculateLFL();  // ← пустая анимация при смене дат!
+        fetchFotSummaryAndBreakdown();
+    }, 100);
+};
+```
+
+**Стало:**
+```javascript
+applyFilters = function() {
+    originalApplyFilters();
+    setTimeout(() => {
+        fetchFotSummaryAndBreakdown();  // ← только summary/breakdown
+    }, 100);
+};
+
+function selectPod(pod) {
+    // ...
+    applyFilters();
+    calculateLFL();  // ← только при смене подразделения
+}
+```
+
+**Статус:** ✅ Исправлено (2026-05-24) — LFL анимация запускается только при реальном изменении периодов или структурных фильтров
+
 ---
 
 ## � Изменения в версии 2.5 (2026-05-24)
@@ -1059,8 +1109,8 @@ journalctl -u tourism-dashboard -f --no-pager
 
 ---
 
-**Последнее обновление:** 2026-05-24 (Множественный выбор отделов в фильтрах, исправлена фильтрация в модалке LFL)  
-**Версия:** 2.5.7  
+**Последнее обновление:** 2026-05-24 (Исправлена пустая анимация LFL при смене дат, множественный выбор отделов)  
+**Версия:** 2.5.8  
 **Статус:** ✅ Production Ready
 
 ---
