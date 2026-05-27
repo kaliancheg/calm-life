@@ -363,7 +363,8 @@ function updateLFLDisplay(data) {
     
     // Sub-metrics
     document.getElementById('lfl-change-employees').textContent = `${delta.employees > 0 ? '+' : ''}${delta.employees}`;
-    document.getElementById('lfl-change-hours').textContent = `${delta.hours > 0 ? '+' : ''}${Math.round(delta.hours)}`;
+    // Форматируем часы через animateValue чтобы использовать локализованные разделители разрядов
+    animateValue(document.getElementById('lfl-change-hours'), 0, Math.round(delta.hours), 300, false, '', true);
     
     console.log('LFL display updated successfully');
 }
