@@ -1540,42 +1540,31 @@ def import_excel():
         
         try:
             # Читаем Excel файл
-            df = pd.read_excel(tmp_path, sheet_name=sheet_name)
+            # Для "Реестра" заголовок начинается со 2-й строки (header=1), данные с 3-й
+            if sheet_name == 'Реестр':
+                df = pd.read_excel(tmp_path, sheet_name=sheet_name, header=1)
+            else:
+                df = pd.read_excel(tmp_path, sheet_name=sheet_name)
             
             if df.empty:
                 return jsonify({'error': 'Файл пустой'}), 400
             
-            # Маппинг колонок в зависимости от листа
-            if sheet_name == 'Архив':
-                df_mapped = pd.DataFrame()
-                df_mapped['snils'] = df.iloc[:, 0].astype(str).str.strip()
-                df_mapped['podrazdelenie'] = df.iloc[:, 1].astype(str).str.strip()  # Краткое подразделение (Арт_Лайф, Волна)
-                df_mapped['sp_nsp'] = df.iloc[:, 2].astype(str).str.strip()  # сп/нсп
-                df_mapped['fio'] = df.iloc[:, 3].astype(str).str.strip()
-                df_mapped['otdel'] = df.iloc[:, 4].astype(str).str.strip()  # Отдел/служба
-                df_mapped['dolzhnost'] = df.iloc[:, 5].astype(str).str.strip()
-                df_mapped['rukovoditel'] = df.iloc[:, 6].astype(str).str.strip()
-                df_mapped['status_field'] = df.iloc[:, 7].astype(str).str.strip()
-                df_mapped['data'] = pd.to_datetime(df.iloc[:, 8], errors='coerce')
-                df_mapped['chasy'] = pd.to_numeric(df.iloc[:, 9], errors='coerce').fillna(0)
-                df_mapped['stavka_oklad'] = df.iloc[:, 10].astype(str).str.strip()
-                df_mapped['stavka'] = df.iloc[:, 11].astype(str).str.strip()
-                df_mapped['itogo'] = pd.to_numeric(df.iloc[:, 12], errors='coerce').fillna(0)
-                df_mapped['nachisleno'] = df_mapped['itogo']  # nachisleno = itogo для Архив
-            else:
-                # Лист "Реестр" - по названиям колонок
-                column_mapping = {
-                    'ФИО': 'fio',
-                    'СНИЛС': 'snils',
-                    'Подразделение': 'podrazdelenie',
-                    'Отдел (служба)': 'otdel',
-                    'Должность': 'dolzhnost',
-                    'Дата': 'data',
-                    'Часы': 'chasy',
-                    'Ставка-оклад': 'nachisleno',
-                    'Начислено': 'itogo'
-                }
-                df_mapped = df.rename(columns={v: k for k, v in column_mapping.items() if v in df.columns})
+            # Маппинг колонок (структура идентична для "Архив" и "Реестр")
+            df_mapped = pd.DataFrame()
+            df_mapped['snils'] = df.iloc[:, 0].astype(str).str.strip()
+            df_mapped['podrazdelenie'] = df.iloc[:, 1].astype(str).str.strip()  # Краткое подразделение (Арт_Лайф, Волна)
+            df_mapped['sp_nsp'] = df.iloc[:, 2].astype(str).str.strip()  # сп/нсп
+            df_mapped['fio'] = df.iloc[:, 3].astype(str).str.strip()
+            df_mapped['otdel'] = df.iloc[:, 4].astype(str).str.strip()  # Отдел/служба
+            df_mapped['dolzhnost'] = df.iloc[:, 5].astype(str).str.strip()
+            df_mapped['rukovoditel'] = df.iloc[:, 6].astype(str).str.strip()
+            df_mapped['status_field'] = df.iloc[:, 7].astype(str).str.strip()
+            df_mapped['data'] = pd.to_datetime(df.iloc[:, 8], errors='coerce')
+            df_mapped['chasy'] = pd.to_numeric(df.iloc[:, 9], errors='coerce').fillna(0)
+            df_mapped['stavka_oklad'] = df.iloc[:, 10].astype(str).str.strip()
+            df_mapped['stavka'] = df.iloc[:, 11].astype(str).str.strip()
+            df_mapped['itogo'] = pd.to_numeric(df.iloc[:, 12], errors='coerce').fillna(0)
+            df_mapped['nachisleno'] = df_mapped['itogo']  # nachisleno = itogo
             
             # Проверяем наличие обязательных колонок
             if df_mapped.empty or 'fio' not in df_mapped.columns:
