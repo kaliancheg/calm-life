@@ -66,18 +66,15 @@
     <div class="lfl-header">
         <h3>📊 LFL Анализ (Like-for-Like)</h3>
         <div class="lfl-controls">
+            <!-- Navigation buttons integrated with mode controls -->
+            <div class="lfl-nav-buttons" id="lflNavButtons" style="display:none;">
+                <button class="lfl-nav-btn" onclick="shiftLFLPeriod(-1)" title="Предыдущий период">◀</button>
+                <span class="lfl-nav-label" id="lflNavLabel">Январь 2026</span>
+                <button class="lfl-nav-btn" onclick="shiftLFLPeriod(1)" title="Следующий период">▶</button>
+            </div>
             <button class="lfl-btn active" data-mode="month" onclick="setLFLMode('month')">Месяц к месяцу</button>
             <button class="lfl-btn" data-mode="week" onclick="setLFLMode('week')">Неделя к неделе</button>
             <button class="lfl-btn" data-mode="custom" onclick="setLFLMode('custom')">Свой период</button>
-        </div>
-    </div>
-    
-    <!-- Navigation buttons for Month/Week modes - positioned over Current Period card -->
-    <div class="lfl-nav-wrapper">
-        <div class="lfl-nav-buttons" id="lflNavButtons">
-            <button class="lfl-nav-btn" onclick="shiftLFLPeriod(-1)" title="Предыдущий период">◀</button>
-            <span class="lfl-nav-label" id="lflNavLabel">Январь 2026</span>
-            <button class="lfl-nav-btn" onclick="shiftLFLPeriod(1)" title="Следующий период">▶</button>
         </div>
     </div>
     
@@ -252,7 +249,7 @@ function setLFLMode(mode) {
         if (btn.dataset.mode === mode) btn.classList.add('active');
     });
     
-    // Show/hide custom period selector
+    // Show/hide custom period selector and navigation buttons
     const customSelector = document.getElementById('customPeriodSelector');
     const navButtons = document.getElementById('lflNavButtons');
     
