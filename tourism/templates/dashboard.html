@@ -72,6 +72,13 @@
         </div>
     </div>
     
+    <!-- Navigation buttons for Month/Week modes -->
+    <div class="lfl-nav-buttons" id="lflNavButtons">
+        <button class="lfl-nav-btn" onclick="shiftLFLPeriod(-1)" title="Предыдущий период">◀</button>
+        <span class="lfl-nav-label" id="lflNavLabel">Январь 2026</span>
+        <button class="lfl-nav-btn" onclick="shiftLFLPeriod(1)" title="Следующий период">▶</button>
+    </div>
+    
     <div class="lfl-period-selectors" id="customPeriodSelector" style="display:none;">
         <div class="lfl-custom-inputs">
             <div class="lfl-input-group">
@@ -85,7 +92,6 @@
                 <input type="date" id="lflPrevTo" onchange="calculateLFL()">
             </div>
         </div>
-        <button class="btn-secondary" onclick="calculateLFL()">🔄 Применить</button>
     </div>
     
     <div class="lfl-comparison">
@@ -97,6 +103,11 @@
                 <div class="lfl-sub-metric">👥 <span id="lfl-current-employees">0</span></div>
                 <div class="lfl-sub-metric">⏰ <span id="lfl-current-hours">0</span> ч</div>
             </div>
+            <!-- Quick month/year selectors for current period -->
+            <div class="lfl-quick-select" id="lflCurrentQuickSelect">
+                <div class="lfl-months-row" id="lflCurrentMonths"></div>
+                <div class="lfl-years-row" id="lflCurrentYears"></div>
+            </div>
         </div>
         <div class="lfl-card">
             <div class="lfl-label" id="lfl-previous-label">Предыдущий период</div>
@@ -105,6 +116,11 @@
             <div class="lfl-sub-metrics">
                 <div class="lfl-sub-metric">👥 <span id="lfl-previous-employees">0</span></div>
                 <div class="lfl-sub-metric">⏰ <span id="lfl-previous-hours">0</span> ч</div>
+            </div>
+            <!-- Quick month/year selectors for previous period -->
+            <div class="lfl-quick-select" id="lflPrevQuickSelect">
+                <div class="lfl-months-row" id="lflPrevMonths"></div>
+                <div class="lfl-years-row" id="lflPrevYears"></div>
             </div>
         </div>
         <div class="lfl-card lfl-change" onclick="openLFLDetails()" style="cursor: pointer;">
@@ -218,6 +234,10 @@ console.log('canExport:', canExport);
 
 // ==================== LFL ANALYSIS FUNCTIONS ====================
 
+// Глобальные переменные для хранения периодов
+let lflCurrentPeriod = { from: null, to: null };
+let lflPrevPeriod = { from: null, to: null };
+
 function setLFLMode(mode) {
     lflMode = mode;
     
@@ -229,12 +249,236 @@ function setLFLMode(mode) {
     
     // Show/hide custom period selector
     const customSelector = document.getElementById('customPeriodSelector');
+    const navButtons = document.getElementById('lflNavButtons');
+    
     if (mode === 'custom') {
         customSelector.style.display = 'block';
+        navButtons.style.display = 'none';
         setCustomPeriodDefaults();
     } else {
         customSelector.style.display = 'none';
+        navButtons.style.display = 'flex';
         calculateLFL();
+    }
+}
+
+// Навигация по периодам (стрелки)
+function shiftLFLPeriod(direction) {
+    if (lflMode === 'month') {
+        shiftMonthPeriod(direction);
+    } else if (lflMode === 'week') {
+        shiftWeekPeriod(direction);
+    }
+}
+
+function shiftMonthPeriod(direction) {
+    const today = new Date();
+    let currentYear, currentMonth;
+    
+    // Определяем текущий выбранный месяц из lflCurrentPeriod
+    if (lflCurrentPeriod.from) {
+        const curDate = new Date(lflCurrentPeriod.from);
+        currentYear = curDate.getFullYear();
+        currentMonth = curDate.getMonth();
+    } else {
+        currentYear = today.getFullYear();
+        currentMonth = today.getMonth();
+    }
+    
+    // Сдвигаем месяц
+    currentMonth += direction;
+    
+    // Первый день нового месяца
+    const newFrom = new Date(currentYear, currentMonth, 1);
+    // Последний день нового месяца
+    const newTo = new Date(currentYear, currentMonth + 1, 0);
+    
+    // Предыдущий период - предыдущий месяц
+    const prevFrom = new Date(currentYear, currentMonth - 1, 1);
+    const prevTo = new Date(currentYear, currentMonth, 0);
+    
+    // Устанавливаем даты
+    document.getElementById('lflCurrentFrom').value = formatDateForInput(newFrom);
+    document.getElementById('lflCurrentTo').value = formatDateForInput(newTo);
+    document.getElementById('lflPrevFrom').value = formatDateForInput(prevFrom);
+    document.getElementById('lflPrevTo').value = formatDateForInput(prevTo);
+    
+    calculateLFL();
+}
+
+function shiftWeekPeriod(direction) {
+    const today = new Date();
+    let startDate;
+    
+    // Определяем текущую начальную дату недели
+    if (lflCurrentPeriod.from) {
+        startDate = new Date(lflCurrentPeriod.from);
+    } else {
+        // По умолчанию - текущая неделя (понедельник)
+        startDate = new Date(today);
+        const day = startDate.getDay();
+        const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+        startDate.setDate(diff);
+    }
+    
+    // Сдвигаем на неделю
+    startDate.setDate(startDate.getDate() + (direction * 7));
+    
+    // Конец недели - воскресенье
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6);
+    
+    // Предыдущая неделя
+    const prevStart = new Date(startDate);
+    prevStart.setDate(prevStart.getDate() - 7);
+    const prevEnd = new Date(prevStart);
+    prevEnd.setDate(prevEnd.getDate() + 6);
+    
+    // Устанавливаем даты
+    document.getElementById('lflCurrentFrom').value = formatDateForInput(startDate);
+    document.getElementById('lflCurrentTo').value = formatDateForInput(endDate);
+    document.getElementById('lflPrevFrom').value = formatDateForInput(prevStart);
+    document.getElementById('lflPrevTo').value = formatDateForInput(prevEnd);
+    
+    calculateLFL();
+}
+
+// Быстрый выбор месяцев и годов
+function renderQuickSelectors() {
+    const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    const currentYear = new Date().getFullYear();
+    const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
+    
+    // Рендер для текущего периода
+    const curMonthsContainer = document.getElementById('lflCurrentMonths');
+    const curYearsContainer = document.getElementById('lflCurrentYears');
+    
+    if (curMonthsContainer) {
+        curMonthsContainer.innerHTML = monthNames.map((m, i) => 
+            `<button class="lfl-month-btn" data-month="${i}" onclick="selectLFLMonth('current', ${i})">${m}</button>`
+        ).join('');
+    }
+    
+    if (curYearsContainer) {
+        curYearsContainer.innerHTML = years.map(y => 
+            `<button class="lfl-year-btn" data-year="${y}" onclick="selectLFLYear('current', ${y})">${y}</button>`
+        ).join('');
+    }
+    
+    // Рендер для предыдущего периода
+    const prevMonthsContainer = document.getElementById('lflPrevMonths');
+    const prevYearsContainer = document.getElementById('lflPrevYears');
+    
+    if (prevMonthsContainer) {
+        prevMonthsContainer.innerHTML = monthNames.map((m, i) => 
+            `<button class="lfl-month-btn" data-month="${i}" onclick="selectLFLMonth('prev', ${i})">${m}</button>`
+        ).join('');
+    }
+    
+    if (prevYearsContainer) {
+        prevYearsContainer.innerHTML = years.map(y => 
+            `<button class="lfl-year-btn" data-year="${y}" onclick="selectLFLYear('prev', ${y})">${y}</button>`
+        ).join('');
+    }
+}
+
+function selectLFLMonth(periodType, monthIndex) {
+    const today = new Date();
+    let targetYear;
+    
+    // Определяем год из текущего выбора периода
+    if (periodType === 'current' && lflCurrentPeriod.from) {
+        targetYear = new Date(lflCurrentPeriod.from).getFullYear();
+    } else if (periodType === 'prev' && lflPrevPeriod.from) {
+        targetYear = new Date(lflPrevPeriod.from).getFullYear();
+    } else {
+        targetYear = today.getFullYear();
+    }
+    
+    // Первый и последний день выбранного месяца
+    const from = new Date(targetYear, monthIndex, 1);
+    const to = new Date(targetYear, monthIndex + 1, 0);
+    
+    if (periodType === 'current') {
+        document.getElementById('lflCurrentFrom').value = formatDateForInput(from);
+        document.getElementById('lflCurrentTo').value = formatDateForInput(to);
+        
+        // Предыдущий период - предыдущий месяц
+        const prevFrom = new Date(targetYear, monthIndex - 1, 1);
+        const prevTo = new Date(targetYear, monthIndex, 0);
+        document.getElementById('lflPrevFrom').value = formatDateForInput(prevFrom);
+        document.getElementById('lflPrevTo').value = formatDateForInput(prevTo);
+    } else {
+        document.getElementById('lflPrevFrom').value = formatDateForInput(from);
+        document.getElementById('lflPrevTo').value = formatDateForInput(to);
+        
+        // Текущий период - следующий месяц
+        const nextFrom = new Date(targetYear, monthIndex + 1, 1);
+        const nextTo = new Date(targetYear, monthIndex + 2, 0);
+        document.getElementById('lflCurrentFrom').value = formatDateForInput(nextFrom);
+        document.getElementById('lflCurrentTo').value = formatDateForInput(nextTo);
+    }
+    
+    calculateLFL();
+}
+
+function selectLFLYear(periodType, year) {
+    const today = new Date();
+    let targetMonth;
+    
+    // Определяем месяц из текущего выбора периода
+    if (periodType === 'current' && lflCurrentPeriod.from) {
+        targetMonth = new Date(lflCurrentPeriod.from).getMonth();
+    } else if (periodType === 'prev' && lflPrevPeriod.from) {
+        targetMonth = new Date(lflPrevPeriod.from).getMonth();
+    } else {
+        targetMonth = today.getMonth();
+    }
+    
+    // Первый и последний день месяца в выбранном году
+    const from = new Date(year, targetMonth, 1);
+    const to = new Date(year, targetMonth + 1, 0);
+    
+    if (periodType === 'current') {
+        document.getElementById('lflCurrentFrom').value = formatDateForInput(from);
+        document.getElementById('lflCurrentTo').value = formatDateForInput(to);
+        
+        // Предыдущий период - предыдущий месяц
+        const prevFrom = new Date(year, targetMonth - 1, 1);
+        const prevTo = new Date(year, targetMonth, 0);
+        document.getElementById('lflPrevFrom').value = formatDateForInput(prevFrom);
+        document.getElementById('lflPrevTo').value = formatDateForInput(prevTo);
+    } else {
+        document.getElementById('lflPrevFrom').value = formatDateForInput(from);
+        document.getElementById('lflPrevTo').value = formatDateForInput(to);
+        
+        // Текущий период - следующий месяц
+        const nextFrom = new Date(year, targetMonth + 1, 1);
+        const nextTo = new Date(year, targetMonth + 2, 0);
+        document.getElementById('lflCurrentFrom').value = formatDateForInput(nextFrom);
+        document.getElementById('lflCurrentTo').value = formatDateForInput(nextTo);
+    }
+    
+    calculateLFL();
+}
+
+function updateLFLNavLabel() {
+    const label = document.getElementById('lflNavLabel');
+    if (!label) return;
+    
+    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 
+                        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    
+    if (lflMode === 'month' && lflCurrentPeriod.from) {
+        const date = new Date(lflCurrentPeriod.from);
+        label.textContent = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    } else if (lflMode === 'week' && lflCurrentPeriod.from) {
+        const from = new Date(lflCurrentPeriod.from);
+        const to = new Date(lflCurrentPeriod.to);
+        const options = { day: '2-digit', month: '2-digit' };
+        label.textContent = `Неделя ${from.toLocaleDateString('ru-RU', options)} - ${to.toLocaleDateString('ru-RU', options)}`;
+    } else {
+        label.textContent = lflMode === 'month' ? 'Месяц' : 'Неделя';
     }
 }
 
@@ -258,7 +502,7 @@ async function calculateLFL() {
         const df = document.getElementById('dateFrom').value;
         const dt = document.getElementById('dateTo').value;
         const podVal = selectedPod || '';
-        
+
         let params = `?mode=${lflMode}&filter_from=${df}&filter_to=${dt}&selected_pod=${encodeURIComponent(podVal)}`;
         
         // Добавляем все выбранные отделы
@@ -327,7 +571,14 @@ function updateLFLDisplay(data) {
     console.log('Change:', change);
     console.log('Delta:', delta);
     
-    // Format dates
+    // Сохраняем периоды в глобальные переменные
+    lflCurrentPeriod = { from: cur.from, to: cur.to };
+    lflPrevPeriod = { from: prev.from, to: prev.to };
+    
+    // Обновляем label навигации
+    updateLFLNavLabel();
+    
+    // Форматируем даты
     const formatDateRange = (from, to) => {
         const fromDate = new Date(from);
         const toDate = new Date(to);
@@ -543,6 +794,8 @@ console.log('Calling calculateLFL() for default month mode');
 calculateLFL(); // Пересчитываем LFL для режима по умолчанию "Месяц к месяцу"
 console.log('Calling initEmpGroup()');
 setEmpGroup(empGroupMode); // Устанавливаем группировку по умолчанию
+console.log('Calling renderQuickSelectors()');
+renderQuickSelectors(); // Рендерим кнопки быстрого выбора месяцев/годов
 console.log('Hiding loading, showing dashboard');
 document.getElementById('loading').style.display = 'none';
 document.getElementById('dashboard').style.display = 'block';
