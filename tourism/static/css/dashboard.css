@@ -595,37 +595,55 @@ body {
     border: 1px solid rgba(0, 255, 255, 0.2);
 }
 
+/* LFL Custom Inputs - Single Line Horizontal Layout */
 .lfl-custom-inputs {
     display: flex;
-    gap: 20px;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
+    gap: 40px;
+    justify-content: center;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    flex-wrap: nowrap;
 }
 
-.lfl-input-group {
-    display: flex;
+.lfl-input-wrapper {
+    display: flex; 
     flex-direction: column;
-    gap: 8px;
+    align-items: center; 
+    gap: 6px;
 }
 
-.lfl-input-group label {
+.lfl-input-wrapper label {
     color: #b8b8ff;
-    font-size: 0.9em;
+    font-size: 0.85em;
     font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
 }
 
-.lfl-input-group input[type="date"] {
-    padding: 10px 12px;
+.lfl-date-inputs {
+    display: flex; 
+    gap: 8px;
+    align-items: center; 
+}
+
+.lfl-date-separator {
+    color: #00ffff; 
+    font-weight: 600;
+    font-size: 1.2em;
+}
+
+.lfl-date-inputs input[type="date"] {
+    padding: 8px 10px;
     border: 2px solid rgba(0, 255, 255, 0.4);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.15);
     color: #ffffff;
     font-family: 'Rajdhani', sans-serif;
-    font-size: 14px;
-    width: 180px;
+    font-size: 13px;
+    width: 140px;
 }
 
-.lfl-input-group input[type="date"]:disabled {
+.lfl-date-inputs input[type="date"]:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
@@ -652,7 +670,7 @@ body {
 
 .lfl-card.lfl-change {
     border-color: rgba(0, 255, 136, 0.4);
-    cursor: pointer;
+    cursor: pointer; 
     transition: all 0.3s ease;
 }
 
@@ -1103,12 +1121,32 @@ body {
         font-size: 1.8em; 
     }
     
+    /* LFL Custom Inputs - Mobile: Stack vertically */
     .lfl-custom-inputs { 
         flex-direction: column; 
+        gap: 15px;
+        align-items: center;
+        flex-wrap: wrap;
     }
     
-    .lfl-input-group input[type="date"] { 
-        width: 100%; 
+    .lfl-input-wrapper {
+        width: 100%;
+        max-width: 350px;
+    }
+    
+    .lfl-date-inputs {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+    }
+    
+    .lfl-date-inputs input[type="date"] {
+        width: 100%;
+        max-width: 150px;
+    }
+    
+    .lfl-date-separator {
+        font-size: 1em;
     }
     
     /* LFL Custom Quick Select - Mobile */
