@@ -66,12 +66,12 @@
     <div class="lfl-header">
         <h3>📊 LFL Анализ (Like-for-Like)</h3>
         <div class="lfl-controls">
-            <!-- Navigation buttons integrated with mode controls -->
-            <div class="lfl-nav-buttons" id="lflNavButtons" style="display:none;">
-                <button class="lfl-nav-btn" onclick="shiftLFLPeriod(-1)" title="Предыдущий период">◀</button>
-                <span class="lfl-nav-label" id="lflNavLabel">Январь 2026</span>
-                <button class="lfl-nav-btn" onclick="shiftLFLPeriod(1)" title="Следующий период">▶</button>
-            </div>
+    <!-- Navigation buttons integrated with mode controls - shown by default for month/week modes -->
+    <div class="lfl-nav-buttons" id="lflNavButtons">
+        <button class="lfl-nav-btn" onclick="shiftLFLPeriod(-1)" title="Предыдущий период">◀</button>
+        <span class="lfl-nav-label" id="lflNavLabel">Январь 2026</span>
+        <button class="lfl-nav-btn" onclick="shiftLFLPeriod(1)" title="Следующий период">▶</button>
+    </div>
             <button class="lfl-btn active" data-mode="month" onclick="setLFLMode('month')">Месяц к месяцу</button>
             <button class="lfl-btn" data-mode="week" onclick="setLFLMode('week')">Неделя к неделе</button>
             <button class="lfl-btn" data-mode="custom" onclick="setLFLMode('custom')">Свой период</button>
@@ -162,7 +162,7 @@
                 <div class="lfl-modal-table-wrap">
                     <table class="lfl-modal-table" id="lflModalEmpTable">
                         <thead>
-                            <tr><th>Сотрудник</th><th>Отдел</th><th>Текущий</th><th>Предыдущий</th><th>Изменение</th></tr>
+                            <tr><th>Сотрудник</th><th>Подразделение</th><th>Должность</th><th>Ставка</th><th>Текущий</th><th>Предыдущий</th><th>Изменение</th></tr>
                         </thead>
                         <tbody></tbody>
                     </table>
@@ -196,7 +196,7 @@
         <thead>
             <tr>
                 <th>ФИО</th>
-                <th>Отдел</th>
+                <th>Подразделение</th>
                 <th>Должность</th>
                 <th>Ставка</th>
                 <th>Дней</th>
@@ -803,13 +803,23 @@ function renderLFLDetails() {
     
     document.querySelector('#lflModalOtdelTable tbody').innerHTML = otdelRows;
     
-    // Aggregate by employee
+    // Aggregate by employee - unique key: fio + dolzhnost + podrazdelenie
     const aggByEmp = (data) => {
         const agg = {};
         data.forEach(r => {
-            if (!agg[r.fio]) agg[r.fio] = { fio: r.fio, otdel: r.otdel, money: 0, hours: 0 };
-            agg[r.fio].money += r.itogo;
-            agg[r.fio].hours += r.chasy;
+            const key = r.fio + '|' + r.dolzhnost + '|' + r.podrazdelenie;
+            if (!agg[key]) {
+                agg[key] = { 
+                    fio: r.fio, 
+                    podrazdelenie: r.podrazdelenie,
+                    dolzhnost: r.dolzhnost, 
+                    stavka: r.stavka,
+                    money: 0, 
+                    hours: 0 
+                };
+            }
+            agg[key].money += r.itogo;
+            agg[key].hours += r.chasy;
         });
         return agg;
     };
@@ -819,15 +829,17 @@ function renderLFLDetails() {
     const allEmps = new Set([...Object.keys(curEmp), ...Object.keys(prevEmp)]);
     
     // Build employee table sorted by absolute change, top 20
-    const empRows = Array.from(allEmps).map(fio => {
-        const c = curEmp[fio] || { fio, otdel: prevEmp[fio]?.otdel || '—', money: 0, hours: 0 };
-        const p = prevEmp[fio] || { fio, otdel: curEmp[fio]?.otdel || '—', money: 0, hours: 0 };
+    const empRows = Array.from(allEmps).map(key => {
+        const c = curEmp[key] || { fio: prevEmp[key]?.fio || '—', podrazdelenie: prevEmp[key]?.podrazdelenie || '—', dolzhnost: prevEmp[key]?.dolzhnost || '—', stavka: prevEmp[key]?.stavka || '—', money: 0, hours: 0 };
+        const p = prevEmp[key] || { fio: curEmp[key]?.fio || '—', podrazdelenie: curEmp[key]?.podrazdelenie || '—', dolzhnost: curEmp[key]?.dolzhnost || '—', stavka: curEmp[key]?.stavka || '—', money: 0, hours: 0 };
         const changePct = p.money > 0 ? ((c.money - p.money) / p.money * 100) : (c.money > 0 ? 100 : 0);
         const sign = changePct > 0 ? '▲' : changePct < 0 ? '▼' : '—';
         const colorClass = changePct > 0 ? 'positive' : changePct < 0 ? 'negative' : '';
         return { html: `<tr>
             <td>${c.fio}</td>
-            <td>${c.otdel}</td>
+            <td>${c.podrazdelenie}</td>
+            <td>${c.dolzhnost}</td>
+            <td>${c.stavka ? parseInt(c.stavka).toLocaleString('ru-RU') : '—'}</td>
             <td>${formatMoney(c.money)}</td>
             <td>${formatMoney(p.money)}</td>
             <td class="${colorClass}">${changePct > 0 ? '+' : ''}${changePct.toFixed(1)}% ${sign}</td>
@@ -877,8 +889,8 @@ return;
 }
 console.log('Calling initFilters()');
 initFilters();
-console.log('Setting current month as default filter');
-setCurrentMonth(); // Устанавливаем текущий месяц по умолчанию
+console.log('Setting last month as default filter');
+setLastMonth(); // Устанавливаем предыдущий месяц по умолчанию
 console.log('Calling applyFilters()');
 applyFilters();
 console.log('Calling calculateLFL() for default month mode');
@@ -1173,19 +1185,13 @@ XLSX.writeFile(wb, fileName);
 }
 
 function updateDashboard(data) {
-const uniqueRecords = {};
-data.forEach(r => {
-const key = r.fio + '|' + r.data;
-if (!uniqueRecords[key]) { uniqueRecords[key] = { ...r, chasy: 0, itogo: 0 }; }
-uniqueRecords[key].chasy += parseFloat(r.chasy) || 0;
-uniqueRecords[key].itogo += parseFloat(r.itogo) || 0;
-});
-currentAggregatedData = Object.values(uniqueRecords); // Кэшируем данные
+// Сохраняем все записи без агрегации по ФИО - для отображения по должностям/подразделениям
+currentAggregatedData = data;
 
-const hours = currentAggregatedData.reduce((s, r) => s + r.chasy, 0);
-const money = currentAggregatedData.reduce((s, r) => s + r.itogo, 0);
-const employees = new Set(currentAggregatedData.map(r => r.fio)).size;
-const records = currentAggregatedData.length;
+const hours = data.reduce((s, r) => s + r.chasy, 0);
+const money = data.reduce((s, r) => s + r.itogo, 0);
+const employees = new Set(data.map(r => r.fio)).size;
+const records = data.length;
 
 animateValue(document.getElementById('employees'), 0, employees, 200, false);
 animateValue(document.getElementById('hours'), 0, hours, 200, false);
@@ -1326,14 +1332,25 @@ function setEmpGroup(mode) {
 }
 
 function renderEmpTable(data) {
+    // Группируем по уникальному ключу: ФИО + Должность + Подразделение + Отдел
     const empAgg = {};
     data.forEach(r => {
-        if (!empAgg[r.fio]) {
-            empAgg[r.fio] = {fio: r.fio, otdel: r.otdel, dolzhnost: r.dolzhnost, stavka: r.stavka, days: 0, hours: 0, money: 0};
+        const key = r.fio + '|' + r.dolzhnost + '|' + r.podrazdelenie + '|' + r.otdel;
+        if (!empAgg[key]) {
+            empAgg[key] = {
+                fio: r.fio, 
+                otdel: r.otdel, 
+                podrazdelenie: r.podrazdelenie,
+                dolzhnost: r.dolzhnost, 
+                stavka: r.stavka, 
+                days: 0, 
+                hours: 0, 
+                money: 0
+            };
         }
-        empAgg[r.fio].days++;
-        empAgg[r.fio].hours += r.chasy;
-        empAgg[r.fio].money += r.itogo;
+        empAgg[key].days++;
+        empAgg[key].hours += r.chasy;
+        empAgg[key].money += r.itogo;
     });
     const employees = Object.values(empAgg).sort((a, b) => b.money - a.money);
 
@@ -1341,7 +1358,7 @@ function renderEmpTable(data) {
 
     if (empGroupMode === 'none') {
         employees.forEach(r => {
-            html += '<tr><td>' + r.fio + '</td><td>' + r.otdel + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+            html += '<tr><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
         });
     } else if (empGroupMode === 'otdel') {
         const groups = {};
@@ -1364,7 +1381,7 @@ function renderEmpTable(data) {
             html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>📁 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
             if (isExpanded) {
                 g.employees.forEach(r => {
-                    html += '<tr class="group-row"><td>' + r.fio + '</td><td>' + r.otdel + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                    html += '<tr class="group-row"><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
                 });
             }
         });
@@ -1389,7 +1406,7 @@ function renderEmpTable(data) {
             html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>💼 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
             if (isExpanded) {
                 g.employees.forEach(r => {
-                    html += '<tr class="group-row"><td>' + r.fio + '</td><td>' + r.otdel + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                    html += '<tr class="group-row"><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
                 });
             }
         });
