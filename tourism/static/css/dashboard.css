@@ -474,13 +474,23 @@ body {
     box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
 }
 
+/* LFL Navigation Buttons Wrapper - centers nav over first card */
+.lfl-nav-wrapper {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
+
+.lfl-nav-wrapper .lfl-nav-buttons {
+    margin-left: calc((100% - 33.33%) / 2);
+}
+
 /* LFL Navigation Buttons */
 .lfl-nav-buttons {
     display: flex;
-    align-items: center; 
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: center;
     gap: 15px;
-    margin-bottom: 20px;
     padding: 12px;
     background: rgba(18, 20, 45, 0.6);
     border-radius: 12px;
@@ -531,20 +541,31 @@ body {
     border-top: 1px solid rgba(138, 43, 226, 0.3);
 }
 
+.lfl-custom-period-section {
+    display: flex; 
+    flex-direction: column;
+    align-items: center; 
+}
+
 .lfl-custom-period-section h4 {
-    color: #00ffff;
+    color: #00ffff; 
     font-size: 1em;
     margin-bottom: 12px;
     font-weight: 600;
+    text-align: center;
 }
 
-.lfl-months-row,
-.lfl-years-row {
+.lfl-years-row,
+.lfl-months-row {
     display: flex; 
     flex-wrap: wrap; 
     gap: 6px;
     justify-content: center;
     margin-top: 8px;
+}
+
+.lfl-years-row {
+    margin-bottom: 12px;
 }
 
 .lfl-month-btn,
@@ -1080,11 +1101,17 @@ body {
         width: 100%; 
     }
     
+    /* LFL Nav Wrapper - Mobile */
+    .lfl-nav-wrapper .lfl-nav-buttons {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
+    
     /* LFL Nav Buttons - Mobile */
     .lfl-nav-buttons {
         padding: 10px;
         gap: 10px;
-        justify-content: flex-start;
     }
     
     .lfl-nav-btn {
@@ -1108,6 +1135,10 @@ body {
     
     .lfl-custom-period-section h4 {
         font-size: 0.95em;
+        margin-bottom: 10px;
+    }
+    
+    .lfl-years-row {
         margin-bottom: 10px;
     }
     
