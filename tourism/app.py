@@ -697,11 +697,16 @@ def api_lfl():
             return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
         
         # Определяем периоды для сравнения
-        if mode == 'custom' and custom_from and custom_to and prev_from and prev_to:
-            # Пользовательский период для сравнения (оба периода заданы вручную)
+        # Приоритет: если переданы custom_from/custom_to/prev_from/prev_to - используем их для любого режима
+        if custom_from and custom_to and prev_from and prev_to:
+            # Используем явные периоды из параметров (для всех режимов)
             period_to = (custom_from, custom_to)
             period_prev = (prev_from, prev_to)
-            logger.info(f'LFL Custom period: {period_to} vs {period_prev}')
+            logger.info(f'LFL Explicit periods: {period_to} vs {period_prev}')
+        elif mode == 'custom':
+            # Пользовательский режим без явных периодов - ошибка
+            logger.warning('LFL Custom mode without explicit periods')
+            return jsonify({'error': 'Для режима custom должны быть указаны периоды'}), 400
         elif mode == 'week':
             # Неделя к неделе (последние 7 дней vs предыдущие 7 дней)
             today = datetime.now()

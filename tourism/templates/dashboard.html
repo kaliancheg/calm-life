@@ -258,10 +258,50 @@ function setLFLMode(mode) {
     } else {
         customSelector.style.display = 'none';
         navButtons.style.display = 'flex';
+        // Инициализируем инпуты для month/week режимов
+        initializeLFLPeriods(mode);
         calculateLFL();
     }
 }
 
+function initializeLFLPeriods(mode) {
+    const today = new Date();
+    
+    if (mode === 'month') {
+        // Текущий месяц
+        const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        // Предыдущий месяц
+        const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+        
+        document.getElementById('lflCurrentFrom').value = formatDateForInput(currentMonthStart);
+        document.getElementById('lflCurrentTo').value = formatDateForInput(currentMonthEnd);
+        document.getElementById('lflPrevFrom').value = formatDateForInput(prevMonthStart);
+        document.getElementById('lflPrevTo').value = formatDateForInput(prevMonthEnd);
+    } else if (mode === 'week') {
+        // Текущая неделя (понедельник)
+        const startDate = new Date(today);
+        const day = startDate.getDay();
+        const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+        startDate.setDate(diff);
+        
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 6);
+        
+        // Предыдущая неделя
+        const prevStart = new Date(startDate);
+        prevStart.setDate(prevStart.getDate() - 7);
+        const prevEnd = new Date(prevStart);
+        prevEnd.setDate(prevEnd.getDate() + 6);
+        
+        document.getElementById('lflCurrentFrom').value = formatDateForInput(startDate);
+        document.getElementById('lflCurrentTo').value = formatDateForInput(endDate);
+        document.getElementById('lflPrevFrom').value = formatDateForInput(prevStart);
+        document.getElementById('lflPrevTo').value = formatDateForInput(prevEnd);
+    }
+}
+    
 // Навигация по периодам (стрелки)
 function shiftLFLPeriod(direction) {
     if (lflMode === 'month') {
@@ -272,6 +312,7 @@ function shiftLFLPeriod(direction) {
 }
 
 function shiftMonthPeriod(direction) {
+    console.log('shiftMonthPeriod called with direction:', direction);
     const today = new Date();
     let currentYear, currentMonth;
     
@@ -280,13 +321,16 @@ function shiftMonthPeriod(direction) {
         const curDate = new Date(lflCurrentPeriod.from);
         currentYear = curDate.getFullYear();
         currentMonth = curDate.getMonth();
+        console.log('Using lflCurrentPeriod:', currentYear, currentMonth);
     } else {
         currentYear = today.getFullYear();
         currentMonth = today.getMonth();
+        console.log('Using today:', currentYear, currentMonth);
     }
     
     // Сдвигаем месяц
     currentMonth += direction;
+    console.log('New month:', currentYear, currentMonth);
     
     // Первый день нового месяца
     const newFrom = new Date(currentYear, currentMonth, 1);
@@ -298,31 +342,48 @@ function shiftMonthPeriod(direction) {
     const prevTo = new Date(currentYear, currentMonth, 0);
     
     // Устанавливаем даты
-    document.getElementById('lflCurrentFrom').value = formatDateForInput(newFrom);
-    document.getElementById('lflCurrentTo').value = formatDateForInput(newTo);
-    document.getElementById('lflPrevFrom').value = formatDateForInput(prevFrom);
-    document.getElementById('lflPrevTo').value = formatDateForInput(prevTo);
+    const currentFromInput = document.getElementById('lflCurrentFrom');
+    const currentToInput = document.getElementById('lflCurrentTo');
+    const prevFromInput = document.getElementById('lflPrevFrom');
+    const prevToInput = document.getElementById('lflPrevTo');
     
+    console.log('Setting inputs:', {
+        currentFrom: formatDateForInput(newFrom),
+        currentTo: formatDateForInput(newTo),
+        prevFrom: formatDateForInput(prevFrom),
+        prevTo: formatDateForInput(prevTo)
+    });
+    
+    if (currentFromInput) currentFromInput.value = formatDateForInput(newFrom);
+    if (currentToInput) currentToInput.value = formatDateForInput(newTo);
+    if (prevFromInput) prevFromInput.value = formatDateForInput(prevFrom);
+    if (prevToInput) prevToInput.value = formatDateForInput(prevTo);
+    
+    console.log('Calling calculateLFL from shiftMonthPeriod');
     calculateLFL();
 }
 
 function shiftWeekPeriod(direction) {
+    console.log('shiftWeekPeriod called with direction:', direction);
     const today = new Date();
     let startDate;
     
     // Определяем текущую начальную дату недели
     if (lflCurrentPeriod.from) {
         startDate = new Date(lflCurrentPeriod.from);
+        console.log('Using lflCurrentPeriod.from:', startDate);
     } else {
         // По умолчанию - текущая неделя (понедельник)
         startDate = new Date(today);
         const day = startDate.getDay();
         const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
         startDate.setDate(diff);
+        console.log('Using today, calculated Monday:', startDate);
     }
     
     // Сдвигаем на неделю
     startDate.setDate(startDate.getDate() + (direction * 7));
+    console.log('New startDate:', startDate);
     
     // Конец недели - воскресенье
     const endDate = new Date(startDate);
@@ -335,11 +396,24 @@ function shiftWeekPeriod(direction) {
     prevEnd.setDate(prevEnd.getDate() + 6);
     
     // Устанавливаем даты
-    document.getElementById('lflCurrentFrom').value = formatDateForInput(startDate);
-    document.getElementById('lflCurrentTo').value = formatDateForInput(endDate);
-    document.getElementById('lflPrevFrom').value = formatDateForInput(prevStart);
-    document.getElementById('lflPrevTo').value = formatDateForInput(prevEnd);
+    const currentFromInput = document.getElementById('lflCurrentFrom');
+    const currentToInput = document.getElementById('lflCurrentTo');
+    const prevFromInput = document.getElementById('lflPrevFrom');
+    const prevToInput = document.getElementById('lflPrevTo');
     
+    console.log('Setting inputs:', {
+        currentFrom: formatDateForInput(startDate),
+        currentTo: formatDateForInput(endDate),
+        prevFrom: formatDateForInput(prevStart),
+        prevTo: formatDateForInput(prevEnd)
+    });
+    
+    if (currentFromInput) currentFromInput.value = formatDateForInput(startDate);
+    if (currentToInput) currentToInput.value = formatDateForInput(endDate);
+    if (prevFromInput) prevFromInput.value = formatDateForInput(prevStart);
+    if (prevToInput) prevToInput.value = formatDateForInput(prevEnd);
+    
+    console.log('Calling calculateLFL from shiftWeekPeriod');
     calculateLFL();
 }
 
@@ -514,19 +588,18 @@ async function calculateLFL() {
             params += `&selected_otdel=`;
         }
         
-        if (lflMode === 'custom') {
-            const customFrom = document.getElementById('lflCurrentFrom').value;
-            const customTo = document.getElementById('lflCurrentTo').value;
-            const prevFrom = document.getElementById('lflPrevFrom').value;
-            const prevTo = document.getElementById('lflPrevTo').value;
-            
-            if (customFrom && customTo && prevFrom && prevTo) {
-                params += `&custom_from=${customFrom}&custom_to=${customTo}&prev_from=${prevFrom}&prev_to=${prevTo}`;
-            } else {
-                console.error('Missing custom dates:', { customFrom, customTo, prevFrom, prevTo });
-                setCustomPeriodDefaults();
-                return;
-            }
+        // Для всех режимов передаём явные периоды из инпутов
+        const customFrom = document.getElementById('lflCurrentFrom').value;
+        const customTo = document.getElementById('lflCurrentTo').value;
+        const prevFrom = document.getElementById('lflPrevFrom').value;
+        const prevTo = document.getElementById('lflPrevTo').value;
+        
+        if (customFrom && customTo && prevFrom && prevTo) {
+            params += `&custom_from=${customFrom}&custom_to=${customTo}&prev_from=${prevFrom}&prev_to=${prevTo}`;
+        } else if (lflMode === 'custom') {
+            console.error('Missing custom dates:', { customFrom, customTo, prevFrom, prevTo });
+            setCustomPeriodDefaults();
+            return;
         }
         
         console.log('Fetching LFL with params:', params);
@@ -791,6 +864,7 @@ setCurrentMonth(); // Устанавливаем текущий месяц по 
 console.log('Calling applyFilters()');
 applyFilters();
 console.log('Calling calculateLFL() for default month mode');
+initializeLFLPeriods('month'); // Инициализируем инпуты периодов
 calculateLFL(); // Пересчитываем LFL для режима по умолчанию "Месяц к месяцу"
 console.log('Calling initEmpGroup()');
 setEmpGroup(empGroupMode); // Устанавливаем группировку по умолчанию
