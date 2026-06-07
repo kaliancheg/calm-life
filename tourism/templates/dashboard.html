@@ -72,7 +72,7 @@
         </div>
     </div>
     
-    <!-- Navigation buttons for Month/Week modes -->
+    <!-- Navigation buttons for Month/Week modes - positioned over Current Period card -->
     <div class="lfl-nav-buttons" id="lflNavButtons">
         <button class="lfl-nav-btn" onclick="shiftLFLPeriod(-1)" title="Предыдущий период">◀</button>
         <span class="lfl-nav-label" id="lflNavLabel">Январь 2026</span>
@@ -92,6 +92,19 @@
                 <input type="date" id="lflPrevTo" onchange="calculateLFL()">
             </div>
         </div>
+        <!-- Quick month/year selectors for Custom mode -->
+        <div class="lfl-custom-quick-select">
+            <div class="lfl-custom-period-section">
+                <h4>Текущий период</h4>
+                <div class="lfl-months-row" id="lflCustomCurrentMonths"></div>
+                <div class="lfl-years-row" id="lflCustomCurrentYears"></div>
+            </div>
+            <div class="lfl-custom-period-section">
+                <h4>Сравниваемый период</h4>
+                <div class="lfl-months-row" id="lflCustomPrevMonths"></div>
+                <div class="lfl-years-row" id="lflCustomPrevYears"></div>
+            </div>
+        </div>
     </div>
     
     <div class="lfl-comparison">
@@ -103,11 +116,6 @@
                 <div class="lfl-sub-metric">👥 <span id="lfl-current-employees">0</span></div>
                 <div class="lfl-sub-metric">⏰ <span id="lfl-current-hours">0</span> ч</div>
             </div>
-            <!-- Quick month/year selectors for current period -->
-            <div class="lfl-quick-select" id="lflCurrentQuickSelect">
-                <div class="lfl-months-row" id="lflCurrentMonths"></div>
-                <div class="lfl-years-row" id="lflCurrentYears"></div>
-            </div>
         </div>
         <div class="lfl-card">
             <div class="lfl-label" id="lfl-previous-label">Предыдущий период</div>
@@ -116,11 +124,6 @@
             <div class="lfl-sub-metrics">
                 <div class="lfl-sub-metric">👥 <span id="lfl-previous-employees">0</span></div>
                 <div class="lfl-sub-metric">⏰ <span id="lfl-previous-hours">0</span> ч</div>
-            </div>
-            <!-- Quick month/year selectors for previous period -->
-            <div class="lfl-quick-select" id="lflPrevQuickSelect">
-                <div class="lfl-months-row" id="lflPrevMonths"></div>
-                <div class="lfl-years-row" id="lflPrevYears"></div>
             </div>
         </div>
         <div class="lfl-card lfl-change" onclick="openLFLDetails()" style="cursor: pointer;">
@@ -255,6 +258,8 @@ function setLFLMode(mode) {
         customSelector.style.display = 'block';
         navButtons.style.display = 'none';
         setCustomPeriodDefaults();
+        // Обновляем подсветку кнопок после установки периодов
+        setTimeout(() => updateQuickSelectorsHighlight(), 50);
     } else {
         customSelector.style.display = 'none';
         navButtons.style.display = 'flex';
@@ -417,43 +422,76 @@ function shiftWeekPeriod(direction) {
     calculateLFL();
 }
 
-// Быстрый выбор месяцев и годов
+// Быстрый выбор месяцев и годов для Custom mode
 function renderQuickSelectors() {
     const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
     const currentYear = new Date().getFullYear();
     const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
     
-    // Рендер для текущего периода
-    const curMonthsContainer = document.getElementById('lflCurrentMonths');
-    const curYearsContainer = document.getElementById('lflCurrentYears');
+    // Рендер для текущего периода (Custom mode)
+    const customCurrentMonthsContainer = document.getElementById('lflCustomCurrentMonths');
+    const customCurrentYearsContainer = document.getElementById('lflCustomCurrentYears');
     
-    if (curMonthsContainer) {
-        curMonthsContainer.innerHTML = monthNames.map((m, i) => 
-            `<button class="lfl-month-btn" data-month="${i}" onclick="selectLFLMonth('current', ${i})">${m}</button>`
+    if (customCurrentMonthsContainer) {
+        customCurrentMonthsContainer.innerHTML = monthNames.map((m, i) => 
+            `<button class="lfl-month-btn" data-period="current" data-month="${i}" onclick="selectLFLMonth('current', ${i})">${m}</button>`
         ).join('');
     }
     
-    if (curYearsContainer) {
-        curYearsContainer.innerHTML = years.map(y => 
-            `<button class="lfl-year-btn" data-year="${y}" onclick="selectLFLYear('current', ${y})">${y}</button>`
+    if (customCurrentYearsContainer) {
+        customCurrentYearsContainer.innerHTML = years.map(y => 
+            `<button class="lfl-year-btn" data-period="current" data-year="${y}" onclick="selectLFLYear('current', ${y})">${y}</button>`
         ).join('');
     }
     
-    // Рендер для предыдущего периода
-    const prevMonthsContainer = document.getElementById('lflPrevMonths');
-    const prevYearsContainer = document.getElementById('lflPrevYears');
+    // Рендер для предыдущего периода (Custom mode)
+    const customPrevMonthsContainer = document.getElementById('lflCustomPrevMonths');
+    const customPrevYearsContainer = document.getElementById('lflCustomPrevYears');
     
-    if (prevMonthsContainer) {
-        prevMonthsContainer.innerHTML = monthNames.map((m, i) => 
-            `<button class="lfl-month-btn" data-month="${i}" onclick="selectLFLMonth('prev', ${i})">${m}</button>`
+    if (customPrevMonthsContainer) {
+        customPrevMonthsContainer.innerHTML = monthNames.map((m, i) => 
+            `<button class="lfl-month-btn" data-period="prev" data-month="${i}" onclick="selectLFLMonth('prev', ${i})">${m}</button>`
         ).join('');
     }
     
-    if (prevYearsContainer) {
-        prevYearsContainer.innerHTML = years.map(y => 
-            `<button class="lfl-year-btn" data-year="${y}" onclick="selectLFLYear('prev', ${y})">${y}</button>`
+    if (customPrevYearsContainer) {
+        customPrevYearsContainer.innerHTML = years.map(y => 
+            `<button class="lfl-year-btn" data-period="prev" data-year="${y}" onclick="selectLFLYear('prev', ${y})">${y}</button>`
         ).join('');
     }
+    
+    // Обновляем подсветку кнопок после рендера
+    updateQuickSelectorsHighlight();
+}
+
+function updateQuickSelectorsHighlight() {
+    // Получаем текущие даты из инпутов
+    const currentFrom = document.getElementById('lflCurrentFrom').value;
+    const currentTo = document.getElementById('lflCurrentTo').value;
+    const prevFrom = document.getElementById('lflPrevFrom').value;
+    const prevTo = document.getElementById('lflPrevTo').value;
+    
+    if (!currentFrom || !currentTo || !prevFrom || !prevTo) return;
+    
+    const currentStartDate = new Date(currentFrom);
+    const currentEndDate = new Date(currentTo);
+    const prevStartDate = new Date(prevFrom);
+    const prevEndDate = new Date(prevTo);
+    
+    // Сбрасываем подсветку
+    document.querySelectorAll('.lfl-month-btn, .lfl-year-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Подсвечиваем текущий период
+    const currentMonth = currentStartDate.getMonth();
+    const currentYear = currentStartDate.getFullYear();
+    document.querySelectorAll(`.lfl-month-btn[data-period="current"][data-month="${currentMonth}"]`).forEach(btn => btn.classList.add('active'));
+    document.querySelectorAll(`.lfl-year-btn[data-period="current"][data-year="${currentYear}"]`).forEach(btn => btn.classList.add('active'));
+    
+    // Подсвечиваем предыдущий период
+    const prevMonth = prevStartDate.getMonth();
+    const prevYear = prevStartDate.getFullYear();
+    document.querySelectorAll(`.lfl-month-btn[data-period="prev"][data-month="${prevMonth}"]`).forEach(btn => btn.classList.add('active'));
+    document.querySelectorAll(`.lfl-year-btn[data-period="prev"][data-year="${prevYear}"]`).forEach(btn => btn.classList.add('active'));
 }
 
 function selectLFLMonth(periodType, monthIndex) {
@@ -493,6 +531,8 @@ function selectLFLMonth(periodType, monthIndex) {
         document.getElementById('lflCurrentTo').value = formatDateForInput(nextTo);
     }
     
+    // Обновляем подсветку
+    updateQuickSelectorsHighlight();
     calculateLFL();
 }
 
@@ -533,6 +573,8 @@ function selectLFLYear(periodType, year) {
         document.getElementById('lflCurrentTo').value = formatDateForInput(nextTo);
     }
     
+    // Обновляем подсветку
+    updateQuickSelectorsHighlight();
     calculateLFL();
 }
 
@@ -569,6 +611,9 @@ function setCustomPeriodDefaults() {
     document.getElementById('lflCurrentTo').value = formatDateForInput(currentMonthEnd);
     document.getElementById('lflPrevFrom').value = formatDateForInput(prevMonthStart);
     document.getElementById('lflPrevTo').value = formatDateForInput(prevMonthEnd);
+    
+    // Обновляем подсветку кнопок
+    updateQuickSelectorsHighlight();
 }
 
 async function calculateLFL() {
@@ -869,7 +914,7 @@ calculateLFL(); // Пересчитываем LFL для режима по ум�
 console.log('Calling initEmpGroup()');
 setEmpGroup(empGroupMode); // Устанавливаем группировку по умолчанию
 console.log('Calling renderQuickSelectors()');
-renderQuickSelectors(); // Рендерим кнопки быстрого выбора месяцев/годов
+renderQuickSelectors(); // Рендерим кнопки быстрого выбора месяцев/годов для custom mode
 console.log('Hiding loading, showing dashboard');
 document.getElementById('loading').style.display = 'none';
 document.getElementById('dashboard').style.display = 'block';
