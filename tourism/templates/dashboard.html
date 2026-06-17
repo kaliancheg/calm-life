@@ -163,6 +163,12 @@
                             <th>Ставка</th>
                             <th>Статус</th>
                         </tr>
+                        <tr class="emp-detail-totals">
+                            <th colspan="2" id="empDetailSmen">Смен: 0</th>
+                            <th id="empDetailHours">Итого (ч.): 0</th>
+                            <th id="empDetailMoney">Итого начислено (руб.): 0 ₽</th>
+                            <th></th>
+                        </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -898,7 +904,11 @@ function openEmpDetailModal(fio, podrazdelenie, dolzhnost, otdel) {
     document.getElementById('empDetailHeader').innerHTML = headerText;
     
     // Строим таблицу по дням
+    let totalHours = 0;
+    let totalMoney = 0;
     const tbody = empData.map(r => {
+        totalHours += parseFloat(r.chasy) || 0;
+        totalMoney += parseFloat(r.itogo) || 0;
         const st = r.status_field || '';
         const statusText = st === 'Уволен' ? 'Уволен' : (st === 'Активен' ? 'Активен' : st || '—');
         const statusClass = statusText === 'Активен' ? 'status-active' : (statusText === 'Уволен' ? 'status-departed' : '');
@@ -912,6 +922,12 @@ function openEmpDetailModal(fio, podrazdelenie, dolzhnost, otdel) {
     }).join('');
     
     document.querySelector('#empDetailTable tbody').innerHTML = tbody || '<tr><td colspan="5" style="text-align:center;color:#b8b8ff;">Нет данных</td></tr>';
+    
+    // Итоги
+    const smen = empData.length;
+    document.getElementById('empDetailSmen').textContent = `Смен: ${smen}`;
+    document.getElementById('empDetailHours').textContent = `Итого (ч.): ${Math.round(totalHours)}`;
+    document.getElementById('empDetailMoney').textContent = `Итого начислено (руб.): ${formatMoney(totalMoney)}`;
     
     document.getElementById('empDetailModal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
