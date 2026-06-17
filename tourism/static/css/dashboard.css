@@ -975,10 +975,31 @@ body {
 
 .group-row { 
     background: rgba(138,43,226,0.08); 
+    cursor: pointer;
 }
 
 .group-row:hover td { 
     background: rgba(138,43,226,0.15); 
+}
+
+/* Employee row clickable style */
+.emp-row { 
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.emp-row:hover td { 
+    background: rgba(0,255,255,0.1); 
+}
+
+/* Non-grouped employee rows */
+table tbody tr:not(.group-header):not(.group-row) {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+table tbody tr:not(.group-header):not(.group-row):hover td {
+    background: rgba(0,255,255,0.1);
 }
 
 .group-toggle { 

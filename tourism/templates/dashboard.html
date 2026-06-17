@@ -144,6 +144,32 @@
     </div>
 </div>
 
+<!-- Employee Detail Modal -->
+<div class="modal-overlay" id="empDetailModal" style="display:none;">
+    <div class="modal-content lfl-modal-content">
+        <div class="modal-header">
+            <h3>👤 Детализация по дням</h3>
+            <button class="lfl-close-btn" onclick="closeEmpDetailModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="empDetailBody">
+            <div id="empDetailHeader" style="color:#b8b8ff;margin-bottom:15px;font-size:1.1em;"></div>
+            <div class="lfl-modal-table-wrap">
+                <table class="lfl-modal-table" id="empDetailTable">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Часы</th>
+                            <th>Начислено (руб.)</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- LFL Details Modal -->
 <div class="modal-overlay" id="lflModal" style="display:none;">
     <div class="modal-content lfl-modal-content">
@@ -856,15 +882,58 @@ function renderLFLDetails() {
     document.querySelector('#lflModalEmpTable tbody').innerHTML = empRows;
 }
 
+// ==================== EMPLOYEE DETAIL MODAL ====================
+function openEmpDetailModal(fio, podrazdelenie, dolzhnost, otdel) {
+    // Фильтруем данные по выбранному сотруднику (с учётом должности и отдела для уникальности)
+    const empData = currentAggregatedData.filter(r => 
+        r.fio === fio && 
+        r.dolzhnost === dolzhnost && 
+        r.otdel === otdel
+    ).sort((a, b) => a.data.localeCompare(b.data));
+    
+    // Заголовок модалки
+    const headerText = `${fio}` + 
+        (dolzhnost ? `<br><span style="font-size:0.9em;color:#b8b8ff;">${dolzhnost} | ${podrazdelenie} | ${otdel}</span>` : '');
+    document.getElementById('empDetailHeader').innerHTML = headerText;
+    
+    // Строим таблицу по дням
+    const tbody = empData.map(r => {
+        const status = r.status_field || r.sp_nsp || '—';
+        return `<tr>
+            <td>${formatDate(r.data)}</td>
+            <td>${r.chasy}</td>
+            <td>${formatMoney(r.itogo)}</td>
+            <td>${status}</td>
+        </tr>`;
+    }).join('');
+    
+    document.querySelector('#empDetailTable tbody').innerHTML = tbody || '<tr><td colspan="4" style="text-align:center;color:#b8b8ff;">Нет данных</td></tr>';
+    
+    document.getElementById('empDetailModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeEmpDetailModal() {
+    document.getElementById('empDetailModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
 // Close modal on Escape or click outside
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeLFLDetails();
+    if (e.key === 'Escape') {
+        closeLFLDetails();
+        closeEmpDetailModal();
+    }
 });
 
 document.addEventListener('click', function(e) {
-    const modal = document.getElementById('lflModal');
-    if (modal && modal.style.display === 'flex' && e.target === modal) {
+    const lflModal = document.getElementById('lflModal');
+    const empModal = document.getElementById('empDetailModal');
+    if (lflModal && lflModal.style.display === 'flex' && e.target === lflModal) {
         closeLFLDetails();
+    }
+    if (empModal && empModal.style.display === 'flex' && e.target === empModal) {
+        closeEmpDetailModal();
     }
 });
 
@@ -1365,7 +1434,8 @@ function renderEmpTable(data) {
 
     if (empGroupMode === 'none') {
         employees.forEach(r => {
-            html += '<tr><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+            const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}', '${r.dolzhnost.replace(/'/g, "\\'")}', '${r.otdel.replace(/'/g, "\\'")}')" `;
+            html += '<tr class="emp-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
         });
     } else if (empGroupMode === 'otdel') {
         const groups = {};
@@ -1388,7 +1458,8 @@ function renderEmpTable(data) {
             html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>📁 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
             if (isExpanded) {
                 g.employees.forEach(r => {
-                    html += '<tr class="group-row"><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                    const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}', '${r.dolzhnost.replace(/'/g, "\\'")}', '${r.otdel.replace(/'/g, "\\'")}')" `;
+                    html += '<tr class="group-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
                 });
             }
         });
@@ -1413,7 +1484,8 @@ function renderEmpTable(data) {
             html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>💼 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
             if (isExpanded) {
                 g.employees.forEach(r => {
-                    html += '<tr class="group-row"><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                    const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}', '${r.dolzhnost.replace(/'/g, "\\'")}', '${r.otdel.replace(/'/g, "\\'")}')" `;
+                    html += '<tr class="group-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
                 });
             }
         });
