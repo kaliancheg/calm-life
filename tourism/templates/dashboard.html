@@ -160,6 +160,7 @@
                             <th>Дата</th>
                             <th>Часы</th>
                             <th>Начислено (руб.)</th>
+                            <th>Ставка</th>
                             <th>Статус</th>
                         </tr>
                     </thead>
@@ -898,16 +899,19 @@ function openEmpDetailModal(fio, podrazdelenie, dolzhnost, otdel) {
     
     // Строим таблицу по дням
     const tbody = empData.map(r => {
-        const status = r.status_field || r.sp_nsp || '—';
+        const st = r.status_field || '';
+        const statusText = st === 'Уволен' ? 'Уволен' : (st === 'Активен' ? 'Активен' : st || '—');
+        const statusClass = statusText === 'Активен' ? 'status-active' : (statusText === 'Уволен' ? 'status-departed' : '');
         return `<tr>
             <td>${formatDate(r.data)}</td>
             <td>${r.chasy}</td>
             <td>${formatMoney(r.itogo)}</td>
-            <td>${status}</td>
+            <td>${r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—'}</td>
+            <td class="${statusClass}">${statusText}</td>
         </tr>`;
     }).join('');
     
-    document.querySelector('#empDetailTable tbody').innerHTML = tbody || '<tr><td colspan="4" style="text-align:center;color:#b8b8ff;">Нет данных</td></tr>';
+    document.querySelector('#empDetailTable tbody').innerHTML = tbody || '<tr><td colspan="5" style="text-align:center;color:#b8b8ff;">Нет данных</td></tr>';
     
     document.getElementById('empDetailModal').style.display = 'flex';
     document.body.style.overflow = 'hidden';

@@ -582,11 +582,11 @@ def api_data():
         # Формируем запрос с фильтрацией
         if is_admin and allowed_subdivisions is None and allowed_otdels is None:
             # Админ без ограничений - видит всё
-            query = 'SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, data, chasy, nachisleno, itogo FROM records ORDER BY data DESC'
+            query = 'SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, status_field, data, chasy, nachisleno, itogo FROM records ORDER BY data DESC'
             df = pd.read_sql(query, conn)
         elif allowed_subdivisions is None and allowed_otdels is None:
             # Не админ без ограничений - тоже видит всё (для совместимости)
-            query = 'SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, data, chasy, nachisleno, itogo FROM records ORDER BY data DESC'
+            query = 'SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, status_field, data, chasy, nachisleno, itogo FROM records ORDER BY data DESC'
             df = pd.read_sql(query, conn)
         else:
             # Есть ограничения - фильтруем
@@ -600,7 +600,7 @@ def api_data():
                     sub_placeholders = ','.join(['%s'] * len(allowed_subdivisions))
                     otdel_placeholders = ','.join(['%s'] * len(allowed_otdels))
                     query = f'''
-                        SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, data, chasy, nachisleno, itogo 
+                        SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, status_field, data, chasy, nachisleno, itogo 
                         FROM records 
                         WHERE podrazdelenie IN ({sub_placeholders}) 
                         AND otdel IN ({otdel_placeholders})
@@ -613,7 +613,7 @@ def api_data():
                     # Только подразделения
                     placeholders = ','.join(['%s'] * len(allowed_subdivisions))
                     query = f'''
-                        SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, data, chasy, nachisleno, itogo 
+                        SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, status_field, data, chasy, nachisleno, itogo 
                         FROM records 
                         WHERE podrazdelenie IN ({placeholders})
                         ORDER BY data DESC
@@ -623,7 +623,7 @@ def api_data():
                     # Только отделы
                     placeholders = ','.join(['%s'] * len(allowed_otdels))
                     query = f'''
-                        SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, data, chasy, nachisleno, itogo 
+                        SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, status_field, data, chasy, nachisleno, itogo 
                         FROM records 
                         WHERE otdel IN ({placeholders})
                         ORDER BY data DESC
@@ -631,21 +631,21 @@ def api_data():
                     df = pd.read_sql(query, conn, params=allowed_otdels)
                 else:
                     # Нет ограничений
-                    query = 'SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, data, chasy, nachisleno, itogo FROM records ORDER BY data DESC'
+                    query = 'SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, status_field, data, chasy, nachisleno, itogo FROM records ORDER BY data DESC'
                     df = pd.read_sql(query, conn)
             elif allowed_subdivisions is not None and len(allowed_subdivisions) > 0:
                 # Только подразделения
                 placeholders = ','.join(['%s'] * len(allowed_subdivisions))
-                query = f'SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, data, chasy, nachisleno, itogo FROM records WHERE podrazdelenie IN ({placeholders}) ORDER BY data DESC'
+                query = f'SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, status_field, data, chasy, nachisleno, itogo FROM records WHERE podrazdelenie IN ({placeholders}) ORDER BY data DESC'
                 df = pd.read_sql(query, conn, params=allowed_subdivisions)
             elif allowed_otdels is not None and len(allowed_otdels) > 0:
                 # Только отделы
                 placeholders = ','.join(['%s'] * len(allowed_otdels))
-                query = f'SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, data, chasy, nachisleno, itogo FROM records WHERE otdel IN ({placeholders}) ORDER BY data DESC'
+                query = f'SELECT fio, snils, sp_nsp, rukovoditel, podrazdelenie, otdel, dolzhnost, stavka, status_field, data, chasy, nachisleno, itogo FROM records WHERE otdel IN ({placeholders}) ORDER BY data DESC'
                 df = pd.read_sql(query, conn, params=allowed_otdels)
             else:
                 # Нет разрешённых ресурсов
-                df = pd.DataFrame(columns=['fio', 'snils', 'sp_nsp', 'rukovoditel', 'podrazdelenie', 'otdel', 'dolzhnost', 'stavka', 'data', 'chasy', 'nachisleno', 'itogo'])
+                df = pd.DataFrame(columns=['fio', 'snils', 'sp_nsp', 'rukovoditel', 'podrazdelenie', 'otdel', 'dolzhnost', 'stavka', 'status_field', 'data', 'chasy', 'nachisleno', 'itogo'])
        
         df['data'] = pd.to_datetime(df['data']).dt.strftime('%Y-%m-%d')
         logger.info(f'API: Returning {len(df)} records for user {current_user.username}')
