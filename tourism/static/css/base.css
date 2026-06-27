@@ -228,3 +228,16 @@ html {
     background: #00ffff;
     border-color: #0b0e1a;
 }
+
+/* =========================================
+   Скрыть кастомный скролл-бар в модальных окнах
+   ========================================= */
+.lfl-modal-content {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE, Edge */
+}
+.lfl-modal-content::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none; /* Chrome, Safari */
+}
