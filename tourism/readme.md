@@ -1,5 +1,37 @@
 # 🌊 Tourism Dashboard - System Guide
 
+## ⚠️ Инструкции для AI-агента
+
+**ЭТОТ РАЗДЕЛ СОДЕРЖИТ СТРОГИЕ ИНСТРУКЦИИ. ОБЯЗАТЕЛЬНО К СОБЛЮДЕНИЮ.**
+
+### 🔄 Рабочий процесс
+1. **Все правки делаются локально** — агент изменяет файлы в рабочей директории `calm-life/tourism/`
+2. **Проверка пользователем** — после внесения изменений пользователь проверяет их локально
+3. **Git push пользователем** — только пользователь делает `git push` в репозиторий после проверки
+4. **Деплой на сервер** — пользователь скачивает обновления с репозитория на свой сервер
+
+**НЕ ДЕЛАЙ `git push` БЕЗ ЯВНОГО ЗАПРОСА ПОЛЬЗОВАТЕЛЯ!**
+
+### 📝 Git Commit
+- **ВСЕ** комментарии к `git commit` писать **СТРОГО НА РУССКОМ ЯЗЫКЕ**
+- Кратко описывать суть изменений
+- Пример: `git commit -m "Добавлена детализация по дням для сотрудников"`
+
+### 🎯 Контекст проекта
+- **Технологии:** Flask (Python) + MySQL + Pandas + JavaScript (frontend)
+- **База данных:** MySQL, таблица `records` содержит данные по сотрудникам
+- **Поля в records:** fio, snils, sp_nsp, podrazdelenie, otdel, dolzhnost, rukovoditel, status_field, data, chasy, stavka_oklad, stavka, nachisleno, itogo
+- **Подразделения (podrazdelenie):** "Арт_Лайф" или "Волна" (Sea Village)
+- **Статус (status_field):** "Активен" или "Уволен"
+- **Роли:** admin, manager, user — с системой прав на просмотр подразделений и отделов
+- **Ключевые фичи:** LFL-анализ (сравнение периодов), группировка сотрудников, модалки с детализацией, экспорт в Excel
+- **API эндпоинты:** `/api/data`, `/api/lfl`, `/api/fot/summary`, `/api/fot/breakdown`
+- **Шаблоны:** `templates/dashboard.html`, `templates/admin.html`
+- **CSS:** `static/css/dashboard.css`, `static/css/base.css`
+- **Основная логика frontend:** встроена в `templates/dashboard.html` (inline JS)
+
+---
+
 ## 📋 О проекте
 
 **Название:** Tourism Dashboard (Волна Sea Village / Art-Life / ФОТ)  
