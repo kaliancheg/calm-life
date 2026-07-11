@@ -1442,6 +1442,10 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 /* Двухуровневая структура */
+.headcount-group-wrapper {
+    margin-bottom: 4px;
+}
+
 .headcount-item-parent {
     background: rgba(255, 107, 107, 0.15);
     border-left: 4px solid #ff6b6b;
@@ -1452,11 +1456,15 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     background: rgba(255, 107, 107, 0.25);
 }
 
+.headcount-children {
+    padding-left: 24px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
 .headcount-item-child {
     background: rgba(255, 107, 107, 0.08);
     border-left: 2px solid rgba(255, 107, 107, 0.5);
-    margin-left: 20px;
-    margin-top: 4px;
     margin-bottom: 4px;
 }
 
@@ -1530,6 +1538,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     border: 1px solid rgba(255, 107, 107, 0.1);
     border-radius: 6px;
     margin-top: 4px;
+    margin-left: 0;
 }
 
 .headcount-item-info {

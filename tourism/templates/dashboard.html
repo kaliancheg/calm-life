@@ -1733,20 +1733,22 @@ async function loadHeadcountViolations() {
                 }
                 
                 return `
-                <div class="headcount-item headcount-item-parent" onclick="toggleHeadcountRow(this, event)">
-                    <div class="headcount-item-info">
-                        <span class="headcount-item-toggle">▶</span>
-                        <span class="headcount-item-role"><strong>${group.podrazdelenie} / ${group.otdel}</strong></span>
-                    </div>
-                    <div class="headcount-item-excess">
-                        <span class="headcount-item-limit-badge">Всего нарушений</span>
-                        <div class="headcount-item-badges">
-                            <span class="headcount-badge headcount-badge-fact">${group.children ? group.children.length : 0} должн.</span>
-                            <span class="headcount-badge headcount-badge-excess">⚠ +${groupTotalExcess}</span>
+                <div class="headcount-group-wrapper">
+                    <div class="headcount-item headcount-item-parent" onclick="toggleHeadcountRow(this, event)">
+                        <div class="headcount-item-info">
+                            <span class="headcount-item-toggle">▶</span>
+                            <span class="headcount-item-role"><strong>${group.podrazdelenie} / ${group.otdel}</strong></span>
                         </div>
-                        <span class="headcount-item-dates" title="Всего дней с нарушениями">📅 ${groupDateCount} дн.</span>
+                        <div class="headcount-item-excess">
+                            <span class="headcount-item-limit-badge">Всего нарушений</span>
+                            <div class="headcount-item-badges">
+                                <span class="headcount-badge headcount-badge-fact">${group.children ? group.children.length : 0} должн.</span>
+                                <span class="headcount-badge headcount-badge-excess">⚠ +${groupTotalExcess}</span>
+                            </div>
+                            <span class="headcount-item-dates" title="Всего дней с нарушениями">📅 ${groupDateCount} дн.</span>
+                        </div>
                     </div>
-                    <div class="headcount-item-details">
+                    <div class="headcount-children" style="display:none;">
                         ${childrenHtml}
                     </div>
                 </div>
@@ -1811,9 +1813,24 @@ async function loadHeadcountViolations() {
 
 function toggleHeadcountRow(element, event) {
     if (event) event.stopPropagation();
+    
+    // Для родительских элементов (отдел) — ищем .headcount-children
+    const wrapper = element.closest('.headcount-group-wrapper');
+    if (wrapper) {
+        const children = wrapper.querySelector('.headcount-children');
+        element.classList.toggle('expanded');
+        if (children) {
+            children.style.display = children.style.display === 'none' ? 'block' : 'none';
+        }
+        return;
+    }
+    
+    // Для обычных элементов — ищем .headcount-item-details
     const details = element.querySelector('.headcount-item-details');
     element.classList.toggle('expanded');
-    details.classList.toggle('show');
+    if (details) {
+        details.classList.toggle('show');
+    }
 }
 
 loadData();
