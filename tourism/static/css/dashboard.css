@@ -1488,8 +1488,21 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 .headcount-item-limit {
-    color: #888;
-    font-size: 0.85em;
+    color: #e8e8ff;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.headcount-item-limit-badge {
+    padding: 4px 10px;
+    background: rgba(0, 255, 255, 0.15);
+    border: 1px solid rgba(0, 255, 255, 0.4);
+    border-radius: 6px;
+    color: #00ffff;
+    font-weight: 700;
+    font-size: 0.9em;
+    font-family: 'Orbitron', sans-serif;
+    white-space: nowrap;
 }
 
 .headcount-item-badges {

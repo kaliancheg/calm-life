@@ -244,6 +244,27 @@
         </table>
     </div>
 </div>
+
+<!-- Headcount Violations Block -->
+<div class="headcount-block" id="headcountBlock" style="display:none;">
+    <div class="section-header">
+        <h2>⚠️ Нарушения штатного расписания</h2>
+        <p class="section-subtitle">Превышение утверждённого лимита сотрудников по должности за выбранный период</p>
+    </div>
+    <div id="headcountSummary" class="headcount-summary">
+        <div class="headcount-stat">
+            <span class="headcount-stat-value" id="headcountViolDays">0</span>
+            <span class="headcount-stat-label">кол-во нарушений</span>
+        </div>
+        <div class="headcount-stat">
+            <span class="headcount-stat-value" id="headcountTotalExcess">0</span>
+            <span class="headcount-stat-label">сверх лимита</span>
+        </div>
+    </div>
+    <div class="headcount-list" id="headcountList"></div>
+</div>
+
+<!-- Employee Summary Block -->
 <div class="aggregated">
     <h3>📋 Сводка по сотрудникам</h3>
     <div class="group-controls">
@@ -267,19 +288,14 @@
         <tbody id="empTable"></tbody>
     </table>
 </div>
+
 <div class="charts">
-<div class="chart-card"><h3>📈 Начисления по дням (последние 7 дней)</h3><div id="chart1"></div></div>
-<div class="chart-card"><h3>🏆 Топ-10 сотрудников (по затратам ФОТ)</h3><div id="chart2"></div></div>
-<div class="chart-card"><h3>💵 Начисления по отделам</h3><div id="chart3"></div></div>
-<div class="chart-card"><h3>📊 Начисления по отделам (круговая)</h3><div id="chart4"></div></div>
-</div>
-<div class="footer">
-    © Created by Kalian Roman 2026 | Supported by <a href="https://fitofarm.ru" target="_blank">FitoFarm 🌿</a>
-</div>
-</div>
 </div>
 
 <!-- SheetJS library for Excel export -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+<script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
 <script>
@@ -1646,15 +1662,19 @@ async function loadHeadcountViolations() {
         
         block.style.display = 'block';
         
+        // Update summary counters
+        document.getElementById('headcountViolDays').textContent = data.total_violations || 0;
+        document.getElementById('headcountTotalExcess').textContent = `+${data.total_excess || 0}`;
+        
         // Render grouped list with accordion
         list.innerHTML = currentHeadcountViolations.map((v, index) => `
             <div class="headcount-item" onclick="toggleHeadcountRow(this)">
                 <div class="headcount-item-info">
                     <span class="headcount-item-toggle">▶</span>
-                    <span class="headcount-item-role"><strong>${v.podrazdelenie}</strong> / ${v.dolzhnost}</span>
+                    <span class="headcount-item-role"><strong>${v.podrazdelenie}</strong> / ${v.otdel || '—'} / ${v.dolzhnost}</span>
                 </div>
                 <div class="headcount-item-excess">
-                    <span class="headcount-item-limit">лимит: ${v.limit}</span>
+                    <span class="headcount-item-limit-badge">Лимит: ${v.limit}</span>
                     <div class="headcount-item-badges">
                         <span class="headcount-badge headcount-badge-fact">${v.max_fact}</span>
                         <span class="headcount-badge headcount-badge-excess">⚠ +${v.excess}</span>

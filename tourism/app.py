@@ -1808,11 +1808,11 @@ def api_headcount_violations():
         where_clause = 'WHERE ' + ' AND '.join(conditions)
         
         fact_q = f"""
-            SELECT podrazdelenie, dolzhnost, DATE(data) AS fact_date,
+            SELECT podrazdelenie, otdel, dolzhnost, DATE(data) AS fact_date,
                    COUNT(DISTINCT fio) AS fact_count
             FROM records
             {where_clause}
-            GROUP BY podrazdelenie, dolzhnost, DATE(data)
+            GROUP BY podrazdelenie, otdel, dolzhnost, DATE(data)
         """
         
         df_fact = pd.read_sql(fact_q, conn, params=params)
@@ -1822,13 +1822,14 @@ def api_headcount_violations():
             conn.close()
             return jsonify({'violations': [], 'total_violations': 0, 'total_excess': 0})
         
-        # 2. Группируем нарушения по подразделению + должность
+        # 2. Группируем нарушения по подразделению + отдел + должность
         violations_map = {}
         total_excess = 0
         
         for _, row in df_fact.iterrows():
             pod_val = row['podrazdelenie']
             dolzhnost = row['dolzhnost']
+            otdel_val = row.get('otdel', '') or '—'
             fact_date = row['fact_date']
             fact_count = row['fact_count']
             
@@ -1850,10 +1851,11 @@ def api_headcount_violations():
                 excess = fact_count - limit_count
                 total_excess += excess
                 
-                key = (pod_val, dolzhnost)
+                key = (pod_val, otdel_val, dolzhnost)
                 if key not in violations_map:
                     violations_map[key] = {
                         'podrazdelenie': pod_val,
+                        'otdel': otdel_val,
                         'dolzhnost': dolzhnost,
                         'limit': limit_count,
                         'max_fact': fact_count,
@@ -1871,6 +1873,7 @@ def api_headcount_violations():
         for key, v in violations_map.items():
             violations.append({
                 'podrazdelenie': v['podrazdelenie'],
+                'otdel': v['otdel'],
                 'dolzhnost': v['dolzhnost'],
                 'limit': v['limit'],
                 'max_fact': v['max_fact'],
