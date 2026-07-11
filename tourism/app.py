@@ -1853,6 +1853,14 @@ def api_headcount_violations():
                 excess = fact_count - limit_count
                 total_excess += excess
                 
+                # Формируем ключ группировки
+                if group_by == 'otdel':
+                    key = (pod_val, otdel_val)
+                elif group_by == 'none':
+                    key = (pod_val, otdel_val, dolzhnost)
+                else:  # dolzhnost
+                    key = (pod_val, dolzhnost)
+                
                 # Сохраняем все данные для каждого дня
                 if key not in violations_map:
                     violations_map[key] = {
