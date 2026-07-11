@@ -318,9 +318,10 @@ select.form-control:focus {
 /* =========================================
    Единая кнопка закрытия модалок
    ========================================= */
-.modal-close-btn {
+.modal .modal-close-btn {
     width: 32px;
     height: 32px;
+    min-width: 32px;
     border: 2px solid rgba(0, 255, 255, 0.4);
     border-radius: 8px;
     background: rgba(18, 20, 45, 0.8);
@@ -336,7 +337,7 @@ select.form-control:focus {
     vertical-align: middle;
 }
 
-.modal-close-btn:hover {
+.modal .modal-close-btn:hover {
     background: rgba(0, 255, 255, 0.25);
     border-color: #00ffff;
     color: #00ffff;
