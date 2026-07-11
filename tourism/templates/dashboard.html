@@ -1695,7 +1695,7 @@ async function loadHeadcountViolations() {
                 let childrenHtml = '';
                 if (isGroupExpanded) {
                     childrenHtml = group.children.map((child, childIndex) => `
-                        <div class="headcount-item headcount-item-child" onclick="toggleHeadcountRow(this)">
+                        <div class="headcount-item headcount-item-child" onclick="toggleHeadcountRow(this, event)">
                             <div class="headcount-item-info">
                                 <span class="headcount-item-toggle">▶</span>
                                 <span class="headcount-item-role"><strong>${child.dolzhnost}</strong></span>
@@ -1733,7 +1733,7 @@ async function loadHeadcountViolations() {
                 }
                 
                 return `
-                <div class="headcount-item headcount-item-parent" onclick="toggleHeadcountRow(this)">
+                <div class="headcount-item headcount-item-parent" onclick="toggleHeadcountRow(this, event)">
                     <div class="headcount-item-info">
                         <span class="headcount-item-toggle">▶</span>
                         <span class="headcount-item-role"><strong>${group.podrazdelenie} / ${group.otdel}</strong></span>
@@ -1765,7 +1765,7 @@ async function loadHeadcountViolations() {
                 }
                 
                 return `
-                <div class="headcount-item" onclick="toggleHeadcountRow(this)">
+                <div class="headcount-item" onclick="toggleHeadcountRow(this, event)">
                     <div class="headcount-item-info">
                         <span class="headcount-item-toggle">▶</span>
                         <span class="headcount-item-role"><strong>${displayName}</strong></span>
@@ -1809,7 +1809,8 @@ async function loadHeadcountViolations() {
     }
 }
 
-function toggleHeadcountRow(element) {
+function toggleHeadcountRow(element, event) {
+    if (event) event.stopPropagation();
     const details = element.querySelector('.headcount-item-details');
     element.classList.toggle('expanded');
     details.classList.toggle('show');
