@@ -1782,6 +1782,7 @@ def api_headcount_violations():
     
     date_from = request.args.get('from')
     date_to = request.args.get('to')
+    group_by = request.args.get('group_by', 'dolzhnost')  # 'none', 'otdel', 'dolzhnost'
     pod = request.args.get('pod')
     otdels = request.args.getlist('otdel')
     otdels = [o for o in otdels if o]

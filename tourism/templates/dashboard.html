@@ -61,25 +61,6 @@
     </div>
 </div>
 
-<!-- Headcount Violations Block -->
-<div class="headcount-block" id="headcountBlock" style="display:none;">
-    <div class="section-header">
-        <h2>⚠️ Нарушения штатного расписания</h2>
-        <p class="section-subtitle">Превышение утверждённого лимита сотрудников по должности за выбранный период</p>
-    </div>
-    <div id="headcountSummary" class="headcount-summary">
-        <div class="headcount-stat">
-            <span class="headcount-stat-value" id="headcountViolDays">0</span>
-            <span class="headcount-stat-label">кол-во нарушений</span>
-        </div>
-        <div class="headcount-stat">
-            <span class="headcount-stat-value" id="headcountTotalExcess">0</span>
-            <span class="headcount-stat-label">сверх лимита</span>
-        </div>
-    </div>
-    <div class="headcount-list" id="headcountList"></div>
-</div>
-
 <!-- LFL Analysis Block -->
 <div class="lfl-block">
     <div class="lfl-header">
@@ -260,6 +241,12 @@
             <span class="headcount-stat-value" id="headcountTotalExcess">0</span>
             <span class="headcount-stat-label">сверх лимита</span>
         </div>
+    </div>
+    <div class="headcount-group-controls">
+        <span>Группировка:</span>
+        <button class="filter-btn active" id="hcGrpDolzhnost" onclick="setHcGroup('dolzhnost')">По должности</button>
+        <button class="filter-btn" id="hcGrpOtdel" onclick="setHcGroup('otdel')">По отделу</button>
+        <button class="filter-btn" id="hcGrpNone" onclick="setHcGroup('none')">Без группировки</button>
     </div>
     <div class="headcount-list" id="headcountList"></div>
 </div>
@@ -1629,6 +1616,27 @@ console.log('=== SCRIPT FINISHED, calling loadData() ===');
 // ==================== HEADCOUNT VIOLATIONS ====================
 
 let currentHeadcountViolations = [];
+let hcGroupMode = 'dolzhnost'; // 'none', 'otdel', 'dolzhnost'
+
+function setHcGroup(mode) {
+    hcGroupMode = mode;
+    
+    // Update button states
+    document.querySelectorAll('#headcountBlock .filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    if (mode === 'dolzhnost') {
+        document.getElementById('hcGrpDolzhnost').classList.add('active');
+    } else if (mode === 'otdel') {
+        document.getElementById('hcGrpOtdel').classList.add('active');
+    } else {
+        document.getElementById('hcGrpNone').classList.add('active');
+    }
+    
+    // Reload violations with new grouping
+    loadHeadcountViolations();
+}
 
 async function loadHeadcountViolations() {
     const df = document.getElementById('dateFrom').value;
@@ -1639,7 +1647,7 @@ async function loadHeadcountViolations() {
         return;
     }
     
-    let params = `?from=${df}&to=${dt}`;
+    let params = `?from=${df}&to=${dt}&group_by=${hcGroupMode}`;
     if (selectedPod) params += `&pod=${encodeURIComponent(selectedPod)}`;
     if (selectedOtdels.length > 0) {
         selectedOtdels.forEach(otdel => {
@@ -1659,8 +1667,6 @@ async function loadHeadcountViolations() {
         
         const block = document.getElementById('headcountBlock');
         const list = document.getElementById('headcountList');
-        const summary = document.getElementById('headcountSummary');
-        const historyToggle = document.getElementById('headcountHistoryToggle');
         
         if (currentHeadcountViolations.length === 0) {
             block.style.display = 'none';
@@ -1674,11 +1680,18 @@ async function loadHeadcountViolations() {
         document.getElementById('headcountTotalExcess').textContent = `+${data.total_excess || 0}`;
         
         // Render grouped list with accordion
-        list.innerHTML = currentHeadcountViolations.map((v, index) => `
+        list.innerHTML = currentHeadcountViolations.map((v, index) => {
+            const displayName = hcGroupMode === 'otdel' 
+                ? `${v.podrazdelenie} / ${v.otdel}`
+                : hcGroupMode === 'dolzhnost'
+                    ? `${v.podrazdelenie} / ${v.dolzhnost}`
+                    : `${v.podrazdelenie} / ${v.otdel} / ${v.dolzhnost}`;
+            
+            return `
             <div class="headcount-item" onclick="toggleHeadcountRow(this)">
                 <div class="headcount-item-info">
                     <span class="headcount-item-toggle">▶</span>
-                    <span class="headcount-item-role"><strong>${v.podrazdelenie}</strong> / ${v.otdel || '—'} / ${v.dolzhnost}</span>
+                    <span class="headcount-item-role"><strong>${displayName}</strong></span>
                 </div>
                 <div class="headcount-item-excess">
                     <span class="headcount-item-limit-badge">Лимит: ${v.limit}</span>
@@ -1709,7 +1722,8 @@ async function loadHeadcountViolations() {
                     </table>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
         
     } catch (err) {
         console.error('Error loading headcount violations:', err);

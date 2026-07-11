@@ -1348,6 +1348,43 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     margin-bottom: 16px;
 }
 
+.headcount-group-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.headcount-group-controls span {
+    color: #b8b8ff;
+    font-size: 0.9em;
+}
+
+.headcount-group-controls .filter-btn {
+    padding: 4px 12px;
+    border: 1px solid rgba(255, 107, 107, 0.4);
+    border-radius: 6px;
+    background: rgba(255, 107, 107, 0.1);
+    color: #e8e8ff;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.2s;
+}
+
+.headcount-group-controls .filter-btn:hover {
+    background: rgba(255, 107, 107, 0.2);
+}
+
+.headcount-group-controls .filter-btn.active {
+    background: rgba(255, 107, 107, 0.3);
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+    font-weight: 600;
+}
+
 .headcount-summary {
     display: flex;
     gap: 30px;
