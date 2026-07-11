@@ -1187,7 +1187,7 @@ def api_fot_breakdown():
 
         where_clause = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
 
-        q = f"SELECT {by} AS key, SUM(itogo) AS total_money, SUM(chasy) AS total_hours, COUNT(DISTINCT fio) AS employees, SUM(nachisleno) AS total_nachisleno FROM records {where_clause} GROUP BY {by} ORDER BY total_money DESC LIMIT %s"
+        q = f"SELECT `{by}` AS `key`, SUM(itogo) AS total_money, SUM(chasy) AS total_hours, COUNT(DISTINCT fio) AS employees, SUM(nachisleno) AS total_nachisleno FROM records {where_clause} GROUP BY `{by}` ORDER BY total_money DESC LIMIT %s"
         params_with_limit = list(params) + [limit]
 
         df = pd.read_sql(q, conn, params=params_with_limit)
@@ -1933,16 +1933,16 @@ def api_headcount_violations():
         # Записываем нарушения в историю
         if violations:
             for v in violations:
-                for d in v['dates']:
+                for d in v['daily']:
                     cursor.execute('''
                         INSERT IGNORE INTO violation_history 
                         (podrazdelenie, dolzhnost, date, year, month, limit_count, fact_count, excess)
                         SELECT %s, %s, %s, %s, %s, %s, %s, %s
                     ''', (
-                        v['podrazdelenie'], v['dolzhnost'], d,
-                        datetime.strptime(d, '%Y-%m-%d').year,
-                        datetime.strptime(d, '%Y-%m-%d').month,
-                        v['limit'], v['max_fact'], v['excess']
+                        v['podrazdelenie'], v['dolzhnost'], d['date'],
+                        datetime.strptime(d['date'], '%Y-%m-%d').year,
+                        datetime.strptime(d['date'], '%Y-%m-%d').month,
+                        v['limit'], d['fact'], d['excess']
                     ))
             conn.commit()
         
