@@ -1190,8 +1190,8 @@ def api_fot_breakdown():
 
         df = pd.read_sql(q, conn, params=params_with_limit)
 
-        overall_q = f"SELECT SUM(itogo) AS overall_money FROM records {where_clause}"
         cursor = conn.cursor(dictionary=True)
+        overall_q = f"SELECT SUM(itogo) AS overall_money FROM records {where_clause}"
         cursor.execute(overall_q, tuple(params))
         overall = cursor.fetchone() or {'overall_money': 0}
 
