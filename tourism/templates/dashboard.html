@@ -1655,6 +1655,9 @@ async function loadHeadcountViolations() {
         });
     }
     
+    console.log('Headcount API URL:', '/api/headcount/violations' + params);
+    console.log('selectedPod:', selectedPod);
+    
     try {
         const resp = await fetch('/api/headcount/violations' + params);
         if (!resp.ok) {

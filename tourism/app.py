@@ -1789,6 +1789,8 @@ def api_headcount_violations():
     otdels = request.args.getlist('otdel')
     otdels = [o for o in otdels if o]
     
+    logger.info(f'Headcount violations: pod={pod}, group_by={group_by}, from={date_from}, to={date_to}, otdels={otdels}')
+    
     try:
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor(dictionary=True)
@@ -1818,6 +1820,9 @@ def api_headcount_violations():
             {where_clause}
             GROUP BY podrazdelenie, dolzhnost, DATE(data)
         """
+        
+        logger.info(f'Headcount SQL: {fact_q}')
+        logger.info(f'Headcount SQL params: {params}')
         
         df_fact = pd.read_sql(fact_q, conn, params=params)
         
