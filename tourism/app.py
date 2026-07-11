@@ -1168,6 +1168,8 @@ def api_fot_breakdown():
 
     try:
         conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
         conditions = []
         params = []
         if date_from:
@@ -1190,10 +1192,11 @@ def api_fot_breakdown():
 
         df = pd.read_sql(q, conn, params=params_with_limit)
 
-        cursor = conn.cursor(dictionary=True)
         overall_q = f"SELECT SUM(itogo) AS overall_money FROM records {where_clause}"
         cursor.execute(overall_q, tuple(params))
         overall = cursor.fetchone() or {'overall_money': 0}
+
+        cursor.close()
 
         overall_money = float(overall.get('overall_money') or 0)
         breakdown = []
@@ -1212,7 +1215,6 @@ def api_fot_breakdown():
                 'share': share
             })
 
-        cursor.close()
         return jsonify({'by': by, 'overall_money': overall_money, 'breakdown': breakdown})
 
     except Exception as e:
