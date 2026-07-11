@@ -1823,7 +1823,7 @@ def api_headcount_violations():
             conn.close()
             return jsonify({'violations': [], 'total_violations': 0, 'total_excess': 0})
         
-        # 2. Группируем нарушения по подразделению + отдел + должность
+        # 2. Группируем нарушения в зависимости от group_by
         violations_map = {}
         total_excess = 0
         
@@ -1837,6 +1837,7 @@ def api_headcount_violations():
             year = fact_date.year
             month = fact_date.month
             
+            # Ищем лимит по должности (без учёта отдела)
             cursor.execute(
                 'SELECT max_count FROM headcount_limits WHERE podrazdelenie = %s AND dolzhnost = %s AND year = %s AND month = %s',
                 (pod_val, dolzhnost, year, month)
@@ -1852,11 +1853,18 @@ def api_headcount_violations():
                 excess = fact_count - limit_count
                 total_excess += excess
                 
-                key = (pod_val, otdel_val, dolzhnost)
+                # Формируем ключ группировки
+                if group_by == 'otdel':
+                    key = (pod_val, otdel_val)
+                elif group_by == 'none':
+                    key = (pod_val, otdel_val, dolzhnost)
+                else:  # dolzhnost
+                    key = (pod_val, dolzhnost)
+                
                 if key not in violations_map:
                     violations_map[key] = {
                         'podrazdelenie': pod_val,
-                        'otdel': otdel_val,
+                        'otdel': otdel_val if group_by == 'otdel' else (otdel_val if group_by == 'none' else ''),
                         'dolzhnost': dolzhnost,
                         'limit': limit_count,
                         'max_fact': fact_count,

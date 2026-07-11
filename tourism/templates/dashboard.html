@@ -1681,11 +1681,16 @@ async function loadHeadcountViolations() {
         
         // Render grouped list with accordion
         list.innerHTML = currentHeadcountViolations.map((v, index) => {
-            const displayName = hcGroupMode === 'otdel' 
-                ? `${v.podrazdelenie} / ${v.otdel}`
-                : hcGroupMode === 'dolzhnost'
-                    ? `${v.podrazdelenie} / ${v.dolzhnost}`
-                    : `${v.podrazdelenie} / ${v.otdel} / ${v.dolzhnost}`;
+            // Формируем отображаемое имя в зависимости от group_by
+            let displayName = '';
+            if (hcGroupMode === 'otdel') {
+                displayName = `${v.podrazdelenie} / ${v.otdel}`;
+            } else if (hcGroupMode === 'dolzhnost') {
+                displayName = `${v.podrazdelenie} / ${v.dolzhnost}`;
+            } else {
+                // none - показываем всё
+                displayName = `${v.podrazdelenie} / ${v.otdel} / ${v.dolzhnost}`;
+            }
             
             return `
             <div class="headcount-item" onclick="toggleHeadcountRow(this)">
