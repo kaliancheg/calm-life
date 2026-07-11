@@ -78,26 +78,6 @@
         </div>
     </div>
     <div class="headcount-list" id="headcountList"></div>
-    <div class="headcount-history-toggle" id="headcountHistoryToggle" style="display:none;">
-        <button class="btn btn-secondary" onclick="toggleHeadcountHistory()">📊 Показать историю нарушений за месяц</button>
-    </div>
-    <div class="headcount-history" id="headcountHistory" style="display:none;">
-        <div class="table-container">
-            <table id="headcountHistoryTable">
-                <thead>
-                    <tr>
-                        <th>Дата</th>
-                        <th>Подразделение</th>
-                        <th>Должность</th>
-                        <th>Лимит</th>
-                        <th>Факт</th>
-                        <th>Превышение</th>
-                    </tr>
-                </thead>
-                <tbody id="headcountHistoryBody"></tbody>
-            </table>
-        </div>
-    </div>
 </div>
 
 <!-- LFL Analysis Block -->
@@ -1626,7 +1606,6 @@ console.log('=== SCRIPT FINISHED, calling loadData() ===');
 // ==================== HEADCOUNT VIOLATIONS ====================
 
 let currentHeadcountViolations = [];
-let headcountHistoryExpanded = false;
 
 async function loadHeadcountViolations() {
     const df = document.getElementById('dateFrom').value;
@@ -1667,14 +1646,11 @@ async function loadHeadcountViolations() {
         
         block.style.display = 'block';
         
-        // Update summary
-        document.getElementById('headcountViolDays').textContent = data.total_violations || 0;
-        document.getElementById('headcountTotalExcess').textContent = `+${data.total_excess || 0}`;
-        
-        // Render grouped list
-        list.innerHTML = currentHeadcountViolations.map(v => `
-            <div class="headcount-item">
+        // Render grouped list with accordion
+        list.innerHTML = currentHeadcountViolations.map((v, index) => `
+            <div class="headcount-item" onclick="toggleHeadcountRow(this)">
                 <div class="headcount-item-info">
+                    <span class="headcount-item-toggle">▶</span>
                     <span class="headcount-item-role"><strong>${v.podrazdelenie}</strong> / ${v.dolzhnost}</span>
                 </div>
                 <div class="headcount-item-excess">
@@ -1685,14 +1661,28 @@ async function loadHeadcountViolations() {
                     </div>
                     <span class="headcount-item-dates" title="${v.dates.join(', ')}">📅 ${v.date_count} дн.</span>
                 </div>
+                <div class="headcount-item-details">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Факт</th>
+                                <th>Превышение</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${v.dates.map(date => `
+                                <tr>
+                                    <td>${date}</td>
+                                    <td>${v.max_fact}</td>
+                                    <td class="excess-col">+${Math.round(v.excess / v.date_count)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `).join('');
-        
-        historyToggle.style.display = 'block';
-        
-        // Collapse history on new data
-        headcountHistoryExpanded = false;
-        document.getElementById('headcountHistory').style.display = 'none';
         
     } catch (err) {
         console.error('Error loading headcount violations:', err);
@@ -1700,58 +1690,10 @@ async function loadHeadcountViolations() {
     }
 }
 
-function toggleHeadcountHistory() {
-    headcountHistoryExpanded = !headcountHistoryExpanded;
-    const historyDiv = document.getElementById('headcountHistory');
-    const btn = document.querySelector('#headcountHistoryToggle .btn');
-    
-    if (headcountHistoryExpanded) {
-        historyDiv.style.display = 'block';
-        btn.textContent = '📊 Скрыть историю';
-        loadHeadcountHistory();
-    } else {
-        historyDiv.style.display = 'none';
-        btn.textContent = '📊 Показать историю нарушений за месяц';
-    }
-}
-
-async function loadHeadcountHistory() {
-    const df = document.getElementById('dateFrom').value;
-    if (!df) return;
-    
-    const d = new Date(df);
-    const year = d.getFullYear();
-    const month = d.getMonth() + 1;
-    
-    let params = `?year=${year}&month=${month}`;
-    if (selectedPod) params += `&pod=${encodeURIComponent(selectedPod)}`;
-    
-    try {
-        const resp = await fetch('/api/headcount/history' + params);
-        if (!resp.ok) return;
-        
-        const data = await resp.json();
-        const tbody = document.getElementById('headcountHistoryBody');
-        
-        if (!data.history || data.history.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;">Нет данных</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = data.history.map(h => `
-            <tr>
-                <td>${h.date}</td>
-                <td>${h.podrazdelenie}</td>
-                <td>${h.dolzhnost}</td>
-                <td>${h.limit_count}</td>
-                <td>${h.fact_count}</td>
-                <td style="color:#ff6b6b;font-weight:700;">+${h.excess}</td>
-            </tr>
-        `).join('');
-        
-    } catch (err) {
-        console.error('Error loading headcount history:', err);
-    }
+function toggleHeadcountRow(element) {
+    const details = element.querySelector('.headcount-item-details');
+    element.classList.toggle('expanded');
+    details.classList.toggle('show');
 }
 
 loadData();

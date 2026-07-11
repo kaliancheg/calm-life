@@ -1390,10 +1390,73 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     border-left: 3px solid #ff6b6b;
     border-radius: 8px;
     transition: background 0.2s;
+    cursor: pointer;
+    user-select: none;
 }
 
 .headcount-item:hover {
     background: rgba(255, 107, 107, 0.18);
+}
+
+.headcount-item.expanded {
+    background: rgba(255, 107, 107, 0.18);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.headcount-item-toggle {
+    color: #b8b8ff;
+    font-size: 0.8em;
+    margin-left: 8px;
+    transition: transform 0.2s;
+}
+
+.headcount-item.expanded .headcount-item-toggle {
+    transform: rotate(90deg);
+}
+
+.headcount-item-details {
+    display: none;
+    padding: 12px 14px;
+    background: rgba(255, 107, 107, 0.05);
+    border: 1px solid rgba(255, 107, 107, 0.15);
+    border-top: none;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    margin-top: -1px;
+}
+
+.headcount-item-details.show {
+    display: block;
+}
+
+.headcount-item-details table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.headcount-item-details th {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+    font-size: 0.8em;
+    padding: 8px;
+    text-align: left;
+}
+
+.headcount-item-details td {
+    padding: 6px 8px;
+    font-size: 0.85em;
+    border-bottom: 1px solid rgba(255, 107, 107, 0.1);
+}
+
+.headcount-item-details tr:last-child td {
+    border-bottom: none;
+}
+
+.headcount-item-details .excess-col {
+    color: #ff6b6b;
+    font-weight: 700;
+    text-align: center;
 }
 
 .headcount-item-info {
@@ -1462,62 +1525,6 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     background: rgba(255, 107, 107, 0.25);
     color: #ff6b6b;
     border: 1px solid rgba(255, 107, 107, 0.5);
-}
-
-.headcount-history-toggle {
-    margin-top: 14px;
-}
-
-.headcount-history-toggle .btn {
-    font-size: 0.9em;
-    padding: 8px 16px;
-}
-
-.headcount-history {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 107, 107, 0.2);
-}
-
-.headcount-history table {
-    width: 100%;
-}
-
-.headcount-history th {
-    background: rgba(255, 107, 107, 0.25);
-    color: #ff6b6b;
-    font-size: 0.85em;
-    padding: 10px 8px;
-}
-
-.headcount-history td {
-    padding: 8px;
-    font-size: 0.9em;
-    text-align: center;
-}
-
-.headcount-history tr:hover td {
-    background: rgba(255, 107, 107, 0.1);
-}
-
-/* Row highlight for violations in main table */
-tr.row-violation {
-    background: rgba(255, 165, 0, 0.08) !important;
-}
-
-tr.row-violation:hover td {
-    background: rgba(255, 165, 0, 0.15) !important;
-}
-
-.violation-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    background: rgba(255, 107, 107, 0.2);
-    color: #ff6b6b;
-    font-size: 0.8em;
-    font-weight: 700;
-    margin-left: 6px;
 }
 
 @media (max-width: 768px) {
