@@ -1811,11 +1811,12 @@ def api_headcount_violations():
         where_clause = 'WHERE ' + ' AND '.join(conditions)
         
         fact_q = f"""
-            SELECT podrazdelenie, otdel, dolzhnost, DATE(data) AS fact_date,
-                   COUNT(DISTINCT fio) AS fact_count
+            SELECT podrazdelenie, dolzhnost, DATE(data) AS fact_date,
+                   COUNT(DISTINCT fio) AS fact_count,
+                   GROUP_CONCAT(DISTINCT otdel SEPARATOR ', ') AS otdels
             FROM records
             {where_clause}
-            GROUP BY podrazdelenie, otdel, dolzhnost, DATE(data)
+            GROUP BY podrazdelenie, dolzhnost, DATE(data)
         """
         
         df_fact = pd.read_sql(fact_q, conn, params=params)
@@ -1832,7 +1833,7 @@ def api_headcount_violations():
         for _, row in df_fact.iterrows():
             pod_val = row['podrazdelenie']
             dolzhnost = row['dolzhnost']
-            otdel_val = row.get('otdel', '') or '—'
+            otdel_val = row.get('otdels', '') or '—'
             fact_date = row['fact_date']
             fact_count = row['fact_count']
             
@@ -1907,22 +1908,31 @@ def api_headcount_violations():
         if group_by == 'otdel':
             grouped = {}
             for v in violations:
-                otdel_key = v['otdel']
-                if otdel_key not in grouped:
-                    grouped[otdel_key] = {
-                        'podrazdelenie': v['podrazdelenie'],
-                        'otdel': otdel_key,
-                        'dolzhnost': '',
-                        'limit': 0,
-                        'max_fact': 0,
-                        'excess': 0,
-                        'date_count': 0,
-                        'daily': [],
-                        'children': []
-                    }
-                grouped[otdel_key]['children'].append(v)
-                grouped[otdel_key]['excess'] += v['excess']
-                grouped[otdel_key]['date_count'] += v['date_count']
+                # otdel может быть "Смена_1, Смена_2" — разбиваем
+                otdel_list = [o.strip() for o in v['otdel'].split(',') if o.strip()]
+                if not otdel_list:
+                    otdel_list = ['—']
+                
+                for otdel_name in otdel_list:
+                    otdel_key = otdel_name
+                    if otdel_key not in grouped:
+                        grouped[otdel_key] = {
+                            'podrazdelenie': v['podrazdelenie'],
+                            'otdel': otdel_key,
+                            'dolzhnost': '',
+                            'limit': 0,
+                            'max_fact': 0,
+                            'excess': 0,
+                            'date_count': 0,
+                            'daily': [],
+                            'children': []
+                        }
+                    # Не добавляем дубликат, если должность уже есть в отделе
+                    existing = next((c for c in grouped[otdel_key]['children'] if c['dolzhnost'] == v['dolzhnost']), None)
+                    if not existing:
+                        grouped[otdel_key]['children'].append(v)
+                        grouped[otdel_key]['excess'] += v['excess']
+                        grouped[otdel_key]['date_count'] += v['date_count']
             
             # Сортируем дочерние элементы
             for otdel_key in grouped:
@@ -1933,17 +1943,20 @@ def api_headcount_violations():
         # Записываем нарушения в историю
         if violations:
             for v in violations:
-                for d in v['daily']:
-                    cursor.execute('''
-                        INSERT IGNORE INTO violation_history 
-                        (podrazdelenie, dolzhnost, date, year, month, limit_count, fact_count, excess)
-                        SELECT %s, %s, %s, %s, %s, %s, %s, %s
-                    ''', (
-                        v['podrazdelenie'], v['dolzhnost'], d['date'],
-                        datetime.strptime(d['date'], '%Y-%m-%d').year,
-                        datetime.strptime(d['date'], '%Y-%m-%d').month,
-                        v['limit'], d['fact'], d['excess']
-                    ))
+                # Для двухуровневой структуры (otdel) — пишем историю по детям
+                items = v.get('children', [v]) if not v['daily'] else [v]
+                for item in items:
+                    for d in item['daily']:
+                        cursor.execute('''
+                            INSERT IGNORE INTO violation_history 
+                            (podrazdelenie, dolzhnost, date, year, month, limit_count, fact_count, excess)
+                            SELECT %s, %s, %s, %s, %s, %s, %s, %s
+                        ''', (
+                            item['podrazdelenie'], item['dolzhnost'], d['date'],
+                            datetime.strptime(d['date'], '%Y-%m-%d').year,
+                            datetime.strptime(d['date'], '%Y-%m-%d').month,
+                            item['limit'], d['fact'], d['excess']
+                        ))
             conn.commit()
         
         cursor.close()
