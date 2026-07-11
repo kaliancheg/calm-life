@@ -1441,11 +1441,40 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     border-bottom-right-radius: 0;
 }
 
+/* Двухуровневая структура */
+.headcount-item-parent {
+    background: rgba(255, 107, 107, 0.15);
+    border-left: 4px solid #ff6b6b;
+    margin-bottom: 2px;
+}
+
+.headcount-item-parent:hover {
+    background: rgba(255, 107, 107, 0.25);
+}
+
+.headcount-item-child {
+    background: rgba(255, 107, 107, 0.08);
+    border-left: 2px solid rgba(255, 107, 107, 0.5);
+    margin-left: 20px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.headcount-item-child:hover {
+    background: rgba(255, 107, 107, 0.15);
+}
+
+.headcount-item-child .headcount-item-details {
+    margin-left: 20px;
+}
+
 .headcount-item-toggle {
     color: #b8b8ff;
     font-size: 0.8em;
     margin-left: 8px;
     transition: transform 0.2s;
+    display: inline-block;
+    min-width: 12px;
 }
 
 .headcount-item.expanded .headcount-item-toggle {
@@ -1494,6 +1523,13 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     color: #ff6b6b;
     font-weight: 700;
     text-align: center;
+}
+
+/* Детали для вложенных элементов */
+.headcount-item-child .headcount-item-details {
+    border: 1px solid rgba(255, 107, 107, 0.1);
+    border-radius: 6px;
+    margin-top: 4px;
 }
 
 .headcount-item-info {

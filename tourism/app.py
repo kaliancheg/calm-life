@@ -1853,14 +1853,7 @@ def api_headcount_violations():
                 excess = fact_count - limit_count
                 total_excess += excess
                 
-                # Формируем ключ группировки
-                if group_by == 'otdel':
-                    key = (pod_val, otdel_val)
-                elif group_by == 'none':
-                    key = (pod_val, otdel_val, dolzhnost)
-                else:  # dolzhnost
-                    key = (pod_val, dolzhnost)
-                
+                # Сохраняем все данные для каждого дня
                 if key not in violations_map:
                     violations_map[key] = {
                         'podrazdelenie': pod_val,
@@ -1868,14 +1861,20 @@ def api_headcount_violations():
                         'dolzhnost': dolzhnost,
                         'limit': limit_count,
                         'max_fact': fact_count,
-                        'dates': [],
-                        'total_excess': 0
+                        'total_excess': 0,
+                        'daily': []  # Список дней с детализацией
                     }
                 
-                violations_map[key]['dates'].append(str(fact_date))
                 violations_map[key]['total_excess'] += excess
                 if fact_count > violations_map[key]['max_fact']:
                     violations_map[key]['max_fact'] = fact_count
+                
+                # Сохраняем детальную информацию по дню
+                violations_map[key]['daily'].append({
+                    'date': str(fact_date),
+                    'fact': fact_count,
+                    'excess': excess
+                })
         
         # Преобразуем в список
         violations = []
@@ -1886,13 +1885,40 @@ def api_headcount_violations():
                 'dolzhnost': v['dolzhnost'],
                 'limit': v['limit'],
                 'max_fact': v['max_fact'],
-                'dates': sorted(v['dates']),
-                'date_count': len(v['dates']),
-                'excess': v['total_excess']
+                'excess': v['total_excess'],
+                'date_count': len(v['daily']),
+                'daily': sorted(v['daily'], key=lambda x: x['date'])
             })
         
         # Сортируем по количеству нарушений (убывание)
         violations.sort(key=lambda x: x['date_count'], reverse=True)
+        
+        # Если group_by = 'otdel', группируем по отделам (двухуровневая структура)
+        if group_by == 'otdel':
+            grouped = {}
+            for v in violations:
+                otdel_key = v['otdel']
+                if otdel_key not in grouped:
+                    grouped[otdel_key] = {
+                        'podrazdelenie': v['podrazdelenie'],
+                        'otdel': otdel_key,
+                        'dolzhnost': '',
+                        'limit': 0,
+                        'max_fact': 0,
+                        'excess': 0,
+                        'date_count': 0,
+                        'daily': [],
+                        'children': []
+                    }
+                grouped[otdel_key]['children'].append(v)
+                grouped[otdel_key]['excess'] += v['excess']
+                grouped[otdel_key]['date_count'] += v['date_count']
+            
+            # Сортируем дочерние элементы
+            for otdel_key in grouped:
+                grouped[otdel_key]['children'].sort(key=lambda x: x['date_count'], reverse=True)
+            
+            violations = list(grouped.values())
         
         # Записываем нарушения в историю
         if violations:
