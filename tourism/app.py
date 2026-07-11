@@ -1514,6 +1514,209 @@ def get_stats():
 
 # ==================== EXCEL IMPORT ====================
 
+# ==================== EXCEL IMPORT ====================
+
+def _import_records(df, file, sheet_name):
+    """Вспомогательная функция импорта данных туризма (records)"""
+    if df.empty:
+        return jsonify({'error': 'Файл пустой'}), 400
+    
+    # Маппинг колонок (структура идентична для "Архив" и "Реестр")
+    df_mapped = pd.DataFrame()
+    df_mapped['snils'] = df.iloc[:, 0].astype(str).str.strip()
+    df_mapped['podrazdelenie'] = df.iloc[:, 1].astype(str).str.strip()
+    df_mapped['sp_nsp'] = df.iloc[:, 2].astype(str).str.strip()
+    df_mapped['fio'] = df.iloc[:, 3].astype(str).str.strip()
+    df_mapped['otdel'] = df.iloc[:, 4].astype(str).str.strip()
+    df_mapped['dolzhnost'] = df.iloc[:, 5].astype(str).str.strip()
+    df_mapped['rukovoditel'] = df.iloc[:, 6].astype(str).str.strip()
+    df_mapped['status_field'] = df.iloc[:, 7].astype(str).str.strip()
+    df_mapped['data'] = pd.to_datetime(df.iloc[:, 8], errors='coerce')
+    df_mapped['chasy'] = pd.to_numeric(df.iloc[:, 9], errors='coerce').fillna(0)
+    df_mapped['stavka_oklad'] = df.iloc[:, 10].astype(str).str.strip()
+    df_mapped['stavka'] = df.iloc[:, 11].astype(str).str.strip()
+    df_mapped['itogo'] = pd.to_numeric(df.iloc[:, 12], errors='coerce').fillna(0)
+    df_mapped['nachisleno'] = df_mapped['itogo']
+    
+    if df_mapped.empty or 'fio' not in df_mapped.columns:
+        return jsonify({'error': 'Неверный формат файла или отсутствуют обязательные колонки'}), 400
+    
+    df_mapped = df_mapped.dropna(subset=['fio'])
+    df_mapped['fio'] = df_mapped['fio'].str.strip()
+    df_mapped = df_mapped[df_mapped['fio'] != 'nan']
+    df_mapped = df_mapped[df_mapped['fio'] != '']
+    
+    if df_mapped.empty:
+        return jsonify({'error': 'Нет валидных данных для импорта'}), 400
+    
+    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    cursor = conn.cursor()
+    inserted = 0
+    skipped = 0
+    
+    for idx, row in df_mapped.iterrows():
+        try:
+            data = row.get('data')
+            if pd.isna(data):
+                skipped += 1
+                continue
+            
+            if isinstance(data, datetime):
+                data_str = data.strftime('%Y-%m-%d')
+            else:
+                data_str = str(data)
+            
+            fio = str(row.get('fio', '')).strip()
+            snils = str(row.get('snils', '')).strip() if pd.notna(row.get('snils')) else None
+            sp_nsp = str(row.get('sp_nsp', '')).strip() if pd.notna(row.get('sp_nsp')) else None
+            podrazdelenie = str(row.get('podrazdelenie', '')).strip() if pd.notna(row.get('podrazdelenie')) else None
+            otdel = str(row.get('otdel', '')).strip() if pd.notna(row.get('otdel')) else None
+            dolzhnost = str(row.get('dolzhnost', '')).strip() if pd.notna(row.get('dolzhnost')) else None
+            rukovoditel = str(row.get('rukovoditel', '')).strip() if pd.notna(row.get('rukovoditel')) else None
+            status_field = str(row.get('status_field', '')).strip() if pd.notna(row.get('status_field')) else None
+            chasy = float(row.get('chasy', 0)) if pd.notna(row.get('chasy')) else 0.0
+            stavka_oklad = str(row.get('stavka_oklad', '')).strip() if pd.notna(row.get('stavka_oklad')) else None
+            stavka = str(row.get('stavka', '')).strip() if pd.notna(row.get('stavka')) else None
+            nachisleno = float(row.get('nachisleno', 0)) if pd.notna(row.get('nachisleno')) else 0.0
+            itogo = float(row.get('itogo', 0)) if pd.notna(row.get('itogo')) else 0.0
+            
+            if not fio or fio == 'nan':
+                skipped += 1
+                continue
+            
+            query = """
+                INSERT INTO records 
+                (fio, snils, sp_nsp, podrazdelenie, otdel, dolzhnost, rukovoditel, status_field, data, chasy, stavka_oklad, stavka, nachisleno, itogo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                chasy = VALUES(chasy),
+                nachisleno = VALUES(nachisleno),
+                itogo = VALUES(itogo),
+                sp_nsp = VALUES(sp_nsp),
+                rukovoditel = VALUES(rukovoditel),
+                status_field = VALUES(status_field),
+                stavka_oklad = VALUES(stavka_oklad),
+                stavka = VALUES(stavka)
+            """
+            
+            cursor.execute(query, (
+                fio, snils, sp_nsp, podrazdelenie, otdel, dolzhnost, rukovoditel, status_field, 
+                data_str, chasy, stavka_oklad, stavka, nachisleno, itogo
+            ))
+            inserted += 1
+            
+        except Exception as row_error:
+            skipped += 1
+            continue
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    log_action(current_user.id, 'import', 'excel', {
+        'filename': file.filename,
+        'sheet': 'records',
+        'inserted': inserted,
+        'skipped': skipped
+    })
+    
+    return jsonify({
+        'success': True,
+        'inserted': inserted,
+        'skipped': skipped,
+        'message': f'Импортировано {inserted} записей, пропущено {skipped}'
+    })
+
+
+def _import_headcount_limits(tmp_path, file, sheet_name):
+    """Импорт штатного расписания (лимиты по должности)"""
+    try:
+        df = pd.read_excel(tmp_path, sheet_name=sheet_name)
+        
+        if df.empty:
+            return jsonify({'error': 'Лист "Штатное_расписание" пустой'}), 400
+        
+        # Ожидаемые колонки: Подразделение | Отдел | Должность | Месяц | Год | Лимит | (опц. Загрузка)
+        # Пробуем найти колонки по нескольким вариантам названий
+        col_map = {}
+        for col in df.columns:
+            col_lower = str(col).lower().strip()
+            if 'подраз' in col_lower:
+                col_map['podrazdelenie'] = col
+            elif 'отдел' in col_lower and 'служба' not in col_lower:
+                # пропускаем отдел — он не нужен
+                pass
+            elif 'должность' in col_lower:
+                col_map['dolzhnost'] = col
+            elif col_lower in ('месяц', 'мес', 'month'):
+                col_map['month'] = col
+            elif col_lower in ('год', 'year'):
+                col_map['year'] = col
+            elif col_lower in ('лимит', 'макс', 'max_count', 'кол-во'):
+                col_map['max_count'] = col
+            elif 'загр' in col_lower:
+                col_map['occupancy'] = col
+        
+        required = ['podrazdelenie', 'dolzhnost', 'month', 'year', 'max_count']
+        missing = [r for r in required if r not in col_map]
+        if missing:
+            return jsonify({'error': f'Не найдены колонки: {", ".join(missing)}'}), 400
+        
+        # Очищаем старые лимиты
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM headcount_limits')
+        
+        inserted = 0
+        skipped = 0
+        
+        for idx, row in df.iterrows():
+            try:
+                podrazdelenie = str(row[col_map['podrazdelenie']]).strip()
+                dolzhnost = str(row[col_map['dolzhnost']]).strip()
+                
+                if not podrazdelenie or podrazdelenie == 'nan' or not dolzhnost or dolzhnost == 'nan':
+                    skipped += 1
+                    continue
+                
+                month = int(float(row[col_map['month']]))
+                year = int(float(row[col_map['year']]))
+                max_count = int(float(row[col_map['max_count']]))
+                occupancy = str(row[col_map.get('occupancy', '')]).strip() if col_map.get('occupancy') and pd.notna(row.get(col_map['occupancy'])) else None
+                
+                cursor.execute('''
+                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, year, month, max_count, occupancy_hint)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE max_count=VALUES(max_count), occupancy_hint=VALUES(occupancy_hint)
+                ''', (podrazdelenie, dolzhnost, year, month, max_count, occupancy))
+                inserted += 1
+                
+            except Exception:
+                skipped += 1
+                continue
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        log_action(current_user.id, 'import', 'headcount_limits', {
+            'filename': file.filename,
+            'inserted': inserted,
+            'skipped': skipped
+        })
+        
+        return jsonify({
+            'success': True,
+            'inserted': inserted,
+            'skipped': skipped,
+            'message': f'Штатное расписание: загружено {inserted} лимитов, пропущено {skipped}'
+        })
+    
+    except Exception as e:
+        logger.error(f'Error importing headcount_limits: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/admin/import-excel', methods=['POST'])
 @login_required
 def import_excel():
@@ -1545,134 +1748,227 @@ def import_excel():
         
         try:
             # Читаем Excel файл
-            # Для "Реестра" заголовок начинается со 2-й строки (header=1), данные с 3-й
-            if sheet_name == 'Реестр':
+            if sheet_name == 'Штатное_расписание':
+                # Импорт штатного расписания — отдельная логика
+                result = _import_headcount_limits(tmp_path, file, sheet_name)
+            elif sheet_name == 'Реестр':
                 df = pd.read_excel(tmp_path, sheet_name=sheet_name, header=1)
+                result = _import_records(df, file, sheet_name)
             else:
                 df = pd.read_excel(tmp_path, sheet_name=sheet_name)
-            
-            if df.empty:
-                return jsonify({'error': 'Файл пустой'}), 400
-            
-            # Маппинг колонок (структура идентична для "Архив" и "Реестр")
-            df_mapped = pd.DataFrame()
-            df_mapped['snils'] = df.iloc[:, 0].astype(str).str.strip()
-            df_mapped['podrazdelenie'] = df.iloc[:, 1].astype(str).str.strip()  # Краткое подразделение (Арт_Лайф, Волна)
-            df_mapped['sp_nsp'] = df.iloc[:, 2].astype(str).str.strip()  # сп/нсп
-            df_mapped['fio'] = df.iloc[:, 3].astype(str).str.strip()
-            df_mapped['otdel'] = df.iloc[:, 4].astype(str).str.strip()  # Отдел/служба
-            df_mapped['dolzhnost'] = df.iloc[:, 5].astype(str).str.strip()
-            df_mapped['rukovoditel'] = df.iloc[:, 6].astype(str).str.strip()
-            df_mapped['status_field'] = df.iloc[:, 7].astype(str).str.strip()
-            df_mapped['data'] = pd.to_datetime(df.iloc[:, 8], errors='coerce')
-            df_mapped['chasy'] = pd.to_numeric(df.iloc[:, 9], errors='coerce').fillna(0)
-            df_mapped['stavka_oklad'] = df.iloc[:, 10].astype(str).str.strip()
-            df_mapped['stavka'] = df.iloc[:, 11].astype(str).str.strip()
-            df_mapped['itogo'] = pd.to_numeric(df.iloc[:, 12], errors='coerce').fillna(0)
-            df_mapped['nachisleno'] = df_mapped['itogo']  # nachisleno = itogo
-            
-            # Проверяем наличие обязательных колонок
-            if df_mapped.empty or 'fio' not in df_mapped.columns:
-                return jsonify({'error': 'Неверный формат файла или отсутствуют обязательные колонки'}), 400
-            
-            # Подчищаем данные
-            df_mapped = df_mapped.dropna(subset=['fio'])
-            df_mapped['fio'] = df_mapped['fio'].str.strip()
-            df_mapped = df_mapped[df_mapped['fio'] != 'nan']
-            df_mapped = df_mapped[df_mapped['fio'] != '']
-            
-            if df_mapped.empty:
-                return jsonify({'error': 'Нет валидных данных для импорта'}), 400
-            
-            # Вставляем в БД
-            conn = mysql.connector.connect(**MYSQL_CONFIG)
-            cursor = conn.cursor()
-            inserted = 0
-            skipped = 0
-            
-            for idx, row in df_mapped.iterrows():
-                try:
-                    data = row.get('data')
-                    if pd.isna(data):
-                        skipped += 1
-                        continue
-                    
-                    if isinstance(data, datetime):
-                        data_str = data.strftime('%Y-%m-%d')
-                    else:
-                        data_str = str(data)
-                    
-                    fio = str(row.get('fio', '')).strip()
-                    snils = str(row.get('snils', '')).strip() if pd.notna(row.get('snils')) else None
-                    sp_nsp = str(row.get('sp_nsp', '')).strip() if pd.notna(row.get('sp_nsp')) else None
-                    podrazdelenie = str(row.get('podrazdelenie', '')).strip() if pd.notna(row.get('podrazdelenie')) else None
-                    otdel = str(row.get('otdel', '')).strip() if pd.notna(row.get('otdel')) else None
-                    dolzhnost = str(row.get('dolzhnost', '')).strip() if pd.notna(row.get('dolzhnost')) else None
-                    rukovoditel = str(row.get('rukovoditel', '')).strip() if pd.notna(row.get('rukovoditel')) else None
-                    status_field = str(row.get('status_field', '')).strip() if pd.notna(row.get('status_field')) else None
-                    chasy = float(row.get('chasy', 0)) if pd.notna(row.get('chasy')) else 0.0
-                    stavka_oklad = str(row.get('stavka_oklad', '')).strip() if pd.notna(row.get('stavka_oklad')) else None
-                    stavka = str(row.get('stavka', '')).strip() if pd.notna(row.get('stavka')) else None
-                    nachisleno = float(row.get('nachisleno', 0)) if pd.notna(row.get('nachisleno')) else 0.0
-                    itogo = float(row.get('itogo', 0)) if pd.notna(row.get('itogo')) else 0.0
-                    
-                    if not fio or fio == 'nan':
-                        skipped += 1
-                        continue
-                    
-                    query = """
-                        INSERT INTO records 
-                        (fio, snils, sp_nsp, podrazdelenie, otdel, dolzhnost, rukovoditel, status_field, data, chasy, stavka_oklad, stavka, nachisleno, itogo)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON DUPLICATE KEY UPDATE
-                        chasy = VALUES(chasy),
-                        nachisleno = VALUES(nachisleno),
-                        itogo = VALUES(itogo),
-                        sp_nsp = VALUES(sp_nsp),
-                        rukovoditel = VALUES(rukovoditel),
-                        status_field = VALUES(status_field),
-                        stavka_oklad = VALUES(stavka_oklad),
-                        stavka = VALUES(stavka)
-                    """
-                    
-                    cursor.execute(query, (
-                        fio, snils, sp_nsp, podrazdelenie, otdel, dolzhnost, rukovoditel, status_field, 
-                        data_str, chasy, stavka_oklad, stavka, nachisleno, itogo
-                    ))
-                    inserted += 1
-                    
-                except Exception as row_error:
-                    skipped += 1
-                    continue
-            
-            conn.commit()
-            cursor.close()
-            conn.close()
-            
-            log_action(current_user.id, 'import', 'excel', {
-                'filename': file.filename,
-                'sheet': sheet_name,
-                'inserted': inserted,
-                'skipped': skipped
-            })
-            
-            return jsonify({
-                'success': True,
-                'inserted': inserted,
-                'skipped': skipped,
-                'message': f'Импортировано {inserted} записей, пропущено {skipped}'
-            })
+                result = _import_records(df, file, sheet_name)
         
         finally:
             # Удаляем временный файл
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+        
+        return result
     
     except Exception as e:
         logger.error(f'Error importing Excel: {e}')
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+# ==================== HEADCOUNT VIOLATIONS ====================
+
+@app.route('/api/headcount/violations')
+@login_required
+def api_headcount_violations():
+    """Возвращает нарушения штатного расписания за период."""
+    if not current_user.has_permission('data', 'view'):
+        return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
+    
+    date_from = request.args.get('from')
+    date_to = request.args.get('to')
+    pod = request.args.get('pod')
+    otdels = request.args.getlist('otdel')
+    otdels = [o for o in otdels if o]
+    
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # 1. Получаем фактические данные за период
+        conditions = ["data >= %s", "data <= %s"]
+        params = [date_from, date_to]
+        
+        if pod:
+            conditions.append("podrazdelenie = %s")
+            params.append(pod)
+        if otdels:
+            placeholders = ','.join(['%s'] * len(otdels))
+            conditions.append(f"otdel IN ({placeholders})")
+            params.extend(otdels)
+        
+        # Применяем ограничения прав пользователя
+        conditions, params = _apply_permission_filters(conditions, params)
+        
+        where_clause = 'WHERE ' + ' AND '.join(conditions)
+        
+        fact_q = f"""
+            SELECT podrazdelenie, dolzhnost, DATE(data) AS fact_date,
+                   COUNT(DISTINCT fio) AS fact_count
+            FROM records
+            {where_clause}
+            GROUP BY podrazdelenie, dolzhnost, DATE(data)
+        """
+        
+        df_fact = pd.read_sql(fact_q, conn, params=params)
+        
+        if df_fact.empty:
+            cursor.close()
+            conn.close()
+            return jsonify({'violations': [], 'total_violations': 0, 'total_excess': 0})
+        
+        # 2. Для каждой группы проверяем лимит
+        violations = []
+        total_excess = 0
+        
+        for _, row in df_fact.iterrows():
+            pod_val = row['podrazdelenie']
+            dolzhnost = row['dolzhnost']
+            fact_date = row['fact_date']
+            fact_count = row['fact_count']
+            
+            year = fact_date.year
+            month = fact_date.month
+            
+            cursor.execute(
+                'SELECT max_count FROM headcount_limits WHERE podrazdelenie = %s AND dolzhnost = %s AND year = %s AND month = %s',
+                (pod_val, dolzhnost, year, month)
+            )
+            limit_row = cursor.fetchone()
+            
+            if not limit_row:
+                continue
+            
+            limit_count = limit_row['max_count']
+            
+            if fact_count > limit_count:
+                excess = fact_count - limit_count
+                total_excess += excess
+                violations.append({
+                    'date': str(fact_date),
+                    'podrazdelenie': pod_val,
+                    'dolzhnost': dolzhnost,
+                    'limit': limit_count,
+                    'fact': fact_count,
+                    'excess': excess
+                })
+        
+        # 3. Записываем нарушения в историю (если ещё нет)
+        if violations:
+            for v in violations:
+                cursor.execute('''
+                    INSERT IGNORE INTO violation_history 
+                    (podrazdelenie, dolzhnost, date, year, month, limit_count, fact_count, excess)
+                    SELECT %s, %s, %s, %s, %s, %s, %s, %s
+                ''', (
+                    v['podrazdelenie'], v['dolzhnost'], v['date'],
+                    datetime.strptime(v['date'], '%Y-%m-%d').year,
+                    datetime.strptime(v['date'], '%Y-%m-%d').month,
+                    v['limit'], v['fact'], v['excess']
+                ))
+            conn.commit()
+        
+        cursor.close()
+        conn.close()
+        
+        violations.sort(key=lambda x: x['date'])
+        
+        return jsonify({
+            'violations': violations,
+            'total_violations': len(violations),
+            'total_excess': total_excess
+        })
+    
+    except Exception as e:
+        logger.error(f'API Headcount Violations Error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/headcount/history')
+@login_required
+def api_headcount_history():
+    """Возвращает историю нарушений за месяц."""
+    if not current_user.has_permission('data', 'view'):
+        return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
+    
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    pod = request.args.get('pod')
+    
+    if not year or not month:
+        return jsonify({'error': 'Укажите год и месяц'}), 400
+    
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        conditions = ["year = %s", "month = %s"]
+        params = [year, month]
+        
+        if pod:
+            conditions.append("podrazdelenie = %s")
+            params.append(pod)
+        
+        where_clause = 'WHERE ' + ' AND '.join(conditions)
+        
+        cursor.execute(f'''
+            SELECT vh.*, DATE(vh.date) AS date_formatted
+            FROM violation_history vh
+            {where_clause}
+            ORDER BY vh.date DESC
+        ''', tuple(params))
+        
+        history = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        for h in history:
+            h['date'] = str(h['date_formatted'])
+        
+        return jsonify({
+            'year': year,
+            'month': month,
+            'history': history,
+            'total_days': len(set(h['date'] for h in history))
+        })
+    
+    except Exception as e:
+        logger.error(f'API Headcount History Error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/headcount/limits')
+@login_required
+def api_headcount_limits():
+    """Возвращает все загруженные лимиты штатного расписания."""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Доступ запрещён'}), 403
+    
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('SELECT * FROM headcount_limits ORDER BY year DESC, month DESC, podrazdelenie, dolzhnost')
+        limits = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        for l in limits:
+            if isinstance(l.get('created_at'), datetime):
+                l['created_at'] = l['created_at'].isoformat()
+            if isinstance(l.get('updated_at'), datetime):
+                l['updated_at'] = l['updated_at'].isoformat()
+        
+        return jsonify({'limits': limits})
+    
+    except Exception as e:
+        logger.error(f'API Headcount Limits Error: {e}')
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/admin/clear-records', methods=['POST'])
 @login_required

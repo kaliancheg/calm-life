@@ -61,6 +61,45 @@
     </div>
 </div>
 
+<!-- Headcount Violations Block -->
+<div class="headcount-block" id="headcountBlock" style="display:none;">
+    <div class="section-header">
+        <h2>⚠️ Нарушения штатного расписания</h2>
+        <p class="section-subtitle">Превышение утверждённого лимита сотрудников по должности за выбранный период</p>
+    </div>
+    <div id="headcountSummary" class="headcount-summary">
+        <div class="headcount-stat">
+            <span class="headcount-stat-value" id="headcountViolDays">0</span>
+            <span class="headcount-stat-label">дней с нарушениями</span>
+        </div>
+        <div class="headcount-stat">
+            <span class="headcount-stat-value" id="headcountTotalExcess">0</span>
+            <span class="headcount-stat-label">сверх лимита</span>
+        </div>
+    </div>
+    <div class="headcount-list" id="headcountList"></div>
+    <div class="headcount-history-toggle" id="headcountHistoryToggle" style="display:none;">
+        <button class="btn btn-secondary" onclick="toggleHeadcountHistory()">📊 Показать историю нарушений за месяц</button>
+    </div>
+    <div class="headcount-history" id="headcountHistory" style="display:none;">
+        <div class="table-container">
+            <table id="headcountHistoryTable">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Подразделение</th>
+                        <th>Должность</th>
+                        <th>Лимит</th>
+                        <th>Факт</th>
+                        <th>Превышение</th>
+                    </tr>
+                </thead>
+                <tbody id="headcountHistoryBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <!-- LFL Analysis Block -->
 <div class="lfl-block">
     <div class="lfl-header">
@@ -1526,9 +1565,10 @@ function toggleGroup(groupId) {
 const originalApplyFilters = applyFilters;
 applyFilters = function() {
     originalApplyFilters();
-    // Refresh server-side summary/breakdown when main filters change (dates only affect these)
+    // Refresh server-side summary/breakdown and headcount when main filters change
     setTimeout(() => {
         fetchFotSummaryAndBreakdown();
+        loadHeadcountViolations();
     }, 100);
 };
 
@@ -1582,6 +1622,138 @@ async function fetchFotSummaryAndBreakdown() {
 }
 
 console.log('=== SCRIPT FINISHED, calling loadData() ===');
+
+// ==================== HEADCOUNT VIOLATIONS ====================
+
+let currentHeadcountViolations = [];
+let headcountHistoryExpanded = false;
+
+async function loadHeadcountViolations() {
+    const df = document.getElementById('dateFrom').value;
+    const dt = document.getElementById('dateTo').value;
+    
+    if (!df || !dt) {
+        document.getElementById('headcountBlock').style.display = 'none';
+        return;
+    }
+    
+    let params = `?from=${df}&to=${dt}`;
+    if (selectedPod) params += `&pod=${encodeURIComponent(selectedPod)}`;
+    if (selectedOtdels.length > 0) {
+        selectedOtdels.forEach(otdel => {
+            params += `&otdel=${encodeURIComponent(otdel)}`;
+        });
+    }
+    
+    try {
+        const resp = await fetch('/api/headcount/violations' + params);
+        if (!resp.ok) {
+            document.getElementById('headcountBlock').style.display = 'none';
+            return;
+        }
+        
+        const data = await resp.json();
+        currentHeadcountViolations = data.violations || [];
+        
+        const block = document.getElementById('headcountBlock');
+        const list = document.getElementById('headcountList');
+        const summary = document.getElementById('headcountSummary');
+        const historyToggle = document.getElementById('headcountHistoryToggle');
+        
+        if (currentHeadcountViolations.length === 0) {
+            block.style.display = 'none';
+            return;
+        }
+        
+        block.style.display = 'block';
+        
+        // Update summary
+        document.getElementById('headcountViolDays').textContent = currentHeadcountViolations.length;
+        document.getElementById('headcountTotalExcess').textContent = `+${data.total_excess || 0}`;
+        
+        // Render list
+        list.innerHTML = currentHeadcountViolations.map(v => `
+            <div class="headcount-item">
+                <div class="headcount-item-info">
+                    <span class="headcount-item-date">${v.date}</span>
+                    <span class="headcount-item-role"><strong>${v.podrazdelenie}</strong> / ${v.dolzhnost}</span>
+                </div>
+                <div class="headcount-item-excess">
+                    <span class="headcount-item-limit">лимит: ${v.limit}</span>
+                    <div class="headcount-item-badges">
+                        <span class="headcount-badge headcount-badge-fact">${v.fact}</span>
+                        <span class="headcount-badge headcount-badge-excess">⚠ +${v.excess}</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        historyToggle.style.display = 'block';
+        
+        // Collapse history on new data
+        headcountHistoryExpanded = false;
+        document.getElementById('headcountHistory').style.display = 'none';
+        
+    } catch (err) {
+        console.error('Error loading headcount violations:', err);
+        document.getElementById('headcountBlock').style.display = 'none';
+    }
+}
+
+function toggleHeadcountHistory() {
+    headcountHistoryExpanded = !headcountHistoryExpanded;
+    const historyDiv = document.getElementById('headcountHistory');
+    const btn = document.querySelector('#headcountHistoryToggle .btn');
+    
+    if (headcountHistoryExpanded) {
+        historyDiv.style.display = 'block';
+        btn.textContent = '📊 Скрыть историю';
+        loadHeadcountHistory();
+    } else {
+        historyDiv.style.display = 'none';
+        btn.textContent = '📊 Показать историю нарушений за месяц';
+    }
+}
+
+async function loadHeadcountHistory() {
+    const df = document.getElementById('dateFrom').value;
+    if (!df) return;
+    
+    const d = new Date(df);
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    
+    let params = `?year=${year}&month=${month}`;
+    if (selectedPod) params += `&pod=${encodeURIComponent(selectedPod)}`;
+    
+    try {
+        const resp = await fetch('/api/headcount/history' + params);
+        if (!resp.ok) return;
+        
+        const data = await resp.json();
+        const tbody = document.getElementById('headcountHistoryBody');
+        
+        if (!data.history || data.history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;">Нет данных</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = data.history.map(h => `
+            <tr>
+                <td>${h.date}</td>
+                <td>${h.podrazdelenie}</td>
+                <td>${h.dolzhnost}</td>
+                <td>${h.limit_count}</td>
+                <td>${h.fact_count}</td>
+                <td style="color:#ff6b6b;font-weight:700;">+${h.excess}</td>
+            </tr>
+        `).join('');
+        
+    } catch (err) {
+        console.error('Error loading headcount history:', err);
+    }
+}
+
 loadData();
 </script>
 </body>
