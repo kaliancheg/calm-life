@@ -1541,6 +1541,37 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     margin-left: 0;
 }
 
+/* Кликабельные строки дат */
+.headcount-date-row {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.headcount-date-row:hover {
+    background: rgba(0, 255, 255, 0.1) !important;
+}
+
+/* Развернутая строка с сотрудниками */
+.headcount-employees-row td {
+    background: rgba(0, 0, 0, 0.2) !important;
+    padding: 12px 14px !important;
+}
+
+.headcount-employees-list {
+    padding: 8px 0;
+}
+
+.headcount-employee-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    margin: 3px 4px 3px 0;
+    background: rgba(0, 255, 255, 0.1);
+    border: 1px solid rgba(0, 255, 255, 0.25);
+    border-radius: 6px;
+    color: #e8e8ff;
+    font-size: 0.85em;
+}
+
 .headcount-item-info {
     display: flex;
     align-items: center;

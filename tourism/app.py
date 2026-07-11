@@ -2013,6 +2013,49 @@ def api_headcount_history():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/headcount/employees')
+@login_required
+def api_headcount_employees():
+    """Возвращает список сотрудников за конкретную дату по подразделению и должности."""
+    if not current_user.has_permission('data', 'view'):
+        return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
+    
+    date = request.args.get('date')
+    pod = request.args.get('pod')
+    dolzhnost = request.args.get('dolzhnost')
+    
+    if not date or not pod or not dolzhnost:
+        return jsonify({'error': 'Укажите date, pod, dolzhnost'}), 400
+    
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        conditions = ['data = %s', 'podrazdelenie = %s', 'dolzhnost = %s']
+        params = [date, pod, dolzhnost]
+        
+        conditions, params = _apply_permission_filters(conditions, params)
+        
+        where_clause = 'WHERE ' + ' AND '.join(conditions)
+        
+        cursor.execute(f'''
+            SELECT DISTINCT fio, status_field, otdel
+            FROM records
+            {where_clause}
+            ORDER BY fio
+        ''', tuple(params))
+        
+        employees = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({'employees': employees, 'count': len(employees)})
+    
+    except Exception as e:
+        logger.error(f'API Headcount Employees Error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/headcount/limits')
 @login_required
 def api_headcount_limits():

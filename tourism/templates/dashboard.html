@@ -1719,7 +1719,7 @@ async function loadHeadcountViolations() {
                                     </thead>
                                     <tbody>
                                         ${child.daily.map(d => `
-                                            <tr>
+                                            <tr class="headcount-date-row" data-date="${d.date}" data-pod="${child.podrazdelenie}" data-dolzhnost="${child.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
                                                 <td>${d.date}</td>
                                                 <td>${d.fact}</td>
                                                 <td class="excess-col">+${d.excess}</td>
@@ -1791,7 +1791,7 @@ async function loadHeadcountViolations() {
                             </thead>
                             <tbody>
                                 ${v.daily.map(d => `
-                                    <tr>
+                                    <tr class="headcount-date-row" data-date="${d.date}" data-pod="${v.podrazdelenie}" data-dolzhnost="${v.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
                                         <td>${d.date}</td>
                                         <td>${d.fact}</td>
                                         <td class="excess-col">+${d.excess}</td>
@@ -1814,9 +1814,9 @@ async function loadHeadcountViolations() {
 function toggleHeadcountRow(element, event) {
     if (event) event.stopPropagation();
     
-    // Для родительских элементов (отдел) — ищем .headcount-children
-    const wrapper = element.closest('.headcount-group-wrapper');
-    if (wrapper) {
+    // Для родительских элементов (отдел) — раскрываем .headcount-children
+    if (element.classList.contains('headcount-item-parent')) {
+        const wrapper = element.closest('.headcount-group-wrapper');
         const children = wrapper.querySelector('.headcount-children');
         element.classList.toggle('expanded');
         if (children) {
@@ -1825,11 +1825,63 @@ function toggleHeadcountRow(element, event) {
         return;
     }
     
-    // Для обычных элементов — ищем .headcount-item-details
+    // Для обычных и дочерних элементов — раскрываем .headcount-item-details
     const details = element.querySelector('.headcount-item-details');
     element.classList.toggle('expanded');
     if (details) {
         details.classList.toggle('show');
+    }
+}
+
+async function toggleHeadcountDateRow(row, event) {
+    if (event) event.stopPropagation();
+    
+    // Если уже есть блок с сотрудниками — просто скрываем/показываем
+    const existing = row.nextElementSibling;
+    if (existing && existing.classList.contains('headcount-employees-row')) {
+        existing.style.display = existing.style.display === 'none' ? 'table-row' : 'none';
+        return;
+    }
+    
+    const date = row.dataset.date;
+    const pod = row.dataset.pod;
+    const dolzhnost = row.dataset.dolzhnost;
+    
+    // Создаём строку загрузки
+    const loadingRow = document.createElement('tr');
+    loadingRow.classList.add('headcount-employees-row');
+    loadingRow.innerHTML = '<td colspan="3" style="text-align:center;color:#b8b8ff;">Загрузка сотрудников...</td>';
+    row.parentNode.insertBefore(loadingRow, row.nextSibling);
+    
+    try {
+        let params = `?date=${date}&pod=${encodeURIComponent(pod)}&dolzhnost=${encodeURIComponent(dolzhnost)}`;
+        const resp = await fetch('/api/headcount/employees' + params);
+        if (!resp.ok) {
+            loadingRow.innerHTML = '<td colspan="3" style="text-align:center;color:#ff6b6b;">Ошибка загрузки</td>';
+            return;
+        }
+        
+        const data = await resp.json();
+        const employees = data.employees || [];
+        
+        if (employees.length === 0) {
+            loadingRow.innerHTML = '<td colspan="3" style="text-align:center;color:#888;">Нет данных</td>';
+            return;
+        }
+        
+        loadingRow.innerHTML = `
+            <td colspan="3">
+                <div class="headcount-employees-list">
+                    <strong style="color:#00ffff;">Сотрудники (${employees.length}):</strong>
+                    <div style="margin-top:6px;">
+                        ${employees.map(e => `<span class="headcount-employee-tag">${e.fio} ${e.status_field ? (e.status_field === 'Уволен' ? '🔴' : '🟢') : ''}</span>`).join('')}
+                    </div>
+                </div>
+            </td>
+        `;
+    } catch (err) {
+        console.error('Error loading employees:', err);
+        loadingRow.innerHTML = '<td colspan="3" style="text-align:center;color:#ff6b6b;">Ошибка загрузки</td>';
     }
 }
 
