@@ -1822,8 +1822,8 @@ def api_headcount_violations():
             conn.close()
             return jsonify({'violations': [], 'total_violations': 0, 'total_excess': 0})
         
-        # 2. Для каждой группы проверяем лимит
-        violations = []
+        # 2. Группируем нарушения по подразделению + должность
+        violations_map = {}
         total_excess = 0
         
         for _, row in df_fact.iterrows():
@@ -1849,38 +1849,61 @@ def api_headcount_violations():
             if fact_count > limit_count:
                 excess = fact_count - limit_count
                 total_excess += excess
-                violations.append({
-                    'date': str(fact_date),
-                    'podrazdelenie': pod_val,
-                    'dolzhnost': dolzhnost,
-                    'limit': limit_count,
-                    'fact': fact_count,
-                    'excess': excess
-                })
+                
+                key = (pod_val, dolzhnost)
+                if key not in violations_map:
+                    violations_map[key] = {
+                        'podrazdelenie': pod_val,
+                        'dolzhnost': dolzhnost,
+                        'limit': limit_count,
+                        'max_fact': fact_count,
+                        'dates': [],
+                        'total_excess': 0
+                    }
+                
+                violations_map[key]['dates'].append(str(fact_date))
+                violations_map[key]['total_excess'] += excess
+                if fact_count > violations_map[key]['max_fact']:
+                    violations_map[key]['max_fact'] = fact_count
         
-        # 3. Записываем нарушения в историю (если ещё нет)
+        # Преобразуем в список
+        violations = []
+        for key, v in violations_map.items():
+            violations.append({
+                'podrazdelenie': v['podrazdelenie'],
+                'dolzhnost': v['dolzhnost'],
+                'limit': v['limit'],
+                'max_fact': v['max_fact'],
+                'dates': sorted(v['dates']),
+                'date_count': len(v['dates']),
+                'excess': v['total_excess']
+            })
+        
+        # Сортируем по количеству нарушений (убывание)
+        violations.sort(key=lambda x: x['date_count'], reverse=True)
+        
+        # Записываем нарушения в историю
         if violations:
             for v in violations:
-                cursor.execute('''
-                    INSERT IGNORE INTO violation_history 
-                    (podrazdelenie, dolzhnost, date, year, month, limit_count, fact_count, excess)
-                    SELECT %s, %s, %s, %s, %s, %s, %s, %s
-                ''', (
-                    v['podrazdelenie'], v['dolzhnost'], v['date'],
-                    datetime.strptime(v['date'], '%Y-%m-%d').year,
-                    datetime.strptime(v['date'], '%Y-%m-%d').month,
-                    v['limit'], v['fact'], v['excess']
-                ))
+                for d in v['dates']:
+                    cursor.execute('''
+                        INSERT IGNORE INTO violation_history 
+                        (podrazdelenie, dolzhnost, date, year, month, limit_count, fact_count, excess)
+                        SELECT %s, %s, %s, %s, %s, %s, %s, %s
+                    ''', (
+                        v['podrazdelenie'], v['dolzhnost'], d,
+                        datetime.strptime(d, '%Y-%m-%d').year,
+                        datetime.strptime(d, '%Y-%m-%d').month,
+                        v['limit'], v['max_fact'], v['excess']
+                    ))
             conn.commit()
         
         cursor.close()
         conn.close()
         
-        violations.sort(key=lambda x: x['date'])
-        
         return jsonify({
             'violations': violations,
-            'total_violations': len(violations),
+            'total_violations': sum(v['date_count'] for v in violations),
             'total_excess': total_excess
         })
     

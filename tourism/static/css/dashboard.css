@@ -1432,6 +1432,16 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 .headcount-item-badges {
     display: flex;
     gap: 6px;
+    align-items: center;
+}
+
+.headcount-item-dates {
+    color: #b8b8ff;
+    font-size: 0.85em;
+    padding: 3px 8px;
+    background: rgba(184, 184, 255, 0.1);
+    border-radius: 4px;
+    white-space: nowrap;
 }
 
 .headcount-badge {
