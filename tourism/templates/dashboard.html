@@ -1078,6 +1078,8 @@ btn.classList.remove('active');
 if ((pod === '' && btn.dataset.pod === '') || btn.dataset.pod === pod) btn.classList.add('active');
 });
 applyFilters();
+// Пересчитываем LFL, т.к. изменился фильтр подразделения
+calculateLFL();
 }
 
 function toggleOtdel(otdel, btnElement) {
@@ -1110,17 +1112,6 @@ function toggleOtdel(otdel, btnElement) {
     applyFilters();
     // Пересчитываем LFL, т.к. изменился фильтр отдела
     calculateLFL();
-}
-
-function selectPod(pod) {
-selectedPod = pod;
-document.querySelectorAll('#podButtons .filter-btn').forEach(btn => {
-btn.classList.remove('active');
-if ((pod === '' && btn.dataset.pod === '') || btn.dataset.pod === pod) btn.classList.add('active');
-});
-applyFilters();
-// Пересчитываем LFL, т.к. изменился фильтр подразделения
-calculateLFL();
 }
 
 function formatDateForInput(date) {

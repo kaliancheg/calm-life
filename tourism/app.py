@@ -1919,11 +1919,12 @@ def api_headcount_violations():
                     otdel_list = ['—']
                 
                 for otdel_name in otdel_list:
-                    otdel_key = otdel_name
+                    # Ключ включает podrazdelenie, чтобы не смешивать "Волна/Служба питания" и "Арт-Лайф/Служба питания"
+                    otdel_key = (v['podrazdelenie'], otdel_name)
                     if otdel_key not in grouped:
                         grouped[otdel_key] = {
                             'podrazdelenie': v['podrazdelenie'],
-                            'otdel': otdel_key,
+                            'otdel': otdel_name,
                             'dolzhnost': '',
                             'limit': 0,
                             'max_fact': 0,
