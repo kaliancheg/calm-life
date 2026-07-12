@@ -1503,9 +1503,9 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 .hc-badge-limit {
-    background: rgba(0, 255, 255, 0.15);
-    color: #00ffff;
-    border: 1px solid rgba(0, 255, 255, 0.4);
+    background: rgba(76, 175, 80, 0.15);
+    color: #81c784;
+    border: 1px solid rgba(76, 175, 80, 0.4);
 }
 
 .hc-badge-fact {

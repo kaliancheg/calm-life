@@ -1692,7 +1692,6 @@ async function loadHeadcountViolations() {
                                 <span class="hc-toggle">▶</span>
                                 <span class="hc-title"><strong>${child.dolzhnost}</strong></span>
                                 <span class="hc-badge hc-badge-limit">Лимит: ${child.limit}</span>
-                                <span class="hc-badge hc-badge-fact">Факт: ${child.max_fact}</span>
                                 <span class="hc-badge hc-badge-excess">⚠ +${child.excess}</span>
                                 <span class="hc-badge hc-badge-cost">💰 ${formatMoney(child.excess_cost || 0)}</span>
                                 <span class="hc-badge hc-badge-days">📅 ${child.date_count} дн.</span>
@@ -1757,7 +1756,6 @@ async function loadHeadcountViolations() {
                         <span class="hc-toggle">▶</span>
                         <span class="hc-title"><strong>${displayName}</strong></span>
                         <span class="hc-badge hc-badge-limit">Лимит: ${v.limit}</span>
-                        <span class="hc-badge hc-badge-fact">Факт: ${v.max_fact}</span>
                         <span class="hc-badge hc-badge-excess">⚠ +${v.excess}</span>
                         <span class="hc-badge hc-badge-cost">💰 ${formatMoney(v.excess_cost || 0)}</span>
                         <span class="hc-badge hc-badge-days">📅 ${v.date_count} дн.</span>
