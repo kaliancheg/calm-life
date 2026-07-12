@@ -1789,8 +1789,6 @@ def api_headcount_violations():
     otdels = request.args.getlist('otdel')
     otdels = [o for o in otdels if o]
     
-    logger.info(f'Headcount violations: pod={pod}, group_by={group_by}, from={date_from}, to={date_to}, otdels={otdels}')
-    
     try:
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor(dictionary=True)
@@ -1821,9 +1819,6 @@ def api_headcount_violations():
             GROUP BY podrazdelenie, dolzhnost, DATE(data)
         """
         
-        logger.info(f'Headcount SQL: {fact_q}')
-        logger.info(f'Headcount SQL params: {params}')
-        
         df_fact = pd.read_sql(fact_q, conn, params=params)
         
         if df_fact.empty:
@@ -1831,7 +1826,7 @@ def api_headcount_violations():
             conn.close()
             return jsonify({'violations': [], 'total_violations': 0, 'total_excess': 0})
         
-        # 2. Группируем нарушения в зависимости от group_by
+        # 2. Группируем нарушения — всегда по (podrazdelenie, dolzhnost)
         violations_map = {}
         total_excess = 0
         
@@ -1861,49 +1856,48 @@ def api_headcount_violations():
                 excess = fact_count - limit_count
                 total_excess += excess
                 
-                # Формируем ключ группировки
-                if group_by == 'otdel':
-                    key = (pod_val, otdel_val)
-                elif group_by == 'none':
-                    key = (pod_val, otdel_val, dolzhnost)
-                else:  # dolzhnost
-                    key = (pod_val, dolzhnost)
+                # Ключ ВСЕГДА по (podrazdelenie, dolzhnost) — без отдела!
+                # Это гарантирует одну запись на связку "подразделение + должность"
+                key = (pod_val, dolzhnost)
+                date_str = str(fact_date)
                 
-                # Сохраняем все данные для каждого дня
                 if key not in violations_map:
                     violations_map[key] = {
                         'podrazdelenie': pod_val,
-                        'otdel': otdel_val if group_by == 'otdel' else (otdel_val if group_by == 'none' else ''),
                         'dolzhnost': dolzhnost,
+                        'otdels': otdel_val,  # Сохраняем для группировки по отделам
                         'limit': limit_count,
                         'max_fact': fact_count,
                         'total_excess': 0,
-                        'daily': []  # Список дней с детализацией
+                        'daily': {}  # Словарь по дате — исключает дубликаты
                     }
                 
-                violations_map[key]['total_excess'] += excess
-                if fact_count > violations_map[key]['max_fact']:
-                    violations_map[key]['max_fact'] = fact_count
+                v = violations_map[key]
+                v['total_excess'] += excess
+                if fact_count > v['max_fact']:
+                    v['max_fact'] = fact_count
                 
-                # Сохраняем детальную информацию по дню
-                violations_map[key]['daily'].append({
-                    'date': str(fact_date),
+                # Сохраняем детальную информацию по дню (перезаписываем если дата уже есть)
+                v['daily'][date_str] = {
+                    'date': date_str,
                     'fact': fact_count,
                     'excess': excess
-                })
+                }
         
         # Преобразуем в список
         violations = []
         for key, v in violations_map.items():
+            # Конвертируем словарь daily в отсортированный список
+            daily_list = sorted(v['daily'].values(), key=lambda x: x['date'])
             violations.append({
                 'podrazdelenie': v['podrazdelenie'],
-                'otdel': v['otdel'],
+                'otdels': v['otdels'],
                 'dolzhnost': v['dolzhnost'],
                 'limit': v['limit'],
                 'max_fact': v['max_fact'],
                 'excess': v['total_excess'],
-                'date_count': len(v['daily']),
-                'daily': sorted(v['daily'], key=lambda x: x['date'])
+                'date_count': len(daily_list),
+                'daily': daily_list
             })
         
         # Сортируем по количеству нарушений (убывание)
@@ -1913,13 +1907,13 @@ def api_headcount_violations():
         if group_by == 'otdel':
             grouped = {}
             for v in violations:
-                # otdel может быть "Смена_1, Смена_2" — разбиваем
-                otdel_list = [o.strip() for o in v['otdel'].split(',') if o.strip()]
+                # otdels может быть "Смена_1, Смена_2" — разбиваем
+                otdel_list = [o.strip() for o in v['otdels'].split(',') if o.strip()]
                 if not otdel_list:
                     otdel_list = ['—']
                 
                 for otdel_name in otdel_list:
-                    # Ключ включает podrazdelenie, чтобы не смешивать "Волна/Служба питания" и "Арт-Лайф/Служба питания"
+                    # Ключ включает podrazdelenie, чтобы не смешивать подразделения
                     otdel_key = (v['podrazdelenie'], otdel_name)
                     if otdel_key not in grouped:
                         grouped[otdel_key] = {

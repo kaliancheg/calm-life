@@ -1646,9 +1646,6 @@ async function loadHeadcountViolations() {
         });
     }
     
-    console.log('Headcount API URL:', '/api/headcount/violations' + params);
-    console.log('selectedPod:', selectedPod);
-    
     try {
         const resp = await fetch('/api/headcount/violations' + params);
         if (!resp.ok) {
@@ -1658,21 +1655,17 @@ async function loadHeadcountViolations() {
         }
         
         const data = await resp.json();
-        console.log('Headcount violations data:', data);
         currentHeadcountViolations = data.violations || [];
-        console.log('Current violations:', currentHeadcountViolations);
         
         const block = document.getElementById('headcountBlock');
         const list = document.getElementById('headcountList');
         
         if (currentHeadcountViolations.length === 0) {
-            console.log('No violations found, hiding block');
             block.style.display = 'none';
             return;
         }
         
         block.style.display = 'block';
-        console.log('Showing headcount block with', currentHeadcountViolations.length, 'items');
         
         // Update summary counters
         document.getElementById('headcountViolDays').textContent = data.total_violations || 0;
@@ -1757,7 +1750,7 @@ async function loadHeadcountViolations() {
                     displayName = `${v.podrazdelenie} / ${v.dolzhnost}`;
                 } else {
                     // none - показываем всё
-                    displayName = `${v.podrazdelenie} / ${v.otdel} / ${v.dolzhnost}`;
+                    displayName = `${v.podrazdelenie} / ${v.otdels || '—'} / ${v.dolzhnost}`;
                 }
                 
                 return `
