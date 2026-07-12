@@ -1704,7 +1704,7 @@ async function loadHeadcountViolations() {
                                     <tbody>
                                         ${child.daily.map(d => `
                                             <tr class="hc-date-row" data-date="${d.date}" data-pod="${child.podrazdelenie}" data-dolzhnost="${child.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
-                                                <td>${d.date}</td>
+                                                <td>${formatDate(d.date)}</td>
                                                 <td>${d.fact}</td>
                                                 <td class="excess-col">+${d.excess}</td>
                                                 <td class="hc-expand-cell">▶</td>
@@ -1765,7 +1765,7 @@ async function loadHeadcountViolations() {
                             <tbody>
                                 ${v.daily.map(d => `
                                     <tr class="hc-date-row" data-date="${d.date}" data-pod="${v.podrazdelenie}" data-dolzhnost="${v.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
-                                        <td>${d.date}</td>
+                                        <td>${formatDate(d.date)}</td>
                                         <td>${d.fact}</td>
                                         <td class="excess-col">+${d.excess}</td>
                                         <td class="hc-expand-cell">▶</td>
