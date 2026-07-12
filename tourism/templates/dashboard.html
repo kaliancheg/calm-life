@@ -241,6 +241,10 @@
             <span class="headcount-stat-value" id="headcountTotalExcess">0</span>
             <span class="headcount-stat-label">сверх лимита</span>
         </div>
+        <div class="headcount-stat">
+            <span class="headcount-stat-value" id="headcountExcessCost">0 ₽</span>
+            <span class="headcount-stat-label">сумма превышения</span>
+        </div>
     </div>
     <div class="headcount-group-controls">
         <span>Группировка:</span>
@@ -1670,6 +1674,7 @@ async function loadHeadcountViolations() {
         // Update summary counters
         document.getElementById('headcountViolDays').textContent = data.total_violations || 0;
         document.getElementById('headcountTotalExcess').textContent = `+${data.total_excess || 0}`;
+        document.getElementById('headcountExcessCost').textContent = formatMoney(data.total_excess_cost || 0);
         
         // Render grouped list with accordion (двухуровневая структура для group_by='otdel')
         if (hcGroupMode === 'otdel') {
@@ -1689,6 +1694,7 @@ async function loadHeadcountViolations() {
                                 <span class="hc-badge hc-badge-limit">Лимит: ${child.limit}</span>
                                 <span class="hc-badge hc-badge-fact">Факт: ${child.max_fact}</span>
                                 <span class="hc-badge hc-badge-excess">⚠ +${child.excess}</span>
+                                <span class="hc-badge hc-badge-cost">💰 ${formatMoney(child.excess_cost || 0)}</span>
                                 <span class="hc-badge hc-badge-days">📅 ${child.date_count} дн.</span>
                             </div>
                             <div class="hc-table-wrap">
@@ -1698,6 +1704,7 @@ async function loadHeadcountViolations() {
                                             <th>Дата</th>
                                             <th>Факт</th>
                                             <th>Превышение</th>
+                                            <th>Стоимость</th>
                                             <th></th>
                                         </tr>
                                     </thead>
@@ -1707,6 +1714,7 @@ async function loadHeadcountViolations() {
                                                 <td>${formatDate(d.date)}</td>
                                                 <td>${d.fact}</td>
                                                 <td class="excess-col">+${d.excess}</td>
+                                                <td class="cost-col">${formatMoney(d.excess_cost || 0)}</td>
                                                 <td class="hc-expand-cell">▶</td>
                                             </tr>
                                         `).join('')}
@@ -1724,6 +1732,7 @@ async function loadHeadcountViolations() {
                         <span class="hc-title"><strong>${group.podrazdelenie} / ${group.otdel}</strong></span>
                         <span class="hc-badge hc-badge-fact">${group.children ? group.children.length : 0} должн.</span>
                         <span class="hc-badge hc-badge-excess">⚠ +${groupTotalExcess}</span>
+                        <span class="hc-badge hc-badge-cost">💰 ${formatMoney(group.excess_cost || 0)}</span>
                         <span class="hc-badge hc-badge-days">📅 ${groupDateCount} дн.</span>
                     </div>
                     <div class="hc-children" style="display:none;">
@@ -1750,6 +1759,7 @@ async function loadHeadcountViolations() {
                         <span class="hc-badge hc-badge-limit">Лимит: ${v.limit}</span>
                         <span class="hc-badge hc-badge-fact">Факт: ${v.max_fact}</span>
                         <span class="hc-badge hc-badge-excess">⚠ +${v.excess}</span>
+                        <span class="hc-badge hc-badge-cost">💰 ${formatMoney(v.excess_cost || 0)}</span>
                         <span class="hc-badge hc-badge-days">📅 ${v.date_count} дн.</span>
                     </div>
                     <div class="hc-table-wrap">
@@ -1759,6 +1769,7 @@ async function loadHeadcountViolations() {
                                     <th>Дата</th>
                                     <th>Факт</th>
                                     <th>Превышение</th>
+                                    <th>Стоимость</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -1768,6 +1779,7 @@ async function loadHeadcountViolations() {
                                         <td>${formatDate(d.date)}</td>
                                         <td>${d.fact}</td>
                                         <td class="excess-col">+${d.excess}</td>
+                                        <td class="cost-col">${formatMoney(d.excess_cost || 0)}</td>
                                         <td class="hc-expand-cell">▶</td>
                                     </tr>
                                 `).join('')}
@@ -1835,14 +1847,14 @@ async function toggleHeadcountDateRow(row, event) {
     // Создаём строку загрузки
     const loadingRow = document.createElement('tr');
     loadingRow.classList.add('hc-employees-row');
-    loadingRow.innerHTML = '<td colspan="4" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</td>';
+    loadingRow.innerHTML = '<td colspan="5" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</td>';
     row.parentNode.insertBefore(loadingRow, row.nextSibling);
     
     try {
         let params = `?date=${date}&pod=${encodeURIComponent(pod)}&dolzhnost=${encodeURIComponent(dolzhnost)}`;
         const resp = await fetch('/api/headcount/employees' + params);
         if (!resp.ok) {
-            loadingRow.innerHTML = '<td colspan="4" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
+            loadingRow.innerHTML = '<td colspan="5" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
             return;
         }
         
@@ -1850,12 +1862,12 @@ async function toggleHeadcountDateRow(row, event) {
         const employees = data.employees || [];
         
         if (employees.length === 0) {
-            loadingRow.innerHTML = '<td colspan="4" style="text-align:center;color:#888;padding:10px;">Нет данных</td>';
+            loadingRow.innerHTML = '<td colspan="5" style="text-align:center;color:#888;padding:10px;">Нет данных</td>';
             return;
         }
         
         loadingRow.innerHTML = `
-            <td colspan="4" style="padding:8px 14px;">
+            <td colspan="5" style="padding:8px 14px;">
                 <div class="hc-employees-list">
                     <strong style="color:#00ffff;">Сотрудники (${employees.length}):</strong>
                     <div style="margin-top:6px;">
@@ -1866,7 +1878,7 @@ async function toggleHeadcountDateRow(row, event) {
         `;
     } catch (err) {
         console.error('Error loading employees:', err);
-        loadingRow.innerHTML = '<td colspan="4" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
+        loadingRow.innerHTML = '<td colspan="5" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
     }
 }
 

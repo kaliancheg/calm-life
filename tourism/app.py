@@ -1814,6 +1814,8 @@ def api_headcount_violations():
         fact_q = f"""
             SELECT podrazdelenie, dolzhnost, DATE(data) AS fact_date,
                    COUNT(DISTINCT fio) AS fact_count,
+                   COUNT(*) AS shift_count,
+                   SUM(nachisleno) AS total_nachisleno,
                    GROUP_CONCAT(DISTINCT otdel SEPARATOR ', ') AS otdels
             FROM records
             {where_clause}
@@ -1830,6 +1832,7 @@ def api_headcount_violations():
         # 2. Группируем нарушения — всегда по (podrazdelenie, dolzhnost)
         violations_map = {}
         total_excess = 0
+        total_excess_cost = 0
         
         for _, row in df_fact.iterrows():
             pod_val = row['podrazdelenie']
@@ -1837,6 +1840,8 @@ def api_headcount_violations():
             otdel_val = row.get('otdels', '') or '—'
             fact_date = row['fact_date']
             fact_count = row['fact_count']
+            shift_count = row.get('shift_count', 0) or 0
+            total_nachisleno = float(row.get('total_nachisleno', 0) or 0)
             
             year = fact_date.year
             month = fact_date.month
@@ -1857,8 +1862,13 @@ def api_headcount_violations():
                 excess = fact_count - limit_count
                 total_excess += excess
                 
+                # Средняя стоимость одной смены в этот день
+                avg_shift_cost = (total_nachisleno / shift_count) if shift_count > 0 else 0
+                # Стоимость превышения = средняя_смена × кол-во_лишних_сотрудников
+                excess_cost = avg_shift_cost * excess
+                total_excess_cost += excess_cost
+                
                 # Ключ ВСЕГДА по (podrazdelenie, dolzhnost) — без отдела!
-                # Это гарантирует одну запись на связку "подразделение + должность"
                 key = (pod_val, dolzhnost)
                 date_str = str(fact_date)
                 
@@ -1866,29 +1876,31 @@ def api_headcount_violations():
                     violations_map[key] = {
                         'podrazdelenie': pod_val,
                         'dolzhnost': dolzhnost,
-                        'otdels': otdel_val,  # Сохраняем для группировки по отделам
+                        'otdels': otdel_val,
                         'limit': limit_count,
                         'max_fact': fact_count,
                         'total_excess': 0,
-                        'daily': {}  # Словарь по дате — исключает дубликаты
+                        'total_excess_cost': 0,
+                        'daily': {}
                     }
                 
                 v = violations_map[key]
                 v['total_excess'] += excess
+                v['total_excess_cost'] += excess_cost
                 if fact_count > v['max_fact']:
                     v['max_fact'] = fact_count
                 
-                # Сохраняем детальную информацию по дню (перезаписываем если дата уже есть)
+                # Сохраняем детальную информацию по дню
                 v['daily'][date_str] = {
                     'date': date_str,
                     'fact': fact_count,
-                    'excess': excess
+                    'excess': excess,
+                    'excess_cost': round(excess_cost)
                 }
         
         # Преобразуем в список
         violations = []
         for key, v in violations_map.items():
-            # Конвертируем словарь daily в отсортированный список
             daily_list = sorted(v['daily'].values(), key=lambda x: x['date'])
             violations.append({
                 'podrazdelenie': v['podrazdelenie'],
@@ -1897,6 +1909,7 @@ def api_headcount_violations():
                 'limit': v['limit'],
                 'max_fact': v['max_fact'],
                 'excess': v['total_excess'],
+                'excess_cost': round(v['total_excess_cost']),
                 'date_count': len(daily_list),
                 'daily': daily_list
             })
@@ -1914,7 +1927,6 @@ def api_headcount_violations():
                     otdel_list = ['—']
                 
                 for otdel_name in otdel_list:
-                    # Ключ включает podrazdelenie, чтобы не смешивать подразделения
                     otdel_key = (v['podrazdelenie'], otdel_name)
                     if otdel_key not in grouped:
                         grouped[otdel_key] = {
@@ -1924,15 +1936,16 @@ def api_headcount_violations():
                             'limit': 0,
                             'max_fact': 0,
                             'excess': 0,
+                            'excess_cost': 0,
                             'date_count': 0,
                             'daily': [],
                             'children': []
                         }
-                    # Не добавляем дубликат, если должность уже есть в отделе
                     existing = next((c for c in grouped[otdel_key]['children'] if c['dolzhnost'] == v['dolzhnost']), None)
                     if not existing:
                         grouped[otdel_key]['children'].append(v)
                         grouped[otdel_key]['excess'] += v['excess']
+                        grouped[otdel_key]['excess_cost'] += v['excess_cost']
                         grouped[otdel_key]['date_count'] += v['date_count']
             
             # Сортируем дочерние элементы
@@ -1966,7 +1979,8 @@ def api_headcount_violations():
         return jsonify({
             'violations': violations,
             'total_violations': sum(v['date_count'] for v in violations),
-            'total_excess': total_excess
+            'total_excess': total_excess,
+            'total_excess_cost': round(total_excess_cost)
         })
     
     except Exception as e:

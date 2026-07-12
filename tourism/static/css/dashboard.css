@@ -1520,6 +1520,12 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     border: 1px solid rgba(255, 107, 107, 0.5);
 }
 
+.hc-badge-cost {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.4);
+}
+
 .hc-badge-days {
     background: rgba(184, 184, 255, 0.1);
     color: #b8b8ff;
@@ -1575,6 +1581,12 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 .hc-table .excess-col {
     color: #ff6b6b;
     font-weight: 700;
+}
+
+.hc-table .cost-col {
+    color: #ffc107;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 /* Кликабельные строки дат */
