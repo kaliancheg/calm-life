@@ -1418,150 +1418,191 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     gap: 8px;
 }
 
-.headcount-item {
+/* ==================== HEADCOUNT VIOLATIONS — NEW UI ==================== */
+
+.hc-group {
+    margin-bottom: 6px;
+}
+
+.hc-row-wrapper {
+    margin-bottom: 4px;
+}
+
+/* Шапка элемента — отдельная строка */
+.hc-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 10px;
     padding: 10px 14px;
     background: rgba(255, 107, 107, 0.1);
     border-left: 3px solid #ff6b6b;
     border-radius: 8px;
-    transition: background 0.2s;
     cursor: pointer;
     user-select: none;
+    transition: background 0.2s;
 }
 
-.headcount-item:hover {
+.hc-header:hover {
     background: rgba(255, 107, 107, 0.18);
 }
 
-.headcount-item.expanded {
+.hc-header.expanded {
     background: rgba(255, 107, 107, 0.18);
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-/* Двухуровневая структура */
-.headcount-group-wrapper {
-    margin-bottom: 4px;
-}
-
-.headcount-item-parent {
+.hc-header-parent {
     background: rgba(255, 107, 107, 0.15);
     border-left: 4px solid #ff6b6b;
-    margin-bottom: 2px;
 }
 
-.headcount-item-parent:hover {
+.hc-header-parent:hover {
     background: rgba(255, 107, 107, 0.25);
 }
 
-.headcount-children {
-    padding-left: 24px;
-    padding-top: 4px;
-    padding-bottom: 4px;
-}
-
-.headcount-item-child {
+.hc-header-child {
     background: rgba(255, 107, 107, 0.08);
     border-left: 2px solid rgba(255, 107, 107, 0.5);
-    margin-bottom: 4px;
 }
 
-.headcount-item-child:hover {
+.hc-header-child:hover {
     background: rgba(255, 107, 107, 0.15);
 }
 
-.headcount-item-child .headcount-item-details {
-    margin-left: 20px;
-}
-
-.headcount-item-toggle {
+.hc-toggle {
     color: #b8b8ff;
     font-size: 0.8em;
-    margin-left: 8px;
     transition: transform 0.2s;
     display: inline-block;
     min-width: 12px;
 }
 
-.headcount-item.expanded .headcount-item-toggle {
+.hc-header.expanded .hc-toggle {
     transform: rotate(90deg);
 }
 
-.headcount-item-details {
+.hc-title {
+    color: #e8e8ff;
+    font-size: 0.95em;
+    flex: 1;
+}
+
+.hc-title strong {
+    color: #e8e8ff;
+}
+
+/* Бейджи */
+.hc-badge {
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.85em;
+    font-family: 'Orbitron', sans-serif;
+    white-space: nowrap;
+}
+
+.hc-badge-limit {
+    background: rgba(0, 255, 255, 0.15);
+    color: #00ffff;
+    border: 1px solid rgba(0, 255, 255, 0.4);
+}
+
+.hc-badge-fact {
+    background: rgba(0, 255, 255, 0.1);
+    color: #00ffff;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+}
+
+.hc-badge-excess {
+    background: rgba(255, 107, 107, 0.25);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 107, 107, 0.5);
+}
+
+.hc-badge-days {
+    background: rgba(184, 184, 255, 0.1);
+    color: #b8b8ff;
+    border: 1px solid rgba(184, 184, 255, 0.2);
+}
+
+/* Контейнер дочерних элементов (для режима otdel) */
+.hc-children {
+    padding-left: 24px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+/* Таблица с датами — раскрывается ниже шапки */
+.hc-table-wrap {
     display: none;
-    padding: 12px 14px;
-    background: rgba(255, 107, 107, 0.05);
     border: 1px solid rgba(255, 107, 107, 0.15);
     border-top: none;
     border-bottom-left-radius: 8px;
     border-bottom-right-radius: 8px;
-    margin-top: -1px;
+    overflow: hidden;
 }
 
-.headcount-item-details.show {
-    display: block;
-}
-
-.headcount-item-details table {
+.hc-table {
     width: 100%;
     border-collapse: collapse;
 }
 
-.headcount-item-details th {
-    background: rgba(255, 107, 107, 0.2);
+.hc-table th {
+    background: rgba(255, 107, 107, 0.15);
     color: #ff6b6b;
     font-size: 0.8em;
-    padding: 8px;
+    padding: 8px 12px;
     text-align: left;
+    border-bottom: 1px solid rgba(255, 107, 107, 0.15);
 }
 
-.headcount-item-details td {
-    padding: 6px 8px;
-    font-size: 0.85em;
-    border-bottom: 1px solid rgba(255, 107, 107, 0.1);
+.hc-table th:last-child {
+    width: 30px;
 }
 
-.headcount-item-details tr:last-child td {
+.hc-table td {
+    padding: 7px 12px;
+    font-size: 0.88em;
+    border-bottom: 1px solid rgba(255, 107, 107, 0.08);
+    color: #e8e8ff;
+}
+
+.hc-table tr:last-child td {
     border-bottom: none;
 }
 
-.headcount-item-details .excess-col {
+.hc-table .excess-col {
     color: #ff6b6b;
     font-weight: 700;
-    text-align: center;
-}
-
-/* Детали для вложенных элементов */
-.headcount-item-child .headcount-item-details {
-    border: 1px solid rgba(255, 107, 107, 0.1);
-    border-radius: 6px;
-    margin-top: 4px;
-    margin-left: 0;
 }
 
 /* Кликабельные строки дат */
-.headcount-date-row {
+.hc-date-row {
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.15s;
 }
 
-.headcount-date-row:hover {
-    background: rgba(0, 255, 255, 0.1) !important;
+.hc-date-row:hover {
+    background: rgba(0, 255, 255, 0.08);
 }
 
-/* Развернутая строка с сотрудниками */
-.headcount-employees-row td {
-    background: rgba(0, 0, 0, 0.2) !important;
-    padding: 12px 14px !important;
+.hc-expand-cell {
+    color: #b8b8ff;
+    font-size: 0.75em;
+    text-align: center;
 }
 
-.headcount-employees-list {
-    padding: 8px 0;
+/* Раскрытая строка с сотрудниками */
+.hc-employees-row td {
+    background: rgba(0, 0, 0, 0.25) !important;
 }
 
-.headcount-employee-tag {
+.hc-employees-list {
+    padding: 6px 0;
+}
+
+.hc-employee-tag {
     display: inline-block;
     padding: 3px 10px;
     margin: 3px 4px 3px 0;
@@ -1572,101 +1613,15 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     font-size: 0.85em;
 }
 
-.headcount-item-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.headcount-item-date {
-    color: #e8e8ff;
-    font-weight: 600;
-    font-size: 0.95em;
-    min-width: 80px;
-}
-
-.headcount-item-role {
-    color: #b8b8ff;
-    font-size: 0.9em;
-}
-
-.headcount-item-role strong {
-    color: #e8e8ff;
-}
-
-.headcount-item-excess {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.headcount-item-limit {
-    color: #e8e8ff;
-    font-weight: 600;
-    font-size: 0.95em;
-}
-
-.headcount-item-limit-badge {
-    padding: 4px 10px;
-    background: rgba(0, 255, 255, 0.15);
-    border: 1px solid rgba(0, 255, 255, 0.4);
-    border-radius: 6px;
-    color: #00ffff;
-    font-weight: 700;
-    font-size: 0.9em;
-    font-family: 'Orbitron', sans-serif;
-    white-space: nowrap;
-}
-
-.headcount-item-badges {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-}
-
-.headcount-item-dates {
-    color: #b8b8ff;
-    font-size: 0.85em;
-    padding: 3px 8px;
-    background: rgba(184, 184, 255, 0.1);
-    border-radius: 4px;
-    white-space: nowrap;
-}
-
-.headcount-badge {
-    padding: 3px 10px;
-    border-radius: 6px;
-    font-weight: 700;
-    font-size: 0.9em;
-    font-family: 'Orbitron', sans-serif;
-}
-
-.headcount-badge-fact {
-    background: rgba(0, 255, 255, 0.15);
-    color: #00ffff;
-    border: 1px solid rgba(0, 255, 255, 0.3);
-}
-
-.headcount-badge-excess {
-    background: rgba(255, 107, 107, 0.25);
-    color: #ff6b6b;
-    border: 1px solid rgba(255, 107, 107, 0.5);
-}
-
+/* Mobile */
 @media (max-width: 768px) {
     .headcount-summary {
         flex-direction: column;
         gap: 12px;
     }
     
-    .headcount-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-    
-    .headcount-item-info {
-        flex-direction: column;
-        align-items: flex-start;
+    .hc-header {
+        flex-wrap: wrap;
+        gap: 6px;
     }
 }

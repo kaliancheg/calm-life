@@ -1673,7 +1673,7 @@ async function loadHeadcountViolations() {
         
         // Render grouped list with accordion (двухуровневая структура для group_by='otdel')
         if (hcGroupMode === 'otdel') {
-            // Двухуровневая структура: Отдел -> Должности
+            // Двухуровневая структура: Отдел -> Должности -> Даты
             list.innerHTML = currentHeadcountViolations.map((group, groupIndex) => {
                 const isGroupExpanded = group.children && group.children.length > 0;
                 const groupTotalExcess = group.excess;
@@ -1682,34 +1682,32 @@ async function loadHeadcountViolations() {
                 let childrenHtml = '';
                 if (isGroupExpanded) {
                     childrenHtml = group.children.map((child, childIndex) => `
-                        <div class="headcount-item headcount-item-child" onclick="toggleHeadcountRow(this, event)">
-                            <div class="headcount-item-info">
-                                <span class="headcount-item-toggle">▶</span>
-                                <span class="headcount-item-role"><strong>${child.dolzhnost}</strong></span>
+                        <div class="hc-row-wrapper">
+                            <div class="hc-header hc-header-child" onclick="toggleHeadcountRow(this, event)">
+                                <span class="hc-toggle">▶</span>
+                                <span class="hc-title"><strong>${child.dolzhnost}</strong></span>
+                                <span class="hc-badge hc-badge-limit">Лимит: ${child.limit}</span>
+                                <span class="hc-badge hc-badge-fact">Факт: ${child.max_fact}</span>
+                                <span class="hc-badge hc-badge-excess">⚠ +${child.excess}</span>
+                                <span class="hc-badge hc-badge-days">📅 ${child.date_count} дн.</span>
                             </div>
-                            <div class="headcount-item-excess">
-                                <span class="headcount-item-limit-badge">Лимит: ${child.limit}</span>
-                                <div class="headcount-item-badges">
-                                    <span class="headcount-badge headcount-badge-fact">${child.max_fact}</span>
-                                    <span class="headcount-badge headcount-badge-excess">⚠ +${child.excess}</span>
-                                </div>
-                                <span class="headcount-item-dates" title="${child.daily.map(d => d.date).join(', ')}">📅 ${child.date_count} дн.</span>
-                            </div>
-                            <div class="headcount-item-details">
-                                <table>
+                            <div class="hc-table-wrap">
+                                <table class="hc-table">
                                     <thead>
                                         <tr>
                                             <th>Дата</th>
                                             <th>Факт</th>
                                             <th>Превышение</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         ${child.daily.map(d => `
-                                            <tr class="headcount-date-row" data-date="${d.date}" data-pod="${child.podrazdelenie}" data-dolzhnost="${child.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
+                                            <tr class="hc-date-row" data-date="${d.date}" data-pod="${child.podrazdelenie}" data-dolzhnost="${child.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
                                                 <td>${d.date}</td>
                                                 <td>${d.fact}</td>
                                                 <td class="excess-col">+${d.excess}</td>
+                                                <td class="hc-expand-cell">▶</td>
                                             </tr>
                                         `).join('')}
                                     </tbody>
@@ -1720,22 +1718,15 @@ async function loadHeadcountViolations() {
                 }
                 
                 return `
-                <div class="headcount-group-wrapper">
-                    <div class="headcount-item headcount-item-parent" onclick="toggleHeadcountRow(this, event)">
-                        <div class="headcount-item-info">
-                            <span class="headcount-item-toggle">▶</span>
-                            <span class="headcount-item-role"><strong>${group.podrazdelenie} / ${group.otdel}</strong></span>
-                        </div>
-                        <div class="headcount-item-excess">
-                            <span class="headcount-item-limit-badge">Всего нарушений</span>
-                            <div class="headcount-item-badges">
-                                <span class="headcount-badge headcount-badge-fact">${group.children ? group.children.length : 0} должн.</span>
-                                <span class="headcount-badge headcount-badge-excess">⚠ +${groupTotalExcess}</span>
-                            </div>
-                            <span class="headcount-item-dates" title="Всего дней с нарушениями">📅 ${groupDateCount} дн.</span>
-                        </div>
+                <div class="hc-group">
+                    <div class="hc-header hc-header-parent" onclick="toggleHeadcountRow(this, event)">
+                        <span class="hc-toggle">▶</span>
+                        <span class="hc-title"><strong>${group.podrazdelenie} / ${group.otdel}</strong></span>
+                        <span class="hc-badge hc-badge-fact">${group.children ? group.children.length : 0} должн.</span>
+                        <span class="hc-badge hc-badge-excess">⚠ +${groupTotalExcess}</span>
+                        <span class="hc-badge hc-badge-days">📅 ${groupDateCount} дн.</span>
                     </div>
-                    <div class="headcount-children" style="display:none;">
+                    <div class="hc-children" style="display:none;">
                         ${childrenHtml}
                     </div>
                 </div>
@@ -1744,44 +1735,40 @@ async function loadHeadcountViolations() {
         } else {
             // Одиночный уровень: должность или отдел+должность
             list.innerHTML = currentHeadcountViolations.map((v, index) => {
-                // Формируем отображаемое имя в зависимости от group_by
                 let displayName = '';
                 if (hcGroupMode === 'dolzhnost') {
                     displayName = `${v.podrazdelenie} / ${v.dolzhnost}`;
                 } else {
-                    // none - показываем всё
                     displayName = `${v.podrazdelenie} / ${v.otdels || '—'} / ${v.dolzhnost}`;
                 }
                 
                 return `
-                <div class="headcount-item" onclick="toggleHeadcountRow(this, event)">
-                    <div class="headcount-item-info">
-                        <span class="headcount-item-toggle">▶</span>
-                        <span class="headcount-item-role"><strong>${displayName}</strong></span>
+                <div class="hc-row-wrapper">
+                    <div class="hc-header" onclick="toggleHeadcountRow(this, event)">
+                        <span class="hc-toggle">▶</span>
+                        <span class="hc-title"><strong>${displayName}</strong></span>
+                        <span class="hc-badge hc-badge-limit">Лимит: ${v.limit}</span>
+                        <span class="hc-badge hc-badge-fact">Факт: ${v.max_fact}</span>
+                        <span class="hc-badge hc-badge-excess">⚠ +${v.excess}</span>
+                        <span class="hc-badge hc-badge-days">📅 ${v.date_count} дн.</span>
                     </div>
-                    <div class="headcount-item-excess">
-                        <span class="headcount-item-limit-badge">Лимит: ${v.limit}</span>
-                        <div class="headcount-item-badges">
-                            <span class="headcount-badge headcount-badge-fact">${v.max_fact}</span>
-                            <span class="headcount-badge headcount-badge-excess">⚠ +${v.excess}</span>
-                        </div>
-                        <span class="headcount-item-dates" title="${v.daily.map(d => d.date).join(', ')}">📅 ${v.date_count} дн.</span>
-                    </div>
-                    <div class="headcount-item-details">
-                        <table>
+                    <div class="hc-table-wrap">
+                        <table class="hc-table">
                             <thead>
                                 <tr>
                                     <th>Дата</th>
                                     <th>Факт</th>
                                     <th>Превышение</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${v.daily.map(d => `
-                                    <tr class="headcount-date-row" data-date="${d.date}" data-pod="${v.podrazdelenie}" data-dolzhnost="${v.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
+                                    <tr class="hc-date-row" data-date="${d.date}" data-pod="${v.podrazdelenie}" data-dolzhnost="${v.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
                                         <td>${d.date}</td>
                                         <td>${d.fact}</td>
                                         <td class="excess-col">+${d.excess}</td>
+                                        <td class="hc-expand-cell">▶</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -1801,31 +1788,42 @@ async function loadHeadcountViolations() {
 function toggleHeadcountRow(element, event) {
     if (event) event.stopPropagation();
     
-    // Для родительских элементов (отдел) — раскрываем .headcount-children
-    if (element.classList.contains('headcount-item-parent')) {
-        const wrapper = element.closest('.headcount-group-wrapper');
-        const children = wrapper.querySelector('.headcount-children');
+    // Для родительских элементов (отдел) — раскрываем .hc-children
+    if (element.classList.contains('hc-header-parent')) {
+        const group = element.closest('.hc-group');
+        const children = group.querySelector('.hc-children');
         element.classList.toggle('expanded');
         if (children) {
-            children.style.display = children.style.display === 'none' ? 'block' : 'none';
+            const isHidden = children.style.display === 'none' || !children.style.display;
+            children.style.display = isHidden ? 'block' : 'none';
         }
         return;
     }
     
-    // Для обычных и дочерних элементов — раскрываем .headcount-item-details
-    const details = element.querySelector('.headcount-item-details');
-    element.classList.toggle('expanded');
-    if (details) {
-        details.classList.toggle('show');
+    // Для обычных и дочерних элементов — раскрываем .hc-table-wrap
+    const wrapper = element.closest('.hc-row-wrapper');
+    if (wrapper) {
+        const tableWrap = wrapper.querySelector('.hc-table-wrap');
+        element.classList.toggle('expanded');
+        if (tableWrap) {
+            const isHidden = tableWrap.style.display === 'none' || !tableWrap.style.display;
+            tableWrap.style.display = isHidden ? 'block' : 'none';
+        }
     }
 }
 
 async function toggleHeadcountDateRow(row, event) {
     if (event) event.stopPropagation();
     
+    // Поворачиваем стрелку
+    const expandCell = row.querySelector('.hc-expand-cell');
+    if (expandCell) {
+        expandCell.textContent = expandCell.textContent === '▶' ? '▼' : '▶';
+    }
+    
     // Если уже есть блок с сотрудниками — просто скрываем/показываем
     const existing = row.nextElementSibling;
-    if (existing && existing.classList.contains('headcount-employees-row')) {
+    if (existing && existing.classList.contains('hc-employees-row')) {
         existing.style.display = existing.style.display === 'none' ? 'table-row' : 'none';
         return;
     }
@@ -1836,15 +1834,15 @@ async function toggleHeadcountDateRow(row, event) {
     
     // Создаём строку загрузки
     const loadingRow = document.createElement('tr');
-    loadingRow.classList.add('headcount-employees-row');
-    loadingRow.innerHTML = '<td colspan="3" style="text-align:center;color:#b8b8ff;">Загрузка сотрудников...</td>';
+    loadingRow.classList.add('hc-employees-row');
+    loadingRow.innerHTML = '<td colspan="4" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</td>';
     row.parentNode.insertBefore(loadingRow, row.nextSibling);
     
     try {
         let params = `?date=${date}&pod=${encodeURIComponent(pod)}&dolzhnost=${encodeURIComponent(dolzhnost)}`;
         const resp = await fetch('/api/headcount/employees' + params);
         if (!resp.ok) {
-            loadingRow.innerHTML = '<td colspan="3" style="text-align:center;color:#ff6b6b;">Ошибка загрузки</td>';
+            loadingRow.innerHTML = '<td colspan="4" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
             return;
         }
         
@@ -1852,23 +1850,23 @@ async function toggleHeadcountDateRow(row, event) {
         const employees = data.employees || [];
         
         if (employees.length === 0) {
-            loadingRow.innerHTML = '<td colspan="3" style="text-align:center;color:#888;">Нет данных</td>';
+            loadingRow.innerHTML = '<td colspan="4" style="text-align:center;color:#888;padding:10px;">Нет данных</td>';
             return;
         }
         
         loadingRow.innerHTML = `
-            <td colspan="3">
-                <div class="headcount-employees-list">
+            <td colspan="4" style="padding:8px 14px;">
+                <div class="hc-employees-list">
                     <strong style="color:#00ffff;">Сотрудники (${employees.length}):</strong>
                     <div style="margin-top:6px;">
-                        ${employees.map(e => `<span class="headcount-employee-tag">${e.fio} ${e.status_field ? (e.status_field === 'Уволен' ? '🔴' : '🟢') : ''}</span>`).join('')}
+                        ${employees.map(e => `<span class="hc-employee-tag">${e.fio} ${e.status_field ? (e.status_field === 'Уволен' ? '🔴' : '🟢') : ''}</span>`).join('')}
                     </div>
                 </div>
             </td>
         `;
     } catch (err) {
         console.error('Error loading employees:', err);
-        loadingRow.innerHTML = '<td colspan="3" style="text-align:center;color:#ff6b6b;">Ошибка загрузки</td>';
+        loadingRow.innerHTML = '<td colspan="4" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
     }
 }
 
