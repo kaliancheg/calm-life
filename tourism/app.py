@@ -1893,6 +1893,7 @@ def api_headcount_violations():
                 # Сохраняем детальную информацию по дню
                 v['daily'][date_str] = {
                     'date': date_str,
+                    'limit': limit_count,
                     'fact': fact_count,
                     'excess': excess,
                     'excess_cost': round(excess_cost)

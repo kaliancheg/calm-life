@@ -1583,6 +1583,11 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     font-weight: 700;
 }
 
+.hc-table .limit-col {
+    color: #81c784;
+    font-weight: 600;
+}
+
 .hc-table .cost-col {
     color: #ffc107;
     font-weight: 600;

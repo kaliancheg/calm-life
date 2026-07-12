@@ -957,7 +957,7 @@ function openEmpDetailModal(fio, podrazdelenie, dolzhnost, otdel, selectedPod) {
         </tr>`;
     }).join('');
     
-    document.querySelector('#empDetailTable tbody').innerHTML = tbody || '<tr><td colspan="5" style="text-align:center;color:#b8b8ff;">Нет данных</td></tr>';
+    document.querySelector('#empDetailTable tbody').innerHTML = tbody || '<tr><td colspan="6" style="text-align:center;color:#b8b8ff;">Нет данных</td></tr>';
     
     // Итоги
     const smen = empData.length;
@@ -1701,6 +1701,7 @@ async function loadHeadcountViolations() {
                                     <thead>
                                         <tr>
                                             <th>Дата</th>
+                                            <th>Лимит</th>
                                             <th>Факт</th>
                                             <th>Превышение</th>
                                             <th>Стоимость</th>
@@ -1711,6 +1712,7 @@ async function loadHeadcountViolations() {
                                         ${child.daily.map(d => `
                                             <tr class="hc-date-row" data-date="${d.date}" data-pod="${child.podrazdelenie}" data-dolzhnost="${child.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
                                                 <td>${formatDate(d.date)}</td>
+                                                <td class="limit-col">${d.limit}</td>
                                                 <td>${d.fact}</td>
                                                 <td class="excess-col">+${d.excess}</td>
                                                 <td class="cost-col">${formatMoney(d.excess_cost || 0)}</td>
@@ -1765,6 +1767,7 @@ async function loadHeadcountViolations() {
                             <thead>
                                 <tr>
                                     <th>Дата</th>
+                                    <th>Лимит</th>
                                     <th>Факт</th>
                                     <th>Превышение</th>
                                     <th>Стоимость</th>
@@ -1775,6 +1778,7 @@ async function loadHeadcountViolations() {
                                 ${v.daily.map(d => `
                                     <tr class="hc-date-row" data-date="${d.date}" data-pod="${v.podrazdelenie}" data-dolzhnost="${v.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
                                         <td>${formatDate(d.date)}</td>
+                                        <td class="limit-col">${d.limit}</td>
                                         <td>${d.fact}</td>
                                         <td class="excess-col">+${d.excess}</td>
                                         <td class="cost-col">${formatMoney(d.excess_cost || 0)}</td>
@@ -1845,14 +1849,14 @@ async function toggleHeadcountDateRow(row, event) {
     // Создаём строку загрузки
     const loadingRow = document.createElement('tr');
     loadingRow.classList.add('hc-employees-row');
-    loadingRow.innerHTML = '<td colspan="5" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</td>';
+    loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</td>';
     row.parentNode.insertBefore(loadingRow, row.nextSibling);
     
     try {
         let params = `?date=${date}&pod=${encodeURIComponent(pod)}&dolzhnost=${encodeURIComponent(dolzhnost)}`;
         const resp = await fetch('/api/headcount/employees' + params);
         if (!resp.ok) {
-            loadingRow.innerHTML = '<td colspan="5" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
+            loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
             return;
         }
         
@@ -1860,12 +1864,12 @@ async function toggleHeadcountDateRow(row, event) {
         const employees = data.employees || [];
         
         if (employees.length === 0) {
-            loadingRow.innerHTML = '<td colspan="5" style="text-align:center;color:#888;padding:10px;">Нет данных</td>';
+            loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#888;padding:10px;">Нет данных</td>';
             return;
         }
         
         loadingRow.innerHTML = `
-            <td colspan="5" style="padding:8px 14px;">
+            <td colspan="6" style="padding:8px 14px;">
                 <div class="hc-employees-list">
                     <strong style="color:#00ffff;">Сотрудники (${employees.length}):</strong>
                     <div style="margin-top:6px;">
@@ -1876,7 +1880,7 @@ async function toggleHeadcountDateRow(row, event) {
         `;
     } catch (err) {
         console.error('Error loading employees:', err);
-        loadingRow.innerHTML = '<td colspan="5" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
+        loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
     }
 }
 
