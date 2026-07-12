@@ -1187,7 +1187,7 @@ def api_fot_breakdown():
 
         where_clause = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
 
-        q = f"SELECT `{by}` AS `key`, SUM(itogo) AS total_money, SUM(chasy) AS total_hours, COUNT(DISTINCT fio) AS employees, SUM(nachisleno) AS total_nachisleno FROM records {where_clause} GROUP BY `{by}` ORDER BY total_money DESC LIMIT %s"
+        q = f"SELECT `{by}` AS `key`, SUM(itogo) AS total_money, SUM(chasy) AS total_hours, COUNT(DISTINCT fio) AS employees, COUNT(*) AS shifts, SUM(nachisleno) AS total_nachisleno FROM records {where_clause} GROUP BY `{by}` ORDER BY total_money DESC LIMIT %s"
         params_with_limit = list(params) + [limit]
 
         df = pd.read_sql(q, conn, params=params_with_limit)
@@ -1211,6 +1211,7 @@ def api_fot_breakdown():
                 'total_money': total_money,
                 'total_hours': total_hours,
                 'employees': employees,
+                'shifts': int(row.get('shifts') or 0),
                 'avg_rate': avg_rate,
                 'share': share
             })

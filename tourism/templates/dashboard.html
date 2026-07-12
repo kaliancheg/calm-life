@@ -220,7 +220,7 @@
     </div>
     <div class="breakdown-table-wrap">
         <table>
-            <thead><tr><th>Отдел</th><th>Сотрудников</th><th>Дней</th><th>Часы</th><th>Начислено</th></tr></thead>
+            <thead><tr><th>Отдел</th><th>Сотрудников</th><th>Смены</th><th>Часы</th><th>Начислено</th></tr></thead>
             <tbody id="otdelTable"></tbody>
         </table>
     </div>
@@ -1593,7 +1593,7 @@ async function fetchFotSummaryAndBreakdown() {
             const bdata = await brResp.json();
             if (!bdata.error && bdata.breakdown) {
                 // Update otdel table from server-side data
-                const rows = bdata.breakdown.map(r => `<tr><td>${r.key || '—'}</td><td>${r.employees}</td><td>—</td><td>${Math.round(r.total_hours)}</td><td>${formatMoney(r.total_money)}</td></tr>`);
+                const rows = bdata.breakdown.map(r => `<tr><td>${r.key || '—'}</td><td>${r.employees}</td><td>${r.shifts || 0}</td><td>${Math.round(r.total_hours)}</td><td>${formatMoney(r.total_money)}</td></tr>`);
                 document.getElementById('otdelTable').innerHTML = rows.join('');
             }
         }
