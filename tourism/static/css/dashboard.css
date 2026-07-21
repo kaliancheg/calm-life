@@ -7,11 +7,10 @@ body {
     padding: 20px 10px 20px 0;
 }
 
-/* Container для dashboard — без левого padding (сайдбар примыкает к краю) */
+/* Container для dashboard — без max-width, контент заполняет доступную ширину */
 .container {
     padding: 0 !important;
-    max-width: 1800px;
-    margin: 0 auto;
+    margin: 0;
 }
 
 /* ========================================
@@ -69,6 +68,47 @@ body {
 .dashboard-sidebar .filters h2 {
     font-size: 1.15em;
     margin-bottom: 12px;
+}
+
+/* Заголовок фильтра с иконками */
+.dashboard-sidebar .filters-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.dashboard-sidebar .filters-header h2 {
+    margin: 0;
+    font-size: 1.15em;
+}
+
+.dashboard-sidebar .filters-header-btns {
+    display: flex;
+    gap: 6px;
+}
+
+.dashboard-sidebar .filter-icon-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(0, 255, 255, 0.35);
+    border-radius: 6px;
+    background: rgba(18, 20, 45, 0.85);
+    color: #00ffff;
+    font-size: 0.85em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    padding: 0;
+    line-height: 1;
+}
+
+.dashboard-sidebar .filter-icon-btn:hover {
+    background: rgba(0, 255, 255, 0.2);
+    border-color: #00ffff;
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
 }
 
 .dashboard-sidebar .filter-section {
@@ -488,16 +528,22 @@ body {
 }
 
 .stat-card {
-    background: rgba(25, 28, 58, 0.7);
-    padding: 25px;
-    border-radius: 20px;
+    background: rgba(18, 20, 45, 0.85);
+    padding: 20px;
+    border-radius: 15px;
     text-align: center;
-    border: 1px solid rgba(0, 255, 255, 0.25);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(138, 43, 226, 0.5);
 }
 
 .stat-value {
     font-family: 'Orbitron', sans-serif;
-    font-size: 1.75em;
+    font-size: 2.25em;
     font-weight: 700;
     color: #00ffff;
     text-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
@@ -525,17 +571,18 @@ body {
 
 .stat-label { 
     color: #b8b8ff; 
-    margin-top: 5px; 
+    margin-top: 8px;
+    font-size: 0.95em;
 }
 
 /* FOT Overview Section */
 .fot-overview,
 .breakdown-section {
-    background: rgba(25, 28, 58, 0.75);
+    background: rgba(25, 28, 58, 0.7);
     padding: 25px;
-    border-radius: 22px;
-    border: 1px solid rgba(0, 255, 255, 0.2);
-    box-shadow: 0 10px 35px rgba(0, 255, 255, 0.07);
+    border-radius: 20px;
+    border: 1px solid rgba(0, 255, 255, 0.25);
+    box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
     margin: 25px 0;
 }
 
@@ -561,6 +608,8 @@ body {
 
 .breakdown-table-wrap {
     overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 255, 255, 0.12);
 }
 
 .breakdown-table-wrap table {
@@ -862,7 +911,7 @@ body {
 
 .lfl-value {
     font-family: 'Orbitron', sans-serif; 
-    font-size: 1.54em;
+    font-size: 1.98em;
     font-weight: 700;
     color: #00ffff;
     text-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
@@ -1153,6 +1202,13 @@ body {
     margin: 25px 0;
     overflow-x: auto;
     border: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.aggregated table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 .aggregated h3 { 
@@ -1576,7 +1632,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     padding: 20px 25px;
     background: linear-gradient(135deg, rgba(255, 107, 107, 0.08), rgba(255, 165, 0, 0.05));
     border: 1px solid rgba(255, 107, 107, 0.3);
-    border-radius: 16px;
+    border-radius: 20px;
 }
 
 .headcount-block .section-header h2 {
@@ -1644,7 +1700,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 .headcount-stat-value {
-    font-size: 1.26em;
+    font-size: 1.62em;
     font-weight: 700;
     color: #ff6b6b;
     font-family: 'Orbitron', sans-serif;

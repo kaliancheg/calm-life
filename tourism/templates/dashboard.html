@@ -23,7 +23,15 @@
 <div class="dashboard-layout">
 <aside class="dashboard-sidebar">
 <div class="filters">
+<div class="filters-header">
 <h2>🔍 Фильтры</h2>
+<div class="filters-header-btns">
+{% if can_export %}
+<button class="filter-icon-btn" id="exportBtn" onclick="exportData()" title="Экспорт в Excel">📥</button>
+{% endif %}
+<button class="filter-icon-btn" onclick="resetFilters()" title="Сбросить фильтры">✕</button>
+</div>
+</div>
 <div class="filter-section">
 <label class="filter-toggle-label" onclick="toggleFilterSection('podButtons', this)">Подразделение <span class="toggle-arrow">▼</span></label>
 <div class="filter-buttons" id="podButtons"></div>
@@ -48,10 +56,7 @@
 <button class="btn-month" onclick="setCurrentMonth()">📅 Текущий месяц</button>
 <button class="btn-month" onclick="setLastMonth()">📆 Прошлый месяц</button>
 <button class="btn-secondary" onclick="setLast7Days()">Последние 7 дней</button>
-{% if can_export %}
-<button class="btn-export" id="exportBtn" onclick="exportData()">📥 Экспорт в Excel</button>
-{% endif %}
-<button class="btn-secondary" onclick="resetFilters()">Сбросить</button>
+</div>
 </div>
 </div>
 </div>
@@ -1063,7 +1068,6 @@ renderQuickSelectors(); // Рендерим кнопки быстрого выб
 console.log('Hiding loading, showing dashboard');
 document.getElementById('loading').style.display = 'none';
 document.getElementById('dashboard').style.display = 'block';
-if (!canExport) document.getElementById('exportBtn').style.display = 'none';
 console.log('=== loadData() completed ===');
 } catch(error) {
 console.error('Error loading data:', error);
