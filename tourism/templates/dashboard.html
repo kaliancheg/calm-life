@@ -707,8 +707,11 @@ function setCustomPeriodDefaults() {
 
 async function calculateLFL() {
     try {
-        const df = document.getElementById('dateFrom').value;
-        const dt = document.getElementById('dateTo').value;
+        const dfRaw = document.getElementById('dateFrom').value;
+        const dtRaw = document.getElementById('dateTo').value;
+        // Конвертация DD.MM.YYYY → YYYY-MM-DD для сервера
+        const df = dfRaw ? formatDateForInput(parseDisplayDate(dfRaw)) : '';
+        const dt = dtRaw ? formatDateForInput(parseDisplayDate(dtRaw)) : '';
         const podVal = selectedPod || '';
 
         let params = `?mode=${lflMode}&filter_from=${df}&filter_to=${dt}&selected_pod=${encodeURIComponent(podVal)}`;
@@ -1124,8 +1127,8 @@ let otdelButtonsHtml = '<button class="filter-btn active" data-otdel="">Все</
 otdels.forEach(o => { otdelButtonsHtml += '<button class="filter-btn" data-otdel="' + o + '"> ' + o + '</button>'; });
 otdelContainer.innerHTML = otdelButtonsHtml;
 
-document.getElementById('dateTo').value = dates[dates.length-1];
-document.getElementById('dateFrom').value = dates[0];
+document.getElementById('dateTo').value = formatDateForDisplay(new Date(dates[dates.length-1]));
+document.getElementById('dateFrom').value = formatDateForDisplay(new Date(dates[0]));
 
 podContainer.addEventListener('click', function(e) {
 if (e.target.classList.contains('filter-btn')) {
@@ -1187,26 +1190,39 @@ function formatDateForInput(date) {
 return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
 }
 
+// Формат для отображения в инпутах flatpickr: DD.MM.YYYY
+function formatDateForDisplay(date) {
+return String(date.getDate()).padStart(2, '0') + '.' + String(date.getMonth() + 1).padStart(2, '0') + '.' + date.getFullYear();
+}
+
+// Парсинг даты из формата DD.MM.YYYY в Date
+function parseDisplayDate(str) {
+if (!str) return new Date(NaN);
+const parts = str.split('.');
+if (parts.length !== 3) return new Date(NaN);
+return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+}
+
 function setYesterday() {
 const today = new Date();
 const twoDaysAgo = new Date(today);
 twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-document.getElementById('dateFrom').value = formatDateForInput(twoDaysAgo);
-document.getElementById('dateTo').value = formatDateForInput(twoDaysAgo);
+document.getElementById('dateFrom').value = formatDateForDisplay(twoDaysAgo);
+document.getElementById('dateTo').value = formatDateForDisplay(twoDaysAgo);
 applyFilters();
 }
 
 function setCurrentMonth() {
 const today = new Date();
-document.getElementById('dateFrom').value = formatDateForInput(new Date(today.getFullYear(), today.getMonth(), 1));
-document.getElementById('dateTo').value = formatDateForInput(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+document.getElementById('dateFrom').value = formatDateForDisplay(new Date(today.getFullYear(), today.getMonth(), 1));
+document.getElementById('dateTo').value = formatDateForDisplay(new Date(today.getFullYear(), today.getMonth() + 1, 0));
 applyFilters();
 }
 
 function setLastMonth() {
 const today = new Date();
-document.getElementById('dateFrom').value = formatDateForInput(new Date(today.getFullYear(), today.getMonth() - 1, 1));
-document.getElementById('dateTo').value = formatDateForInput(new Date(today.getFullYear(), today.getMonth(), 0));
+document.getElementById('dateFrom').value = formatDateForDisplay(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+document.getElementById('dateTo').value = formatDateForDisplay(new Date(today.getFullYear(), today.getMonth(), 0));
 applyFilters();
 }
 
@@ -1215,8 +1231,8 @@ const dates = allData.map(r => r.data).sort();
 const maxDate = new Date(dates[dates.length-1]);
 const minDate = new Date(maxDate);
 minDate.setDate(minDate.getDate() - 6);
-document.getElementById('dateFrom').value = formatDateForInput(minDate);
-document.getElementById('dateTo').value = formatDateForInput(maxDate);
+document.getElementById('dateFrom').value = formatDateForDisplay(minDate);
+document.getElementById('dateTo').value = formatDateForDisplay(maxDate);
 applyFilters();
 }
 
@@ -1234,8 +1250,8 @@ applyFilters();
 function shiftDates(direction, unit) {
 const dateFromEl = document.getElementById('dateFrom');
 const dateToEl = document.getElementById('dateTo');
-let fromDate = new Date(dateFromEl.value);
-let toDate = new Date(dateToEl.value);
+let fromDate = parseDisplayDate(dateFromEl.value);
+let toDate = parseDisplayDate(dateToEl.value);
 if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) return;
 if (unit === 'day') {
 fromDate.setDate(fromDate.getDate() + direction);
@@ -1249,14 +1265,17 @@ toDate.setDate(1);
 toDate.setMonth(toDate.getMonth() + direction + 1);
 toDate.setDate(0); // 0-й день следующего месяца = последний день текущего
 }
-dateFromEl.value = formatDateForInput(fromDate);
-dateToEl.value = formatDateForInput(toDate);
+dateFromEl.value = formatDateForDisplay(fromDate);
+dateToEl.value = formatDateForDisplay(toDate);
 applyFilters();
 }
 
 function applyFilters() {
-const df = document.getElementById('dateFrom').value;
-const dt = document.getElementById('dateTo').value;
+const dfRaw = document.getElementById('dateFrom').value;
+const dtRaw = document.getElementById('dateTo').value;
+// Конвертация DD.MM.YYYY → YYYY-MM-DD для сравнения с данными
+const df = dfRaw ? formatDateForInput(parseDisplayDate(dfRaw)) : '';
+const dt = dtRaw ? formatDateForInput(parseDisplayDate(dtRaw)) : '';
 
 let filtered = allData.filter(r => {
 if (selectedPod && r.podrazdelenie !== selectedPod) return false;
@@ -1299,8 +1318,10 @@ function animateValue(element, start, end, duration, isMoney, suffix = '', showS
 
 function exportData() {
 if (!canExport) { alert('У вас нет прав на экспорт'); return; }
-const df = document.getElementById('dateFrom').value;
-const dt = document.getElementById('dateTo').value;
+const dfRaw = document.getElementById('dateFrom').value;
+const dtRaw = document.getElementById('dateTo').value;
+const df = dfRaw ? formatDateForInput(parseDisplayDate(dfRaw)) : '';
+const dt = dtRaw ? formatDateForInput(parseDisplayDate(dtRaw)) : '';
 let filtered = allData.filter(r => {
 if (selectedPod && r.podrazdelenie !== selectedPod) return false;
 if (selectedOtdels.length > 0 && !selectedOtdels.includes(r.otdel)) return false;
@@ -1630,8 +1651,11 @@ applyFilters = function() {
 // Fetch server-side summary and breakdown for current filters
 async function fetchFotSummaryAndBreakdown() {
     try {
-        const df = document.getElementById('dateFrom').value;
-        const dt = document.getElementById('dateTo').value;
+        const dfRaw = document.getElementById('dateFrom').value;
+        const dtRaw = document.getElementById('dateTo').value;
+        // Конвертация DD.MM.YYYY → YYYY-MM-DD для сервера
+        const df = dfRaw ? formatDateForInput(parseDisplayDate(dfRaw)) : '';
+        const dt = dtRaw ? formatDateForInput(parseDisplayDate(dtRaw)) : '';
         const podVal = selectedPod || '';
 
         // Building summary params with multiple otdels
@@ -1704,8 +1728,11 @@ function setHcGroup(mode) {
 }
 
 async function loadHeadcountViolations() {
-    const df = document.getElementById('dateFrom').value;
-    const dt = document.getElementById('dateTo').value;
+    const dfRaw = document.getElementById('dateFrom').value;
+    const dtRaw = document.getElementById('dateTo').value;
+    // Конвертация DD.MM.YYYY → YYYY-MM-DD для сервера
+    const df = dfRaw ? formatDateForInput(parseDisplayDate(dfRaw)) : '';
+    const dt = dtRaw ? formatDateForInput(parseDisplayDate(dtRaw)) : '';
     
     if (!df || !dt) {
         document.getElementById('headcountBlock').style.display = 'none';
@@ -1958,13 +1985,13 @@ async function toggleHeadcountDateRow(row, event) {
 if (typeof flatpickr !== 'undefined') {
     flatpickr.localize(flatpickr.l10ns.ru);
     flatpickr('#dateFrom', {
-        dateFormat: 'Y-m-d',
+        dateFormat: 'd.m.Y',
         animate: true,
         disableMobile: true,
         onChange: function() { applyFilters(); }
     });
     flatpickr('#dateTo', {
-        dateFormat: 'Y-m-d',
+        dateFormat: 'd.m.Y',
         animate: true,
         disableMobile: true,
         onChange: function() { applyFilters(); }
