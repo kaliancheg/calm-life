@@ -1238,8 +1238,13 @@ if (unit === 'day') {
 fromDate.setDate(fromDate.getDate() + direction);
 toDate.setDate(toDate.getDate() + direction);
 } else if (unit === 'month') {
+// Смещаем на месяц вперёд/назад строго по границам месяца
+fromDate.setDate(1); // сначала первого числа
 fromDate.setMonth(fromDate.getMonth() + direction);
-toDate.setMonth(toDate.getMonth() + direction);
+// Последний день месяца
+toDate.setDate(1);
+toDate.setMonth(toDate.getMonth() + direction + 1);
+toDate.setDate(0); // 0-й день следующего месяца = последний день текущего
 }
 dateFromEl.value = formatDateForInput(fromDate);
 dateToEl.value = formatDateForInput(toDate);
