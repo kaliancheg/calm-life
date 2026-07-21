@@ -214,6 +214,7 @@ body {
     padding: 5px 6px;
     font-size: 12px;
     box-sizing: border-box;
+    text-align: center;
 }
 
 .dashboard-sidebar .filter-group label {
@@ -224,6 +225,7 @@ body {
 .dashboard-sidebar .filter-group.date-group label {
     font-size: 0.78em;
     margin-bottom: 2px;
+    text-align: center;
 }
 
 /* Кнопки быстрого выбора — вертикально в сайдбаре, узкие */
