@@ -4,12 +4,12 @@
    ======================================== */
 
 body {
-    padding: 20px;
+    padding: 20px 20px 20px 0;
 }
 
-/* Container для dashboard с padding */
+/* Container для dashboard — без левого padding (сайдбар примыкает к краю) */
 .container {
-    padding: 0 20px !important;
+    padding: 0 !important;
     max-width: 1800px;
     margin: 0 auto;
 }
@@ -19,14 +19,14 @@ body {
    ======================================== */
 .dashboard-layout {
     display: flex;
-    gap: 25px;
+    gap: 20px;
     align-items: flex-start;
-    margin-top: 10px;
+    margin-top: 0;
 }
 
 .dashboard-sidebar {
-    width: 320px;
-    min-width: 280px;
+    width: 280px;
+    min-width: 260px;
     flex-shrink: 0;
     position: sticky;
     top: 20px;
@@ -39,7 +39,7 @@ body {
 }
 
 .dashboard-sidebar::-webkit-scrollbar {
-    width: 6px;
+    width: 5px;
 }
 
 .dashboard-sidebar::-webkit-scrollbar-track {
@@ -58,21 +58,23 @@ body {
 .dashboard-main {
     flex: 1;
     min-width: 0;
+    padding-right: 20px;
 }
 
-/* Адаптация фильтров под вертикальный сайдбар */
+/* Адаптация фильтров под компактный вертикальный сайдбар */
 .dashboard-sidebar .filters {
     margin-bottom: 0;
-    padding: 20px;
+    padding: 16px 14px;
+    border-radius: 0 20px 20px 0;
 }
 
 .dashboard-sidebar .filters h2 {
-    font-size: 1.3em;
-    margin-bottom: 15px;
+    font-size: 1.15em;
+    margin-bottom: 12px;
 }
 
 .dashboard-sidebar .filter-section {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .dashboard-sidebar .filter-section:last-child {
@@ -80,42 +82,64 @@ body {
 }
 
 .dashboard-sidebar .filter-section label {
-    font-size: 0.95em;
-    margin-bottom: 8px;
+    font-size: 0.85em;
+    margin-bottom: 6px;
 }
 
+.dashboard-sidebar .filter-section label .hint {
+    font-size: 0.8em;
+}
+
+/* Кнопки подразделений и отделов — строго вертикально, друг под другом */
 .dashboard-sidebar .filter-buttons {
-    gap: 6px;
+    flex-direction: column;
+    gap: 5px;
 }
 
 .dashboard-sidebar .filter-btn {
-    padding: 7px 14px;
-    font-size: 0.9em;
+    padding: 6px 10px;
+    font-size: 0.85em;
+    text-align: left;
+    width: 100%;
 }
 
 /* В сайдбаре даты и навигация — вертикально */
 .dashboard-sidebar .filter-row {
     grid-template-columns: 1fr !important;
-    gap: 10px;
+    gap: 8px;
 }
 
 .dashboard-sidebar .date-nav-row {
     grid-template-columns: 1fr !important;
-    gap: 8px;
+    gap: 6px;
 }
 
 .dashboard-sidebar .date-nav {
     justify-content: center;
+    gap: 4px;
+}
+
+.dashboard-sidebar .btn-nav {
+    width: 32px;
+    height: 36px;
+    font-size: 14px;
 }
 
 .dashboard-sidebar .filter-group.date-group input[type="date"] {
     width: 100%;
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+.dashboard-sidebar .filter-group label {
+    font-size: 0.85em;
+    margin-bottom: 4px;
 }
 
 /* Кнопки быстрого выбора — вертикально в сайдбаре */
 .dashboard-sidebar .btn-row {
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
 }
 
 .dashboard-sidebar .btn-past,
@@ -124,8 +148,8 @@ body {
 .dashboard-sidebar .btn-secondary {
     width: 100%;
     text-align: center;
-    padding: 8px 14px;
-    font-size: 0.9em;
+    padding: 6px 10px;
+    font-size: 0.85em;
 }
 
 /* Header */
@@ -134,6 +158,7 @@ body {
     justify-content: flex-end;
     align-items: center; 
     margin-bottom: 20px;
+    padding-right: 20px;
 }
 
 /* Header */
@@ -141,16 +166,17 @@ body {
     display: flex; 
     justify-content: flex-end;
     align-items: center; 
-    margin-bottom: 20px; 
+    margin-bottom: 20px;
+    padding-right: 20px;
 }
 
-/* Main page title - left aligned with static glow */
+/* Main page title - inside dashboard-main, left aligned with glow */
 .page-title {
-    font-size: 2.5em;
+    font-size: 2.2em;
     text-align: left;
     color: #00ffff;
     text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.4);
-    margin: 20px 0;
+    margin: 0 0 15px 0;
 }
 
 .user-info {
@@ -1187,6 +1213,15 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
         gap: 0;
     }
 
+    /* На мобильных — полный padding body */
+    body {
+        padding: 10px;
+    }
+
+    .dashboard-main {
+        padding-right: 0;
+    }
+
     .dashboard-sidebar {
         width: 100%;
         min-width: 0;
@@ -1197,6 +1232,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 
     .dashboard-sidebar .filters {
         margin-bottom: 25px;
+        border-radius: 20px;
     }
 
     /* Сбрасываем сайдбар-специфичные overrides —
@@ -1229,17 +1265,24 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     }
     
     .container { 
-        padding: 0 10px !important;
+        padding: 0 10px 0 0 !important;
     }
     
     .header { 
         flex-direction: column; 
         gap: 15px; 
         text-align: center; 
+        padding-right: 0;
     }
     
     .header h1 { 
         font-size: 1.8em; 
+    }
+
+    /* Заголовок дашборда на мобильных — компактнее */
+    .page-title {
+        font-size: 1.5em;
+        margin: 0 0 10px 0;
     }
     
     .user-info { 
@@ -1261,7 +1304,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     
     .filter-buttons { 
         flex-direction: column; 
-        gap: 8px; 
+        gap: 6px; 
     }
     
     .filter-btn { 
