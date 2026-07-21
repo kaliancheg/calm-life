@@ -15,24 +15,21 @@ body {
 }
 
 /* ========================================
-   SIDEBAR LAYOUT — Фильтры слева, контент справа
+   SIDEBAR LAYOUT — Фиксированный сайдбар слева, контент справа
+   Сайдбар полностью независим от скролла страницы
    ======================================== */
 .dashboard-layout {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
     margin-top: 0;
 }
 
 .dashboard-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
     width: 280px;
-    min-width: 260px;
-    flex-shrink: 0;
-    position: sticky;
-    top: 20px;
-    align-self: flex-start;
-    max-height: calc(100vh - 40px);
+    height: 100vh;
     overflow-y: auto;
+    z-index: 100;
     /* Тонкий скролл для сайдбара */
     scrollbar-width: thin;
     scrollbar-color: #334155 transparent;
@@ -55,10 +52,11 @@ body {
     background: #00ffff;
 }
 
+/* Основная область — отступ слева равен ширине сайдбара + gap */
 .dashboard-main {
-    flex: 1;
-    min-width: 0;
+    margin-left: 300px; /* 280px сайдбар + 20px gap */
     padding-right: 20px;
+    min-width: 0;
 }
 
 /* Адаптация фильтров под компактный вертикальный сайдбар */
@@ -90,17 +88,46 @@ body {
     font-size: 0.8em;
 }
 
-/* Кнопки подразделений и отделов — строго вертикально, друг под другом */
+/* Сворачиваемые заголовки фильтров */
+.dashboard-sidebar .filter-toggle-label {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    background: rgba(0, 255, 255, 0.08);
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.dashboard-sidebar .filter-toggle-label:hover {
+    background: rgba(0, 255, 255, 0.15);
+}
+
+.dashboard-sidebar .filter-toggle-label.collapsed {
+    margin-bottom: 0;
+}
+
+.dashboard-sidebar .toggle-arrow {
+    color: #00ffff;
+    font-size: 0.8em;
+    flex-shrink: 0;
+    margin-left: 6px;
+}
+
+/* Кнопки подразделений и отделов — строго вертикально, узкие */
 .dashboard-sidebar .filter-buttons {
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
 }
 
 .dashboard-sidebar .filter-btn {
-    padding: 6px 10px;
-    font-size: 0.85em;
+    padding: 4px 10px;
+    font-size: 0.82em;
     text-align: left;
     width: 100%;
+    line-height: 1.3;
 }
 
 /* В сайдбаре даты и навигация — вертикально */
@@ -120,14 +147,14 @@ body {
 }
 
 .dashboard-sidebar .btn-nav {
-    width: 32px;
-    height: 36px;
-    font-size: 14px;
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
 }
 
 .dashboard-sidebar .filter-group.date-group input[type="date"] {
     width: 100%;
-    padding: 8px 10px;
+    padding: 6px 10px;
     font-size: 13px;
 }
 
@@ -136,10 +163,10 @@ body {
     margin-bottom: 4px;
 }
 
-/* Кнопки быстрого выбора — вертикально в сайдбаре */
+/* Кнопки быстрого выбора — вертикально в сайдбаре, узкие */
 .dashboard-sidebar .btn-row {
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
 }
 
 .dashboard-sidebar .btn-past,
@@ -148,8 +175,8 @@ body {
 .dashboard-sidebar .btn-secondary {
     width: 100%;
     text-align: center;
-    padding: 6px 10px;
-    font-size: 0.85em;
+    padding: 5px 10px;
+    font-size: 0.82em;
 }
 
 /* Header */
@@ -159,15 +186,13 @@ body {
     align-items: center; 
     margin-bottom: 20px;
     padding-right: 20px;
+    margin-left: 300px; /* отступ от фиксированного сайдбара */
 }
 
-/* Header */
-.header {
-    display: flex; 
-    justify-content: flex-end;
-    align-items: center; 
-    margin-bottom: 20px;
-    padding-right: 20px;
+/* Текст загрузки/нет доступа — тоже с отступом от сайдбара */
+.loading,
+.no-access {
+    margin-left: 300px;
 }
 
 /* Main page title - inside dashboard-main, left aligned with glow */
@@ -470,6 +495,9 @@ body {
     color: #00ffff;
     text-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
     transition: text-shadow 0.2s ease-out;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stat-card .stat-value.animating {
@@ -1094,6 +1122,8 @@ body {
     grid-template-columns: repeat(2, 1fr);
     gap: 20px;
     margin: 25px 0;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .chart-card {
@@ -1102,6 +1132,8 @@ body {
     border-radius: 20px;
     border: 1px solid rgba(138, 43, 226, 0.25);
     box-shadow: 0 8px 32px rgba(138, 43, 226, 0.1);
+    min-width: 0;
+    overflow: hidden;
 }
 
 .chart-card h3 { 
@@ -1208,25 +1240,29 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
    фильтры возвращаются к стандартному мобильному виду
    ======================================== */
 @media (max-width: 768px) {
-    .dashboard-layout {
-        flex-direction: column;
-        gap: 0;
-    }
-
     /* На мобильных — полный padding body */
     body {
         padding: 10px;
     }
 
-    .dashboard-main {
+.dashboard-main {
+        margin-left: 0;
         padding-right: 0;
+    }
+
+    .header {
+        margin-left: 0;
+    }
+
+    .loading,
+    .no-access {
+        margin-left: 0;
     }
 
     .dashboard-sidebar {
         width: 100%;
-        min-width: 0;
         position: static;
-        max-height: none;
+        height: auto;
         overflow-y: visible;
     }
 

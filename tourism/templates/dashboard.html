@@ -24,8 +24,14 @@
 <aside class="dashboard-sidebar">
 <div class="filters">
 <h2>🔍 Фильтры</h2>
-<div class="filter-section"><label>Подразделение</label><div class="filter-buttons" id="podButtons"></div></div>
-<div class="filter-section"><label>Отдел (служба) <span class="hint">(можно выбрать несколько)</span></label><div class="filter-buttons" id="otdelButtons"></div></div>
+<div class="filter-section">
+<label class="filter-toggle-label" onclick="toggleFilterSection('podButtons', this)">Подразделение <span class="toggle-arrow">▼</span></label>
+<div class="filter-buttons" id="podButtons"></div>
+</div>
+<div class="filter-section">
+<label class="filter-toggle-label" onclick="toggleFilterSection('otdelButtons', this)">Отдел (служба) <span class="hint">(несколько)</span> <span class="toggle-arrow">▼</span></label>
+<div class="filter-buttons" id="otdelButtons"></div>
+</div>
 <div class="filter-row date-nav-row">
 <div class="filter-group date-group"><label>Дата с</label><input type="date" id="dateFrom" onchange="applyFilters()"></div>
 <div class="filter-group date-group"><label>Дата по</label><input type="date" id="dateTo" onchange="applyFilters()"></div>
@@ -304,6 +310,22 @@
 
 <script>
 console.log('=== SCRIPT STARTED ===');
+
+// ==================== FILTER SECTION TOGGLE ====================
+function toggleFilterSection(buttonsId, labelEl) {
+    const buttonsContainer = document.getElementById(buttonsId);
+    const arrow = labelEl.querySelector('.toggle-arrow');
+    if (buttonsContainer.style.display === 'none') {
+        buttonsContainer.style.display = 'flex';
+        arrow.textContent = '▼';
+        labelEl.classList.remove('collapsed');
+    } else {
+        buttonsContainer.style.display = 'none';
+        arrow.textContent = '▶';
+        labelEl.classList.add('collapsed');
+    }
+}
+
 let allData = [];
 let selectedPod = '';
 let selectedOtdels = []; // Массив выбранных отделов (множественный выбор)
