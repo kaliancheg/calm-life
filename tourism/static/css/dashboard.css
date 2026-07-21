@@ -4,7 +4,7 @@
    ======================================== */
 
 body {
-    padding: 20px 20px 20px 0;
+    padding: 20px 10px 20px 0;
 }
 
 /* Container для dashboard — без левого padding (сайдбар примыкает к краю) */
@@ -52,10 +52,10 @@ body {
     background: #00ffff;
 }
 
-/* Основная область — отступ слева равен ширине сайдбара + gap */
+/* Основная область — отступ слева равен ширине сайдбара + 10px gap */
 .dashboard-main {
-    margin-left: 300px; /* 280px сайдбар + 20px gap */
-    padding-right: 20px;
+    margin-left: 290px; /* 280px сайдбар + 10px gap */
+    padding-right: 10px;
     min-width: 0;
 }
 
@@ -130,20 +130,23 @@ body {
     line-height: 1.3;
 }
 
-/* В сайдбаре даты и навигация — вертикально */
+/* В сайдбаре даты — на одной линии */
 .dashboard-sidebar .filter-row {
     grid-template-columns: 1fr !important;
     gap: 8px;
 }
 
 .dashboard-sidebar .date-nav-row {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr 1fr !important;
     gap: 6px;
 }
 
+/* Навигационные кнопки на всю ширину под датами */
 .dashboard-sidebar .date-nav {
+    grid-column: 1 / -1;
     justify-content: center;
     gap: 4px;
+    margin-top: 2px;
 }
 
 .dashboard-sidebar .btn-nav {
@@ -154,13 +157,18 @@ body {
 
 .dashboard-sidebar .filter-group.date-group input[type="date"] {
     width: 100%;
-    padding: 6px 10px;
-    font-size: 13px;
+    padding: 5px 6px;
+    font-size: 12px;
 }
 
 .dashboard-sidebar .filter-group label {
-    font-size: 0.85em;
-    margin-bottom: 4px;
+    font-size: 0.82em;
+    margin-bottom: 3px;
+}
+
+.dashboard-sidebar .filter-group.date-group label {
+    font-size: 0.78em;
+    margin-bottom: 2px;
 }
 
 /* Кнопки быстрого выбора — вертикально в сайдбаре, узкие */
@@ -185,14 +193,14 @@ body {
     justify-content: flex-end;
     align-items: center; 
     margin-bottom: 20px;
-    padding-right: 20px;
-    margin-left: 300px; /* отступ от фиксированного сайдбара */
+    padding-right: 10px;
+    margin-left: 290px; /* отступ от фиксированного сайдбара */
 }
 
 /* Текст загрузки/нет доступа — тоже с отступом от сайдбара */
 .loading,
 .no-access {
-    margin-left: 300px;
+    margin-left: 290px;
 }
 
 /* Main page title - inside dashboard-main, left aligned with glow */
@@ -485,15 +493,14 @@ body {
     border-radius: 20px;
     text-align: center;
     border: 1px solid rgba(0, 255, 255, 0.25);
-    box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
 }
 
 .stat-value {
     font-family: 'Orbitron', sans-serif;
-    font-size: 2.5em;
+    font-size: 1.75em;
     font-weight: 700;
     color: #00ffff;
-    text-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+    text-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
     transition: text-shadow 0.2s ease-out;
     white-space: nowrap;
     overflow: hidden;
@@ -501,22 +508,19 @@ body {
 }
 
 .stat-card .stat-value.animating {
-    text-shadow: 0 0 10px currentColor, 0 0 40px currentColor, 0 0 80px currentColor !important;
+    text-shadow: 0 0 10px currentColor, 0 0 25px currentColor !important;
 }
 
 .stat-card:nth-child(2) .stat-value { 
     color: #8a2be2; 
-    text-shadow: 0 0 20px rgba(138, 43, 226, 0.6); 
 }
 
 .stat-card:nth-child(3) .stat-value { 
     color: #00ff88; 
-    text-shadow: 0 0 20px rgba(0, 255, 136, 0.6); 
 }
 
 .stat-card:nth-child(4) .stat-value { 
     color: #ff9500; 
-    text-shadow: 0 0 20px rgba(255, 149, 0, 0.6); 
 }
 
 .stat-label { 
@@ -858,7 +862,7 @@ body {
 
 .lfl-value {
     font-family: 'Orbitron', sans-serif; 
-    font-size: 2.2em;
+    font-size: 1.54em;
     font-weight: 700;
     color: #00ffff;
     text-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
@@ -1640,7 +1644,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 .headcount-stat-value {
-    font-size: 1.8em;
+    font-size: 1.26em;
     font-weight: 700;
     color: #ff6b6b;
     font-family: 'Orbitron', sans-serif;
