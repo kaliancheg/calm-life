@@ -183,6 +183,12 @@ body {
     gap: 6px;
 }
 
+/* Ячейки дат не дают контенту разрастаться */
+.dashboard-sidebar .date-nav-row > .filter-group {
+    min-width: 0;
+    overflow: hidden;
+}
+
 /* Навигационные кнопки на всю ширину под датами */
 .dashboard-sidebar .date-nav {
     grid-column: 1 / -1;
@@ -202,10 +208,12 @@ body {
     padding: 0;
 }
 
-.dashboard-sidebar .filter-group.date-group input[type="date"] {
+.dashboard-sidebar .filter-group.date-group input[type="date"],
+.dashboard-sidebar .filter-group.date-group input.flatpickr-input {
     width: 100%;
     padding: 5px 6px;
     font-size: 12px;
+    box-sizing: border-box;
 }
 
 .dashboard-sidebar .filter-group label {
@@ -2179,5 +2187,12 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     -webkit-appearance: none;
     -moz-appearance: textfield;
     appearance: textfield;
+    cursor: pointer;
+}
+
+/* Flatpickr инпут — вписывается в сайдбар */
+.dashboard-sidebar .flatpickr-input {
+    width: 100% !important;
+    box-sizing: border-box !important;
     cursor: pointer;
 }
