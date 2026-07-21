@@ -14,6 +14,120 @@ body {
     margin: 0 auto;
 }
 
+/* ========================================
+   SIDEBAR LAYOUT — Фильтры слева, контент справа
+   ======================================== */
+.dashboard-layout {
+    display: flex;
+    gap: 25px;
+    align-items: flex-start;
+    margin-top: 10px;
+}
+
+.dashboard-sidebar {
+    width: 320px;
+    min-width: 280px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 20px;
+    align-self: flex-start;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    /* Тонкий скролл для сайдбара */
+    scrollbar-width: thin;
+    scrollbar-color: #334155 transparent;
+}
+
+.dashboard-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dashboard-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dashboard-sidebar::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+}
+
+.dashboard-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #00ffff;
+}
+
+.dashboard-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Адаптация фильтров под вертикальный сайдбар */
+.dashboard-sidebar .filters {
+    margin-bottom: 0;
+    padding: 20px;
+}
+
+.dashboard-sidebar .filters h2 {
+    font-size: 1.3em;
+    margin-bottom: 15px;
+}
+
+.dashboard-sidebar .filter-section {
+    margin-bottom: 16px;
+}
+
+.dashboard-sidebar .filter-section:last-child {
+    margin-bottom: 0;
+}
+
+.dashboard-sidebar .filter-section label {
+    font-size: 0.95em;
+    margin-bottom: 8px;
+}
+
+.dashboard-sidebar .filter-buttons {
+    gap: 6px;
+}
+
+.dashboard-sidebar .filter-btn {
+    padding: 7px 14px;
+    font-size: 0.9em;
+}
+
+/* В сайдбаре даты и навигация — вертикально */
+.dashboard-sidebar .filter-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+}
+
+.dashboard-sidebar .date-nav-row {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+}
+
+.dashboard-sidebar .date-nav {
+    justify-content: center;
+}
+
+.dashboard-sidebar .filter-group.date-group input[type="date"] {
+    width: 100%;
+}
+
+/* Кнопки быстрого выбора — вертикально в сайдбаре */
+.dashboard-sidebar .btn-row {
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dashboard-sidebar .btn-past,
+.dashboard-sidebar .btn-month,
+.dashboard-sidebar .btn-export,
+.dashboard-sidebar .btn-secondary {
+    width: 100%;
+    text-align: center;
+    padding: 8px 14px;
+    font-size: 0.9em;
+}
+
 /* Header */
 .header {
     display: flex;
@@ -1060,6 +1174,52 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 
 .group-toggle.collapsed { 
     transform: rotate(-90deg); 
+}
+
+/* ========================================
+   SIDEBAR — Mobile Responsive
+   На мобильных сайдбар становится обычным блоком сверху,
+   фильтры возвращаются к стандартному мобильному виду
+   ======================================== */
+@media (max-width: 768px) {
+    .dashboard-layout {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .dashboard-sidebar {
+        width: 100%;
+        min-width: 0;
+        position: static;
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    .dashboard-sidebar .filters {
+        margin-bottom: 25px;
+    }
+
+    /* Сбрасываем сайдбар-специфичные overrides —
+       пусть работает стандартный мобильный CSS */
+    .dashboard-sidebar .filter-row,
+    .dashboard-sidebar .date-nav-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    .dashboard-sidebar .filter-group.date-group input[type="date"] {
+        width: fit-content;
+    }
+
+    .dashboard-sidebar .btn-row {
+        flex-direction: column;
+    }
+
+    .dashboard-sidebar .btn-past,
+    .dashboard-sidebar .btn-month,
+    .dashboard-sidebar .btn-export,
+    .dashboard-sidebar .btn-secondary {
+        width: 100%;
+    }
 }
 
 /* Responsive */
