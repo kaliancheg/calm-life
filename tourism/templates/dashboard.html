@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Дашборд ФОТ Volna Sea Village / Art-Life</title>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ru.js"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
@@ -46,8 +49,8 @@
 <div class="filter-buttons" id="otdelButtons"></div>
 </div>
 <div class="filter-row date-nav-row">
-<div class="filter-group date-group"><label>Дата с</label><input type="date" id="dateFrom" onchange="applyFilters()"></div>
-<div class="filter-group date-group"><label>Дата по</label><input type="date" id="dateTo" onchange="applyFilters()"></div>
+<div class="filter-group date-group"><label>Дата с</label><input type="date" id="dateFrom"></div>
+<div class="filter-group date-group"><label>Дата по</label><input type="date" id="dateTo"></div>
 <div class="date-nav">
 <button class="btn-nav" onclick="shiftDates(-1, 'day')" title="Предыдущий день">◀</button>
 <button class="btn-nav" onclick="shiftDates(1, 'day')" title="Следующий день">▶</button>
@@ -1949,6 +1952,23 @@ async function toggleHeadcountDateRow(row, event) {
         console.error('Error loading employees:', err);
         loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
     }
+}
+
+// Инициализация кастомного календаря flatpickr
+if (typeof flatpickr !== 'undefined') {
+    flatpickr.localize(flatpickr.l10ns.ru);
+    flatpickr('#dateFrom', {
+        dateFormat: 'Y-m-d',
+        animate: true,
+        disableMobile: true,
+        onChange: function() { applyFilters(); }
+    });
+    flatpickr('#dateTo', {
+        dateFormat: 'Y-m-d',
+        animate: true,
+        disableMobile: true,
+        onChange: function() { applyFilters(); }
+    });
 }
 
 loadData();

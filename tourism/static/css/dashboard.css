@@ -195,6 +195,11 @@ body {
     width: 30px;
     height: 30px;
     font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
 }
 
 .dashboard-sidebar .filter-group.date-group input[type="date"] {
@@ -460,6 +465,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    line-height: 1;
+    padding: 0;
 }
 
 .btn-nav:hover {
@@ -2018,4 +2025,159 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
         flex-wrap: wrap;
         gap: 6px;
     }
+}
+
+/* ========================================
+   FLATPICKR — Кастомный календарь в стиле дашборда
+   ======================================== */
+.flatpickr-calendar {
+    background: rgba(18, 20, 45, 0.98) !important;
+    border: 1px solid rgba(0, 255, 255, 0.3) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 255, 255, 0.1) !important;
+    color: #e8e8ff !important;
+    opacity: 0;
+    animation: fpFadeIn 0.25s ease-out forwards;
+    overflow: hidden;
+}
+
+@keyframes fpFadeIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.flatpickr-calendar.arrowTop:before,
+.flatpickr-calendar.arrowTop:after,
+.flatpickr-calendar.arrowBottom:before,
+.flatpickr-calendar.arrowBottom:after {
+    display: none !important;
+}
+
+.flatpickr-months {
+    margin-top: 6px;
+    margin-bottom: 4px;
+}
+
+.flatpickr-current-month {
+    color: #00ffff !important;
+    font-family: 'Orbitron', sans-serif !important;
+    font-weight: 600 !important;
+    fill: #00ffff !important;
+}
+
+.flatpickr-current-month .numInputWrapper span.arrowUp:after {
+    border-bottom-color: #00ffff !important;
+}
+
+.flatpickr-current-month .numInputWrapper span.arrowDown:after {
+    border-top-color: #00ffff !important;
+}
+
+.flatpickr-current-month input.cur-year {
+    color: #00ffff !important;
+}
+
+.flatpickr-monthDropdown {
+    background: rgba(18, 20, 45, 0.98) !important;
+    color: #00ffff !important;
+    font-family: 'Orbitron', sans-serif !important;
+}
+
+.flatpickr-monthDropdown .flatpickr-monthDropdown-month {
+    color: #e8e8ff !important;
+}
+
+.flatpickr-monthDropdown .flatpickr-monthDropdown-month:hover {
+    background: rgba(0, 255, 255, 0.15) !important;
+}
+
+/* Стрелки месяцев */
+.flatpickr-prev-month,
+.flatpickr-next-month {
+    fill: #00ffff !important;
+    color: #00ffff !important;
+}
+
+.flatpickr-prev-month:hover svg,
+.flatpickr-next-month:hover svg {
+    fill: #8a2be2 !important;
+}
+
+/* Дни недели */
+.flatpickr-weekday {
+    color: #b8b8ff !important;
+    font-weight: 600 !important;
+    font-size: 0.8em !important;
+}
+
+/* Ячейки дней */
+.flatpickr-day {
+    color: #e8e8ff !important;
+    border-radius: 8px !important;
+    font-size: 0.9em !important;
+    border: 1px solid transparent !important;
+    transition: all 0.15s ease !important;
+}
+
+.flatpickr-day:hover {
+    background: rgba(0, 255, 255, 0.15) !important;
+    border-color: rgba(0, 255, 255, 0.3) !important;
+    color: #00ffff !important;
+}
+
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay {
+    color: rgba(184, 184, 255, 0.35) !important;
+}
+
+.flatpickr-day.today {
+    border-color: rgba(0, 255, 255, 0.5) !important;
+    color: #00ffff !important;
+}
+
+.flatpickr-day.today:hover {
+    background: rgba(0, 255, 255, 0.15) !important;
+    border-color: #00ffff !important;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover {
+    background: rgba(138, 43, 226, 0.5) !important;
+    border-color: rgba(138, 43, 226, 0.8) !important;
+    color: #fff !important;
+}
+
+.flatpickr-day.inRange {
+    background: rgba(0, 255, 255, 0.1) !important;
+    border-color: rgba(0, 255, 255, 0.05) !important;
+}
+
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+    background: rgba(138, 43, 226, 0.6) !important;
+    border-color: rgba(138, 43, 226, 0.9) !important;
+    color: #fff !important;
+}
+
+.flatpickr-day.disabled,
+.flatpickr-day.disabled:hover {
+    color: rgba(184, 184, 255, 0.2) !important;
+    cursor: not-allowed !important;
+}
+
+/* Полоса "сегодня" внизу */
+.flatpickr-calendar.hasTime .flatpickr-time {
+    border-top: 1px solid rgba(0, 255, 255, 0.15) !important;
+}
+
+/* Инпут даты — скрываем родной индикатор */
+.dashboard-sidebar input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none !important;
+}
+
+.dashboard-sidebar input[type="date"] {
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+    appearance: textfield;
+    cursor: pointer;
 }
