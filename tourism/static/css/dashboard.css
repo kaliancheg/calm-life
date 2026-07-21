@@ -7,10 +7,12 @@ body {
     padding: 20px 10px 20px 0;
 }
 
-/* Container для dashboard — без max-width, контент заполняет доступную ширину */
+/* Container для dashboard — заполняет всю ширину, без max-width из base.css */
 .container {
     padding: 0 !important;
-    margin: 0;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100%;
 }
 
 /* ========================================
@@ -215,6 +217,19 @@ body {
 .dashboard-sidebar .btn-row {
     flex-direction: column;
     gap: 4px;
+}
+
+/* Кнопки "Тек. мес." и "Пред. мес." на одной линии */
+.dashboard-sidebar .btn-row-compact {
+    display: flex;
+    gap: 4px;
+}
+
+.dashboard-sidebar .btn-row-compact .btn-month {
+    flex: 1;
+    padding: 5px 6px;
+    font-size: 0.82em;
+    text-align: center;
 }
 
 .dashboard-sidebar .btn-past,
@@ -546,7 +561,6 @@ body {
     font-size: 2.25em;
     font-weight: 700;
     color: #00ffff;
-    text-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
     transition: text-shadow 0.2s ease-out;
     white-space: nowrap;
     overflow: hidden;
@@ -573,6 +587,57 @@ body {
     color: #b8b8ff; 
     margin-top: 8px;
     font-size: 0.95em;
+}
+
+/* ========================================
+   LOADING — Плавный прогресс-бар
+   ======================================== */
+.loading {
+    text-align: center;
+    padding: 50px;
+    margin-left: 290px;
+}
+
+.loading-text {
+    color: #00ffff;
+    font-size: 1.5em;
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 20px;
+    animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.progress-bar-track {
+    width: 360px;
+    height: 6px;
+    background: rgba(0, 255, 255, 0.15);
+    border-radius: 3px;
+    margin: 0 auto;
+    overflow: hidden;
+    border: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.progress-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #8a2be2, #00ffff);
+    border-radius: 3px;
+    transition: width 0.4s ease-out;
+    box-shadow: 0 0 12px rgba(0, 255, 255, 0.4);
+}
+
+/* Плавное появление дашборда */
+#dashboard {
+    opacity: 0;
+    transition: opacity 0.6s ease-in;
+}
+
+#dashboard.show {
+    opacity: 1;
 }
 
 /* FOT Overview Section */

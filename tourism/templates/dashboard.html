@@ -17,7 +17,12 @@
 <button onclick="window.location.href='/logout'" class="logout-btn">🚪 Выйти</button>
 </div>
 </div>
-<div id="loading" class="loading">Загрузка данных...</div>
+<div id="loading" class="loading">
+<div class="loading-text">Загрузка данных...</div>
+<div class="progress-bar-track">
+<div class="progress-bar-fill" id="progressBarFill"></div>
+</div>
+</div>
 <div id="no-access" class="no-access" style="display:none;">❌ У вас нет доступа к данным</div>
 <div id="dashboard" style="display:none;">
 <div class="dashboard-layout">
@@ -27,7 +32,7 @@
 <h2>🔍 Фильтры</h2>
 <div class="filters-header-btns">
 {% if can_export %}
-<button class="filter-icon-btn" id="exportBtn" onclick="exportData()" title="Экспорт в Excel">📥</button>
+<button class="filter-icon-btn" id="exportBtn" onclick="exportData()" title="Экспорт в Excel">⬇</button>
 {% endif %}
 <button class="filter-icon-btn" onclick="resetFilters()" title="Сбросить фильтры">✕</button>
 </div>
@@ -53,9 +58,10 @@
 <div class="filter-section"><label>Быстрый выбор</label>
 <div class="btn-row">
 <button class="btn-past" onclick="setYesterday()">🌙 Позавчера</button>
-<button class="btn-month" onclick="setCurrentMonth()">📅 Текущий месяц</button>
-<button class="btn-month" onclick="setLastMonth()">📆 Прошлый месяц</button>
-<button class="btn-secondary" onclick="setLast7Days()">Последние 7 дней</button>
+<div class="btn-row-compact">
+<button class="btn-month" onclick="setCurrentMonth()">📅 Тек. мес.</button>
+<button class="btn-month" onclick="setLastMonth()">📆 Пред. мес.</button>
+</div>
 </div>
 </div>
 </div>
@@ -1029,35 +1035,50 @@ document.addEventListener('click', function(e) {
 async function loadData() {
 console.log('=== loadData() called ===');
 try {
+const progressBar = document.getElementById('progressBarFill');
+const loadingEl = document.getElementById('loading');
+
+// Функция плавного обновления прогресс-бара
+const setProgress = (pct) => {
+    progressBar.style.width = pct + '%';
+};
+
+setProgress(5);
+
 const response = await fetch('/api/data');
+setProgress(25);
 console.log('Response received:', response.status, response.statusText);
 if (!response.ok) {
 console.error('API Error:', response.status);
-document.getElementById('loading').innerHTML = 'Ошибка загрузки данных: ' + response.status;
+loadingEl.innerHTML = 'Ошибка загрузки данных: ' + response.status;
 return;
 }
 const data = await response.json();
+setProgress(50);
 console.log('Data received:', data);
 console.log('Data type:', typeof data);
 console.log('Is array:', Array.isArray(data));
 console.log('Data length:', data ? data.length : 'N/A');
 if (!Array.isArray(data)) {
 console.error('Data is not an array:', data);
-document.getElementById('loading').innerHTML = 'Ошибка: некорректный формат данных';
+loadingEl.innerHTML = 'Ошибка: некорректный формат данных';
 return;
 }
 allData = data;
 console.log('allData set, length:', allData.length);
 if (allData.length === 0) {
-document.getElementById('loading').innerHTML = 'Нет данных для отображения';
+loadingEl.innerHTML = 'Нет данных для отображения';
 return;
 }
+setProgress(60);
 console.log('Calling initFilters()');
 initFilters();
+setProgress(70);
 console.log('Setting last month as default filter');
 setLastMonth(); // Устанавливаем предыдущий месяц по умолчанию
 console.log('Calling applyFilters()');
 applyFilters();
+setProgress(80);
 console.log('Calling calculateLFL() for default month mode');
 initializeLFLPeriods('month'); // Инициализируем инпуты периодов
 calculateLFL(); // Пересчитываем LFL для режима по умолчанию "Месяц к месяцу"
@@ -1065,9 +1086,18 @@ console.log('Calling initEmpGroup()');
 setEmpGroup(empGroupMode); // Устанавливаем группировку по умолчанию
 console.log('Calling renderQuickSelectors()');
 renderQuickSelectors(); // Рендерим кнопки быстрого выбора месяцев/годов для custom mode
+setProgress(95);
 console.log('Hiding loading, showing dashboard');
-document.getElementById('loading').style.display = 'none';
-document.getElementById('dashboard').style.display = 'block';
+// Плавное завершение прогресс-бара
+setProgress(100);
+await new Promise(r => setTimeout(r, 400)); // небольшая пауза для визуального эффекта
+loadingEl.style.display = 'none';
+const dashboardEl = document.getElementById('dashboard');
+dashboardEl.style.display = 'block';
+// Небольшая задержка для срабатывания CSS-перехода
+requestAnimationFrame(() => {
+    dashboardEl.classList.add('show');
+});
 console.log('=== loadData() completed ===');
 } catch(error) {
 console.error('Error loading data:', error);
