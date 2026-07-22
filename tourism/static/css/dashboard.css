@@ -950,14 +950,14 @@ body {
 
 .lfl-date-inputs input[type="date"],
 .lfl-date-inputs input.flatpickr-input {
-    padding: 5px 8px;
+    padding: 3px 5px;
     border: 1px solid rgba(0, 255, 255, 0.4);
     border-radius: 8px;
     background: rgba(18, 20, 45, 0.85);
     color: #00ffff;
     font-family: 'Rajdhani', sans-serif;
-    font-size: 12px;
-    width: 100px;
+    font-size: 8.5px;
+    width: 70px;
     text-align: center;
     box-sizing: border-box;
     cursor: pointer;
