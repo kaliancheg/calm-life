@@ -950,14 +950,14 @@ body {
 
 .lfl-date-inputs input[type="date"],
 .lfl-date-inputs input.flatpickr-input {
-    padding: 8px 10px;
-    border: 2px solid rgba(0, 255, 255, 0.4);
+    padding: 5px 8px;
+    border: 1px solid rgba(0, 255, 255, 0.4);
     border-radius: 8px;
     background: rgba(18, 20, 45, 0.85);
     color: #00ffff;
     font-family: 'Rajdhani', sans-serif;
-    font-size: 13px;
-    width: 140px;
+    font-size: 12px;
+    width: 100px;
     text-align: center;
     box-sizing: border-box;
     cursor: pointer;
@@ -2062,6 +2062,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     border-radius: 16px !important;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 255, 255, 0.1) !important;
     color: #e8e8ff !important;
+    color-scheme: dark !important;
     opacity: 0;
     animation: fpFadeIn 0.25s ease-out forwards;
     overflow: hidden;
@@ -2104,11 +2105,15 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 .flatpickr-monthDropdown {
-    background: rgba(18, 20, 45, 1) !important;
+    background: #12142d !important;
     color: #00ffff !important;
     font-family: 'Orbitron', sans-serif !important;
     border: 1px solid rgba(0, 255, 255, 0.2) !important;
     border-radius: 6px !important;
+    color-scheme: dark !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months {
     color-scheme: dark !important;
 }
 

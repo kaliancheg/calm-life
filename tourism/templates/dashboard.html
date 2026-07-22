@@ -395,10 +395,10 @@ function initializeLFLPeriods(mode) {
         const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
         
-        document.getElementById('lflCurrentFrom').value = formatDateForInput(currentMonthStart);
-        document.getElementById('lflCurrentTo').value = formatDateForInput(currentMonthEnd);
-        document.getElementById('lflPrevFrom').value = formatDateForInput(prevMonthStart);
-        document.getElementById('lflPrevTo').value = formatDateForInput(prevMonthEnd);
+        setLFLDate('lflCurrentFrom', currentMonthStart);
+        setLFLDate('lflCurrentTo', currentMonthEnd);
+        setLFLDate('lflPrevFrom', prevMonthStart);
+        setLFLDate('lflPrevTo', prevMonthEnd);
     } else if (mode === 'week') {
         // Текущая неделя (понедельник)
         const startDate = new Date(today);
@@ -415,10 +415,10 @@ function initializeLFLPeriods(mode) {
         const prevEnd = new Date(prevStart);
         prevEnd.setDate(prevEnd.getDate() + 6);
         
-        document.getElementById('lflCurrentFrom').value = formatDateForInput(startDate);
-        document.getElementById('lflCurrentTo').value = formatDateForInput(endDate);
-        document.getElementById('lflPrevFrom').value = formatDateForInput(prevStart);
-        document.getElementById('lflPrevTo').value = formatDateForInput(prevEnd);
+        setLFLDate('lflCurrentFrom', startDate);
+        setLFLDate('lflCurrentTo', endDate);
+        setLFLDate('lflPrevFrom', prevStart);
+        setLFLDate('lflPrevTo', prevEnd);
     }
 }
     
@@ -474,10 +474,10 @@ function shiftMonthPeriod(direction) {
         prevTo: formatDateForInput(prevTo)
     });
     
-    if (currentFromInput) currentFromInput.value = formatDateForInput(newFrom);
-    if (currentToInput) currentToInput.value = formatDateForInput(newTo);
-    if (prevFromInput) prevFromInput.value = formatDateForInput(prevFrom);
-    if (prevToInput) prevToInput.value = formatDateForInput(prevTo);
+    if (currentFromInput) setLFLDate('lflCurrentFrom', newFrom);
+    if (currentToInput) setLFLDate('lflCurrentTo', newTo);
+    if (prevFromInput) setLFLDate('lflPrevFrom', prevFrom);
+    if (prevToInput) setLFLDate('lflPrevTo', prevTo);
     
     console.log('Calling calculateLFL from shiftMonthPeriod');
     calculateLFL();
@@ -625,11 +625,11 @@ function selectLFLMonth(periodType, monthIndex) {
     const to = new Date(targetYear, targetMonth + 1, 0);
     
     if (periodType === 'current') {
-        document.getElementById('lflCurrentFrom').value = formatDateForInput(from);
-        document.getElementById('lflCurrentTo').value = formatDateForInput(to);
+        setLFLDate('lflCurrentFrom', from);
+        setLFLDate('lflCurrentTo', to);
     } else {
-        document.getElementById('lflPrevFrom').value = formatDateForInput(from);
-        document.getElementById('lflPrevTo').value = formatDateForInput(to);
+        setLFLDate('lflPrevFrom', from);
+        setLFLDate('lflPrevTo', to);
     }
         
     // Обновляем подсветку
@@ -655,11 +655,11 @@ function selectLFLYear(periodType, year) {
     const to = new Date(year, targetMonth + 1, 0);
     
     if (periodType === 'current') {
-        document.getElementById('lflCurrentFrom').value = formatDateForInput(from);
-        document.getElementById('lflCurrentTo').value = formatDateForInput(to);
+        setLFLDate('lflCurrentFrom', from);
+        setLFLDate('lflCurrentTo', to);
     } else {
-        document.getElementById('lflPrevFrom').value = formatDateForInput(from);
-        document.getElementById('lflPrevTo').value = formatDateForInput(to);
+        setLFLDate('lflPrevFrom', from);
+        setLFLDate('lflPrevTo', to);
     }
     
     // Обновляем подсветку
@@ -696,10 +696,10 @@ function setCustomPeriodDefaults() {
     const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
     
-    document.getElementById('lflCurrentFrom').value = formatDateForInput(currentMonthStart);
-    document.getElementById('lflCurrentTo').value = formatDateForInput(currentMonthEnd);
-    document.getElementById('lflPrevFrom').value = formatDateForInput(prevMonthStart);
-    document.getElementById('lflPrevTo').value = formatDateForInput(prevMonthEnd);
+    setLFLDate('lflCurrentFrom', currentMonthStart);
+    setLFLDate('lflCurrentTo', currentMonthEnd);
+    setLFLDate('lflPrevFrom', prevMonthStart);
+    setLFLDate('lflPrevTo', prevMonthEnd);
     
     // Обновляем подсветку кнопок
     updateQuickSelectorsHighlight();
@@ -1188,6 +1188,18 @@ function toggleOtdel(otdel, btnElement) {
 
 function formatDateForInput(date) {
 return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+}
+
+// Установка даты в LFL-инпут с обновлением flatpickr altInput
+function setLFLDate(id, date) {
+const el = document.getElementById(id);
+if (!el) return;
+const dateStr = formatDateForInput(date);
+if (el._flatpickr) {
+el._flatpickr.setDate(dateStr, false); // false = без вызова onChange
+} else {
+el.value = dateStr;
+}
 }
 
 // Формат для отображения в инпутах flatpickr: DD.MM.YYYY
