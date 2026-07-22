@@ -948,20 +948,36 @@ body {
     font-size: 1.2em;
 }
 
-.lfl-date-inputs input[type="date"] {
+.lfl-date-inputs input[type="date"],
+.lfl-date-inputs input.flatpickr-input {
     padding: 8px 10px;
     border: 2px solid rgba(0, 255, 255, 0.4);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.15);
-    color: #ffffff;
+    background: rgba(18, 20, 45, 0.85);
+    color: #00ffff;
     font-family: 'Rajdhani', sans-serif;
     font-size: 13px;
     width: 140px;
+    text-align: center;
+    box-sizing: border-box;
+    cursor: pointer;
 }
 
-.lfl-date-inputs input[type="date"]:disabled {
+.lfl-date-inputs input[type="date"]:disabled,
+.lfl-date-inputs input.flatpickr-input:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* Скрыть родной календарь на LFL инпутах */
+.lfl-date-inputs input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none !important;
+}
+
+.lfl-date-inputs input[type="date"] {
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 .lfl-comparison {
@@ -2093,15 +2109,17 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     font-family: 'Orbitron', sans-serif !important;
     border: 1px solid rgba(0, 255, 255, 0.2) !important;
     border-radius: 6px !important;
+    color-scheme: dark !important;
 }
 
 .flatpickr-monthDropdown .flatpickr-monthDropdown-month {
     color: #e8e8ff !important;
-    background: rgba(18, 20, 45, 1) !important;
+    background: #12142d !important;
     padding: 4px 8px !important;
 }
 
-.flatpickr-monthDropdown .flatpickr-monthDropdown-month:hover {
+.flatpickr-monthDropdown .flatpickr-monthDropdown-month:hover,
+.flatpickr-monthDropdown .flatpickr-monthDropdown-month:focus {
     background: rgba(0, 255, 255, 0.15) !important;
     color: #00ffff !important;
 }

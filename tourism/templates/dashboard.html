@@ -108,17 +108,17 @@
             <div class="lfl-input-wrapper">
                 <label>Текущий период:</label>
                 <div class="lfl-date-inputs">
-                    <input type="date" id="lflCurrentFrom" onchange="calculateLFL()">
+                    <input type="date" id="lflCurrentFrom">
                     <span class="lfl-date-separator">—</span>
-                    <input type="date" id="lflCurrentTo" onchange="calculateLFL()">
+                    <input type="date" id="lflCurrentTo">
                 </div>
             </div>
             <div class="lfl-input-wrapper">
                 <label>Сравниваемый период:</label>
                 <div class="lfl-date-inputs">
-                    <input type="date" id="lflPrevFrom" onchange="calculateLFL()">
+                    <input type="date" id="lflPrevFrom">
                     <span class="lfl-date-separator">—</span>
-                    <input type="date" id="lflPrevTo" onchange="calculateLFL()">
+                    <input type="date" id="lflPrevTo">
                 </div>
             </div>
         </div>
@@ -1984,6 +1984,7 @@ async function toggleHeadcountDateRow(row, event) {
 // Инициализация кастомного календаря flatpickr
 if (typeof flatpickr !== 'undefined') {
     flatpickr.localize(flatpickr.l10ns.ru);
+    // Фильтры — формат DD.MM.YYYY
     flatpickr('#dateFrom', {
         dateFormat: 'd.m.Y',
         animate: true,
@@ -1995,6 +1996,18 @@ if (typeof flatpickr !== 'undefined') {
         animate: true,
         disableMobile: true,
         onChange: function() { applyFilters(); }
+    });
+    // LFL-инпуты — показываем DD.MM.YYYY, внутри храним Y-m-d
+    const lflInputs = ['lflCurrentFrom', 'lflCurrentTo', 'lflPrevFrom', 'lflPrevTo'];
+    lflInputs.forEach(function(id) {
+        flatpickr('#' + id, {
+            dateFormat: 'Y-m-d',
+            altInput: true,
+            altFormat: 'd.m.Y',
+            animate: true,
+            disableMobile: true,
+            onChange: function() { calculateLFL(); }
+        });
     });
 }
 
