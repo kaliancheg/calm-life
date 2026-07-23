@@ -294,24 +294,20 @@
         <button class="filter-btn" id="grpOtdel" onclick="setEmpGroup('otdel')">По отделу</button>
         <button class="filter-btn" id="grpDolzhnost" onclick="setEmpGroup('dolzhnost')">По должности</button>
     </div>
-    <div class="table-wrapper emp-table-wrapper" id="empTableWrapper">
-        <div class="emp-table-inner">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ФИО</th>
-                        <th>Подразделение</th>
-                        <th>Должность</th>
-                        <th>Ставка</th>
-                        <th>Смены</th>
-                        <th>Часы</th>
-                        <th>Начислено</th>
-                    </tr>
-                </thead>
-                <tbody id="empTable"></tbody>
-            </table>
-        </div>
-    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>ФИО</th>
+                <th>Подразделение</th>
+                <th>Должность</th>
+                <th>Ставка</th>
+                <th>Смены</th>
+                <th>Часы</th>
+                <th>Начислено</th>
+            </tr>
+        </thead>
+        <tbody id="empTable"></tbody>
+    </table>
 </div>
 
 <div class="charts">
@@ -1432,70 +1428,6 @@ const fileName = 'tourism_data_' + new Date().toISOString().slice(0,10) + '.xlsx
 XLSX.writeFile(wb, fileName);
 }
 
-// ========================================
-// Плавная анимация высоты таблиц
-// ========================================
-function smoothAnimateHeight(wrapperId) {
-    const wrapper = document.getElementById(wrapperId);
-    if (!wrapper) return;
-    
-    const table = wrapper.querySelector('table');
-    if (!table) return;
-    
-    // Запоминаем текущую высоту
-    const currentHeight = wrapper.offsetHeight;
-    
-    // Убираем transition на момент изменения контента
-    wrapper.style.transition = 'none';
-    wrapper.style.maxHeight = currentHeight + 'px';
-    
-    // Форсируем reflow
-    void wrapper.offsetHeight;
-    
-    // Обновляем высоту на новую
-    const newHeight = table.offsetHeight;
-    wrapper.style.maxHeight = newHeight + 'px';
-    
-    // Включаем transition обратно
-    wrapper.style.transition = '';
-    
-    // Через время анимации убираем max-height чтобы не ограничивал
-    setTimeout(() => {
-        if (wrapper.style.maxHeight !== '') {
-            wrapper.style.maxHeight = '';
-        }
-    }, 400);
-}
-
-function animateDashboardContent(callback) {
-    const main = document.querySelector('.dashboard-main');
-    if (!main) {
-        callback();
-        return;
-    }
-
-    main.classList.add('content-transitioning');
-    setTimeout(() => {
-        callback();
-        requestAnimationFrame(() => {
-            main.classList.remove('content-transitioning');
-        });
-    }, 120);
-}
-
-function revealAnimatedRows(tableId) {
-    const table = document.getElementById(tableId);
-    if (!table) return;
-
-    const rows = table.querySelectorAll('.dashboard-row-animated');
-    rows.forEach((row) => {
-        row.classList.remove('is-visible');
-        requestAnimationFrame(() => {
-            row.classList.add('is-visible');
-        });
-    });
-}
-
 function updateDashboard(data) {
     // Сохраняем все записи без агрегации по ФИО - для отображения по должностям/подразделениям
     currentAggregatedData = data;
@@ -1632,10 +1564,6 @@ otdelAgg[r.otdel].money += r.itogo;
 document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr class="otdel-row dashboard-row-animated"><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
 
 renderEmpTable(currentAggregatedData);
-revealAnimatedRows('otdelTable');
-
-// Плавная анимация высоты таблиц
-smoothAnimateHeight('otdelTableWrapper');
 }
 
 function setEmpGroup(mode) {

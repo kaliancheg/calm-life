@@ -1450,13 +1450,18 @@ body {
    Smooth table body height animation
    ======================================== */
 .table-wrapper {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
-    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    max-height: 9999px; /* no initial restriction */
 }
 
-.table-wrapper.animating {
-    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+.table-wrapper.visible {
+    grid-template-rows: 1fr;
+}
+
+.table-wrapper-inner {
+    overflow: hidden;
 }
 
 /* Headcount violations block — smooth show/hide */
