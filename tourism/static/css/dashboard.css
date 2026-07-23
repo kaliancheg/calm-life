@@ -1530,34 +1530,20 @@ body {
     opacity: 1;
 }
 
-.group-children-inner {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding: 0 0 4px;
+.group-children-table {
+    width: 100%;
+    border-collapse: collapse;
     background: rgba(138, 43, 226, 0.04);
 }
 
-.group-child-row {
-    display: grid;
-    grid-template-columns: 1.8fr 1.2fr 1.2fr 0.7fr 0.5fr 0.5fr 0.9fr;
-    gap: 10px;
+.group-child-row td {
     padding: 10px 12px;
     border-top: 1px solid rgba(255,255,255,0.06);
-    align-items: center;
     color: #e8e8ff;
     cursor: pointer;
-    opacity: 0;
-    transform: translateY(3px);
-    transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-.group-children-wrapper.is-open .group-child-row {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.group-child-row:hover {
+.group-child-row:hover td {
     background: rgba(0,255,255,0.08);
 }
 
