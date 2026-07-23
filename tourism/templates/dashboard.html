@@ -42,11 +42,11 @@
 </div>
 <div class="filter-section">
 <label class="filter-toggle-label" onclick="toggleFilterSection('podButtons', this)">Подразделение <span class="toggle-arrow">▼</span></label>
-<div class="filter-buttons-grid" id="podButtonsGrid"><div class="filter-buttons-inner"><div class="filter-buttons" id="podButtons"></div></div></div>
+<div class="filter-buttons" id="podButtons"></div>
 </div>
 <div class="filter-section">
 <label class="filter-toggle-label" onclick="toggleFilterSection('otdelButtons', this)">Отдел (служба) <span class="toggle-arrow">▼</span></label>
-<div class="filter-buttons-grid" id="otdelButtonsGrid"><div class="filter-buttons-inner"><div class="filter-buttons" id="otdelButtons"></div></div></div>
+<div class="filter-buttons" id="otdelButtons"></div>
 </div>
 <div class="filter-row date-nav-row">
 <div class="filter-group date-group"><label>Дата с</label><input type="date" id="dateFrom"></div>
@@ -327,17 +327,16 @@ console.log('=== SCRIPT STARTED ===');
 
 // ==================== FILTER SECTION TOGGLE ====================
 function toggleFilterSection(buttonsId, labelEl) {
-    // buttonsId — это ID grid-обёртки (podButtonsGrid / otdelButtonsGrid)
-    const gridEl = document.getElementById(buttonsId);
+    const container = document.getElementById(buttonsId);
     const arrow = labelEl.querySelector('.toggle-arrow');
-    const isExpanded = gridEl.classList.contains('expanded');
+    const isShowing = container.classList.contains('show');
     
-    if (isExpanded) {
-        gridEl.classList.remove('expanded');
+    if (isShowing) {
+        container.classList.remove('show');
         arrow.textContent = '▶';
         labelEl.classList.add('collapsed');
     } else {
-        gridEl.classList.add('expanded');
+        container.classList.add('show');
         arrow.textContent = '▼';
         labelEl.classList.remove('collapsed');
     }
@@ -1132,6 +1131,10 @@ otdelContainer.innerHTML = otdelButtonsHtml;
 
 document.getElementById('dateTo').value = formatDateForDisplay(new Date(dates[dates.length-1]));
 document.getElementById('dateFrom').value = formatDateForDisplay(new Date(dates[0]));
+
+// Открыть списки по умолчанию
+podContainer.classList.add('show');
+otdelContainer.classList.add('show');
 
 podContainer.addEventListener('click', function(e) {
 if (e.target.classList.contains('filter-btn')) {
