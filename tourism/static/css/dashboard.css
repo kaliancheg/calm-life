@@ -752,7 +752,6 @@ body {
     opacity: 1;
 }
 
-/* FOT Overview Section */
 .fot-overview,
 .breakdown-section {
     background: rgba(25, 28, 58, 0.7);
@@ -824,6 +823,11 @@ body {
     margin: 25px 0;
     border: 1px solid rgba(0, 255, 255, 0.25);
     box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
+    transition: opacity 0.3s ease;
+}
+
+.lfl-block.updating {
+    opacity: 0.6;
 }
 
 .lfl-header {
@@ -1074,16 +1078,12 @@ body {
     border-radius: 15px;
     text-align: center;
     border: 1px solid rgba(138, 43, 226, 0.3);
-    transition: transform 0.2s ease, opacity 0.3s ease;
+    transition: transform 0.2s ease;
 }
 
 .lfl-card:hover {
     transform: translateY(-2px);
     border-color: rgba(138, 43, 226, 0.5);
-}
-
-.lfl-block.updating .lfl-card {
-    opacity: 0.6;
 }
 
 .lfl-card.lfl-change {

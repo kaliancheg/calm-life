@@ -1430,25 +1430,17 @@ function updateDashboard(data) {
 // Сохраняем все записи без агрегации по ФИО - для отображения по должностям/подразделениям
 currentAggregatedData = data;
 
-// Плавное обновление — добавляем класс для затемнения
-const aggregatedBlocks = document.querySelectorAll('.aggregated, .chart-card');
-const fotOverview = document.querySelector('.fot-overview');
-const lflBlock = document.querySelector('.lfl-block');
-if (fotOverview) fotOverview.classList.add('updating');
-if (lflBlock) lflBlock.classList.add('updating');
-aggregatedBlocks.forEach(block => block.classList.add('updating'));
+// Плавное затемнение всех обновляемых блоков
+const allUpdateable = document.querySelectorAll('.fot-overview, .aggregated, .chart-card, .lfl-block');
+allUpdateable.forEach(el => el.classList.add('updating'));
 
-// Небольшая задержка чтобы CSS transition сработал
-requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-        // Теперь обновляем данные
-        performDashboardUpdate(data);
-    });
-});
+// Через 50мс обновляем данные (CSS transition уже начался)
+setTimeout(() => {
+    performDashboardUpdate(data);
+}, 50);
 }
 
 function performDashboardUpdate(data) {
-
 const hours = data.reduce((s, r) => s + r.chasy, 0);
 const money = data.reduce((s, r) => s + r.itogo, 0);
 const employees = new Set(data.map(r => r.fio)).size;
@@ -1579,12 +1571,10 @@ document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((
 
 renderEmpTable(currentAggregatedData);
 
-// Убираем класс updating — плавное возвращение opacity
+// Плавное возвращение opacity — через 350мс (конец transition)
 setTimeout(() => {
-    aggregatedBlocks.forEach(block => block.classList.remove('updating'));
-    if (fotOverview) fotOverview.classList.remove('updating');
-    if (lflBlock) lflBlock.classList.remove('updating');
-}, 300);
+    allUpdateable.forEach(el => el.classList.remove('updating'));
+}, 350);
 }
 
 function setEmpGroup(mode) {
@@ -1688,7 +1678,12 @@ function renderEmpTable(data) {
 
 function toggleGroup(groupId) {
     expandedGroups[groupId] = !expandedGroups[groupId];
-    renderEmpTable(currentAggregatedData);
+renderEmpTable(currentAggregatedData);
+
+// Плавное возвращение opacity — через 350мс (конец transition)
+setTimeout(() => {
+    allUpdateable.forEach(el => el.classList.remove('updating'));
+}, 350);
 }
 
 // Calculate LFL only when pod/otdel filters change (not date filters)
