@@ -1652,8 +1652,7 @@ function setEmpGroup(mode) {
 function animateEmployeeTableUpdate(callback) {
     const wrapper = document.getElementById('empTableWrapper');
     const table = wrapper?.querySelector('table');
-    const tbody = document.getElementById('empTable');
-    if (!wrapper || !table || !tbody) {
+    if (!wrapper || !table) {
         callback();
         return;
     }
@@ -1662,21 +1661,22 @@ function animateEmployeeTableUpdate(callback) {
     wrapper.classList.add('table-transitioning');
     wrapper.style.overflow = 'hidden';
     wrapper.style.maxHeight = previousHeight + 'px';
-    tbody.classList.remove('table-body-entering');
-    tbody.classList.add('table-body-leaving');
+    table.style.opacity = '0';
+    table.style.transform = 'translateY(6px)';
 
     requestAnimationFrame(() => {
         callback();
         requestAnimationFrame(() => {
             const newHeight = table.offsetHeight || previousHeight;
             wrapper.style.maxHeight = newHeight + 'px';
-            tbody.classList.remove('table-body-leaving');
-            tbody.classList.add('table-body-entering');
+            table.style.opacity = '1';
+            table.style.transform = 'translateY(0)';
             setTimeout(() => {
                 wrapper.classList.remove('table-transitioning');
                 wrapper.style.overflow = '';
                 wrapper.style.maxHeight = '';
-                tbody.classList.remove('table-body-entering');
+                table.style.opacity = '';
+                table.style.transform = '';
             }, 260);
         });
     });
@@ -1939,30 +1939,32 @@ async function loadHeadcountViolations() {
                                 <span class="hc-badge hc-badge-days">📅 ${child.date_count} дн.</span>
                             </div>
                             <div class="hc-table-wrap">
-                                <table class="hc-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Дата</th>
-                                            <th>Лимит</th>
-                                            <th>Факт</th>
-                                            <th>Превышение</th>
-                                            <th>Стоимость</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${child.daily.map(d => `
-                                            <tr class="hc-date-row" data-date="${d.date}" data-pod="${child.podrazdelenie}" data-dolzhnost="${child.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
-                                                <td>${formatDate(d.date)}</td>
-                                                <td class="limit-col">${d.limit}</td>
-                                                <td>${d.fact}</td>
-                                                <td class="excess-col">+${d.excess}</td>
-                                                <td class="cost-col">${formatMoney(d.excess_cost || 0)}</td>
-                                                <td class="hc-expand-cell">▶</td>
+                                <div class="hc-table-inner">
+                                    <table class="hc-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Дата</th>
+                                                <th>Лимит</th>
+                                                <th>Факт</th>
+                                                <th>Превышение</th>
+                                                <th>Стоимость</th>
+                                                <th></th>
                                             </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            ${child.daily.map(d => `
+                                                <tr class="hc-date-row" data-date="${d.date}" data-pod="${child.podrazdelenie}" data-dolzhnost="${child.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
+                                                    <td>${formatDate(d.date)}</td>
+                                                    <td class="limit-col">${d.limit}</td>
+                                                    <td>${d.fact}</td>
+                                                    <td class="excess-col">+${d.excess}</td>
+                                                    <td class="cost-col">${formatMoney(d.excess_cost || 0)}</td>
+                                                    <td class="hc-expand-cell">▶</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     `).join('');
@@ -2005,30 +2007,32 @@ async function loadHeadcountViolations() {
                         <span class="hc-badge hc-badge-days">📅 ${v.date_count} дн.</span>
                     </div>
                     <div class="hc-table-wrap">
-                        <table class="hc-table">
-                            <thead>
-                                <tr>
-                                    <th>Дата</th>
-                                    <th>Лимит</th>
-                                    <th>Факт</th>
-                                    <th>Превышение</th>
-                                    <th>Стоимость</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${v.daily.map(d => `
-                                    <tr class="hc-date-row" data-date="${d.date}" data-pod="${v.podrazdelenie}" data-dolzhnost="${v.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
-                                        <td>${formatDate(d.date)}</td>
-                                        <td class="limit-col">${d.limit}</td>
-                                        <td>${d.fact}</td>
-                                        <td class="excess-col">+${d.excess}</td>
-                                        <td class="cost-col">${formatMoney(d.excess_cost || 0)}</td>
-                                        <td class="hc-expand-cell">▶</td>
+                        <div class="hc-table-inner">
+                            <table class="hc-table">
+                                <thead>
+                                    <tr>
+                                        <th>Дата</th>
+                                        <th>Лимит</th>
+                                        <th>Факт</th>
+                                        <th>Превышение</th>
+                                        <th>Стоимость</th>
+                                        <th></th>
                                     </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    ${v.daily.map(d => `
+                                        <tr class="hc-date-row" data-date="${d.date}" data-pod="${v.podrazdelenie}" data-dolzhnost="${v.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
+                                            <td>${formatDate(d.date)}</td>
+                                            <td class="limit-col">${d.limit}</td>
+                                            <td>${d.fact}</td>
+                                            <td class="excess-col">+${d.excess}</td>
+                                            <td class="cost-col">${formatMoney(d.excess_cost || 0)}</td>
+                                            <td class="hc-expand-cell">▶</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 `;
@@ -2044,26 +2048,34 @@ async function loadHeadcountViolations() {
 function toggleHeadcountRow(element, event) {
     if (event) event.stopPropagation();
     
-    // Для родительских элементов (отдел) — раскрываем .hc-children
     if (element.classList.contains('hc-header-parent')) {
         const group = element.closest('.hc-group');
         const children = group.querySelector('.hc-children');
+        const childrenInner = children?.querySelector('.hc-children-inner');
         element.classList.toggle('expanded');
         if (children) {
             const shouldOpen = !children.classList.contains('is-open');
             children.classList.toggle('is-open', shouldOpen);
+            requestAnimationFrame(() => {
+                const targetHeight = shouldOpen ? (childrenInner ? childrenInner.scrollHeight : children.scrollHeight) : 0;
+                children.style.maxHeight = `${targetHeight}px`;
+            });
         }
         return;
     }
     
-    // Для обычных и дочерних элементов — раскрываем .hc-table-wrap
     const wrapper = element.closest('.hc-row-wrapper');
     if (wrapper) {
         const tableWrap = wrapper.querySelector('.hc-table-wrap');
+        const tableInner = tableWrap?.querySelector('.hc-table-inner');
         element.classList.toggle('expanded');
         if (tableWrap) {
             const shouldOpen = !tableWrap.classList.contains('is-open');
             tableWrap.classList.toggle('is-open', shouldOpen);
+            requestAnimationFrame(() => {
+                const targetHeight = shouldOpen ? (tableInner ? tableInner.scrollHeight : tableWrap.scrollHeight) : 0;
+                tableWrap.style.maxHeight = `${targetHeight}px`;
+            });
         }
     }
 }
