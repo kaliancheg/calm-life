@@ -1465,11 +1465,39 @@ function smoothAnimateHeight(wrapperId) {
     }, 400);
 }
 
-function updateDashboard(data) {
-// Сохраняем все записи без агрегации по ФИО - для отображения по должностям/подразделениям
-currentAggregatedData = data;
+function animateDashboardContent(callback) {
+    const main = document.querySelector('.dashboard-main');
+    if (!main) {
+        callback();
+        return;
+    }
 
-performDashboardUpdate(data);
+    main.classList.add('content-transitioning');
+    setTimeout(() => {
+        callback();
+        requestAnimationFrame(() => {
+            main.classList.remove('content-transitioning');
+        });
+    }, 120);
+}
+
+function revealAnimatedRows(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    const rows = table.querySelectorAll('.dashboard-row-animated');
+    rows.forEach((row) => {
+        row.classList.remove('is-visible');
+        requestAnimationFrame(() => {
+            row.classList.add('is-visible');
+        });
+    });
+}
+
+function updateDashboard(data) {
+    // Сохраняем все записи без агрегации по ФИО - для отображения по должностям/подразделениям
+    currentAggregatedData = data;
+    animateDashboardContent(() => performDashboardUpdate(data));
 }
 
 function performDashboardUpdate(data) {
@@ -1599,9 +1627,10 @@ otdelAgg[r.otdel].days++;
 otdelAgg[r.otdel].hours += r.chasy;
 otdelAgg[r.otdel].money += r.itogo;
 });
-document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
+document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr class="otdel-row dashboard-row-animated"><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
 
 renderEmpTable(currentAggregatedData);
+revealAnimatedRows('otdelTable');
 
 // Плавная анимация высоты таблиц
 smoothAnimateHeight('otdelTableWrapper');
@@ -1648,7 +1677,7 @@ function renderEmpTable(data) {
     if (empGroupMode === 'none') {
         employees.forEach(r => {
             const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}', '${r.dolzhnost.replace(/'/g, "\\'")}', '${r.otdel.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}')" `;
-            html += '<tr class="emp-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+            html += '<tr class="emp-row dashboard-row-animated" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
         });
     } else if (empGroupMode === 'otdel') {
         const groups = {};
@@ -1668,11 +1697,11 @@ function renderEmpTable(data) {
             const isExpanded = expandedGroups[groupId] === true;
             const toggleClass = isExpanded ? '' : 'collapsed';
             const toggleIcon = isExpanded ? '▼' : '▶';
-            html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>📁 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
+            html += '<tr class="group-header dashboard-row-animated" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>📁 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
             if (isExpanded) {
                 g.employees.forEach(r => {
                     const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}', '${r.dolzhnost.replace(/'/g, "\\'")}', '${r.otdel.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}')" `;
-                    html += '<tr class="group-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                    html += '<tr class="group-row dashboard-row-animated" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
                 });
             }
         });
@@ -1694,17 +1723,18 @@ function renderEmpTable(data) {
             const isExpanded = expandedGroups[groupId] === true;
             const toggleClass = isExpanded ? '' : 'collapsed';
             const toggleIcon = isExpanded ? '▼' : '▶';
-            html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>💼 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
+            html += '<tr class="group-header dashboard-row-animated" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>💼 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
             if (isExpanded) {
                 g.employees.forEach(r => {
                     const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}', '${r.dolzhnost.replace(/'/g, "\\'")}', '${r.otdel.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}')" `;
-                    html += '<tr class="group-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                    html += '<tr class="group-row dashboard-row-animated" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
                 });
             }
         });
     }
 
     document.getElementById('empTable').innerHTML = html;
+    revealAnimatedRows('empTable');
 }
 
 function toggleGroup(groupId) {

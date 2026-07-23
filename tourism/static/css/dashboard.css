@@ -61,6 +61,12 @@ body {
     margin-left: 290px; /* 280px сайдбар + 10px gap */
     padding-right: 10px;
     min-width: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.dashboard-main.content-transitioning {
+    opacity: 0.35;
+    transform: translateY(6px);
 }
 
 /* Адаптация фильтров под компактный вертикальный сайдбар */
@@ -231,6 +237,31 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* Анимация строк и групп таблиц */
+.dashboard-row-animated {
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.dashboard-row-animated.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.group-header {
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.group-header:hover {
+    background: rgba(0, 255, 255, 0.08);
+}
+
+.group-row {
+    transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 /* В сайдбаре даты — на одной линии */
