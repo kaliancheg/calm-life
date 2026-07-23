@@ -1651,29 +1651,29 @@ function setEmpGroup(mode) {
 
 function animateEmployeeTableUpdate(callback) {
     const wrapper = document.getElementById('empTableWrapper');
-    const tableBody = document.getElementById('empTable');
-    if (!wrapper || !tableBody) {
+    const table = wrapper?.querySelector('table');
+    if (!wrapper || !table) {
         callback();
         return;
     }
 
+    const previousHeight = wrapper.offsetHeight || wrapper.scrollHeight || 0;
     wrapper.classList.add('table-transitioning');
-    tableBody.classList.add('table-transitioning');
+    wrapper.style.overflow = 'hidden';
+    wrapper.style.maxHeight = previousHeight + 'px';
 
     requestAnimationFrame(() => {
-        tableBody.style.opacity = '0';
-        tableBody.style.transform = 'translateY(8px)';
-    });
-
-    setTimeout(() => {
         callback();
         requestAnimationFrame(() => {
-            tableBody.style.opacity = '1';
-            tableBody.style.transform = 'translateY(0)';
-            wrapper.classList.remove('table-transitioning');
-            tableBody.classList.remove('table-transitioning');
+            const newHeight = table.offsetHeight;
+            wrapper.style.maxHeight = newHeight + 'px';
+            setTimeout(() => {
+                wrapper.classList.remove('table-transitioning');
+                wrapper.style.overflow = '';
+                wrapper.style.maxHeight = '';
+            }, 280);
         });
-    }, 120);
+    });
 }
 
 function renderEmpTable(data) {
@@ -1705,7 +1705,7 @@ function renderEmpTable(data) {
         if (empGroupMode === 'none') {
             employees.forEach(r => {
                 const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}', '${r.dolzhnost.replace(/'/g, "\\'")}', '${r.otdel.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}')" `;
-                html += '<tr class="emp-row dashboard-row-animated" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                html += '<tr class="emp-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
             });
         } else if (empGroupMode === 'otdel') {
             const groups = {};
@@ -1725,11 +1725,11 @@ function renderEmpTable(data) {
                 const isExpanded = expandedGroups[groupId] === true;
                 const toggleClass = isExpanded ? '' : 'collapsed';
                 const toggleIcon = isExpanded ? '▼' : '▶';
-                html += '<tr class="group-header dashboard-row-animated" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>📁 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
+                html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>📁 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
                 if (isExpanded) {
                     g.employees.forEach(r => {
                         const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}', '${r.dolzhnost.replace(/'/g, "\\'")}', '${r.otdel.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}')" `;
-                        html += '<tr class="group-row dashboard-row-animated" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                        html += '<tr class="group-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
                     });
                 }
             });
@@ -1751,18 +1751,17 @@ function renderEmpTable(data) {
                 const isExpanded = expandedGroups[groupId] === true;
                 const toggleClass = isExpanded ? '' : 'collapsed';
                 const toggleIcon = isExpanded ? '▼' : '▶';
-                html += '<tr class="group-header dashboard-row-animated" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>💼 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
+                html += '<tr class="group-header" onclick="toggleGroup(\'' + groupId + '\')"><td colspan="7"><span class="group-toggle ' + toggleClass + '">' + toggleIcon + '</span>💼 ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</td></tr>';
                 if (isExpanded) {
                     g.employees.forEach(r => {
                         const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}', '${r.dolzhnost.replace(/'/g, "\\'")}', '${r.otdel.replace(/'/g, "\\'")}', '${r.podrazdelenie.replace(/'/g, "\\'")}')" `;
-                        html += '<tr class="group-row dashboard-row-animated" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+                        html += '<tr class="group-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
                     });
                 }
             });
         }
 
         document.getElementById('empTable').innerHTML = html;
-        revealAnimatedRows('empTable');
     };
 
     animateEmployeeTableUpdate(render);

@@ -265,16 +265,16 @@ body {
 }
 
 #empTable {
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transition: none;
+}
+
+.table-wrapper {
+    overflow: hidden;
+    transition: max-height 0.28s ease;
 }
 
 .table-wrapper.table-transitioning {
     overflow: hidden;
-}
-
-.table-wrapper.table-transitioning #empTable {
-    opacity: 0;
-    transform: translateY(8px);
 }
 
 /* В сайдбаре даты — на одной линии */
@@ -1888,17 +1888,20 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 .headcount-block-wrapper {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: block;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 }
 
 .headcount-block-wrapper.visible {
-    grid-template-rows: 1fr;
+    max-height: 6000px;
+    opacity: 1;
 }
 
 .headcount-block-inner {
-    overflow: hidden;
+    overflow: visible;
 }
 
 .headcount-block {
