@@ -242,8 +242,8 @@ body {
 /* Анимация строк и групп таблиц */
 .dashboard-row-animated {
     opacity: 0;
-    transform: translateY(6px);
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transform: translateY(4px);
+    transition: opacity 0.28s ease, transform 0.28s ease;
 }
 
 .dashboard-row-animated.is-visible {
@@ -265,12 +265,12 @@ body {
 }
 
 #empTable {
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transition: opacity 0.28s ease, transform 0.28s ease;
 }
 
 #empTable.table-body-leaving {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
 }
 
 #empTable.table-body-entering {
@@ -1899,18 +1899,22 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 .headcount-block-wrapper {
-    display: block;
+    display: grid;
+    grid-template-rows: 0fr;
     opacity: 0;
-    overflow: visible;
-    transition: opacity 0.25s ease;
+    overflow: hidden;
+    margin: 0;
+    transition: grid-template-rows 0.28s ease, opacity 0.25s ease, margin 0.25s ease;
 }
 
 .headcount-block-wrapper.visible {
     opacity: 1;
+    grid-template-rows: 1fr;
+    margin: 20px 0;
 }
 
 .headcount-block-inner {
-    overflow: visible;
+    overflow: hidden;
 }
 
 .headcount-block {
