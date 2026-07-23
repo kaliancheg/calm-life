@@ -1430,14 +1430,18 @@ function updateDashboard(data) {
 // Сохраняем все записи без агрегации по ФИО - для отображения по должностям/подразделениям
 currentAggregatedData = data;
 
-// Плавное затемнение всех обновляемых блоков
+// Плавное затемнение всех обновляемых блоков через CSS animation
 const allUpdateable = document.querySelectorAll('.fot-overview, .aggregated, .chart-card, .lfl-block');
+
+// Убираем класс, чтобы анимация могла начаться заново
+allUpdateable.forEach(el => el.classList.remove('updating'));
+// Форсируем reflow — без этого браузер пропустит animation
+void document.body.offsetHeight;
+// Добавляем класс — запускаем анимацию
 allUpdateable.forEach(el => el.classList.add('updating'));
 
-// Через 50мс обновляем данные (CSS transition уже начался)
-setTimeout(() => {
-    performDashboardUpdate(data);
-}, 50);
+// Данные обновляются во время анимации (0.5s)
+performDashboardUpdate(data);
 }
 
 function performDashboardUpdate(data) {
@@ -1570,11 +1574,6 @@ otdelAgg[r.otdel].money += r.itogo;
 document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
 
 renderEmpTable(currentAggregatedData);
-
-// Плавное возвращение opacity — через 350мс (конец transition)
-setTimeout(() => {
-    allUpdateable.forEach(el => el.classList.remove('updating'));
-}, 350);
 }
 
 function setEmpGroup(mode) {

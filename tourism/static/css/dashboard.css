@@ -823,11 +823,6 @@ body {
     margin: 25px 0;
     border: 1px solid rgba(0, 255, 255, 0.25);
     box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
-    transition: opacity 0.3s ease;
-}
-
-.lfl-block.updating {
-    opacity: 0.6;
 }
 
 .lfl-header {
@@ -1384,11 +1379,6 @@ body {
     box-shadow: 0 8px 32px rgba(138, 43, 226, 0.1);
     min-width: 0;
     overflow: hidden;
-    transition: opacity 0.3s ease;
-}
-
-.chart-card.updating {
-    opacity: 0.6;
 }
 
 .chart-card h3 { 
@@ -1404,11 +1394,20 @@ body {
     margin: 25px 0;
     overflow-x: auto;
     border: 1px solid rgba(0, 255, 255, 0.2);
-    transition: opacity 0.3s ease;
+}
+
+/* ========================================
+   Update animation — CSS keyframes (reliable)
+   ======================================== */
+@keyframes updateFlash {
+    0%   { opacity: 1; }
+    10%  { opacity: 0.5; }
+    80%  { opacity: 0.5; }
+    100% { opacity: 1; }
 }
 
 .aggregated.updating {
-    opacity: 0.6;
+    animation: updateFlash 0.5s ease;
 }
 
 .aggregated table {
@@ -1843,7 +1842,12 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
    Headcount Violations Block
    ======================================== */
 
-/* Grid-wrapper для плавного появления/скрытия блока нарушений */
+/* Анимация для блока нарушений */
+@keyframes headcountSlide {
+    from { grid-template-rows: 0fr; }
+    to   { grid-template-rows: 1fr; }
+}
+
 .headcount-block-wrapper {
     display: grid;
     grid-template-rows: 0fr;
