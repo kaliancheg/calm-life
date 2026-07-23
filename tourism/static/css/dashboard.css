@@ -1482,10 +1482,26 @@ tr.row-anim {
 .group-row { 
     background: rgba(138,43,226,0.08); 
     cursor: pointer;
+    transition: opacity 0.25s ease;
 }
 
 .group-row:hover td { 
     background: rgba(138,43,226,0.15); 
+}
+
+/* Плавное скрытие строк группы */
+.group-row.group-hidden {
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.group-row.group-hidden td {
+    padding-top: 0;
+    padding-bottom: 0;
+    border: 0;
+    line-height: 0;
 }
 
 /* Employee row clickable style */
