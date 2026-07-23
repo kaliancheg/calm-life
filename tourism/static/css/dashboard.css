@@ -270,7 +270,7 @@ body {
 
 #empTable.table-body-leaving {
     opacity: 0;
-    transform: translateY(3px);
+    transform: translateY(2px);
 }
 
 #empTable.table-body-entering {
@@ -279,25 +279,11 @@ body {
 }
 
 .emp-table-wrapper {
-    display: grid;
-    grid-template-rows: 0fr;
-    opacity: 0;
-    overflow: hidden;
-    transition: grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease;
-    will-change: grid-template-rows, opacity;
-}
-
-.emp-table-wrapper.is-open {
-    opacity: 1;
-    grid-template-rows: 1fr;
-}
-
-.emp-table-wrapper.table-transitioning {
-    overflow: hidden;
+    overflow: visible;
 }
 
 .emp-table-inner {
-    overflow: hidden;
+    overflow: visible;
 }
 /* В сайдбаре даты — на одной линии */
 .dashboard-sidebar .filter-row {

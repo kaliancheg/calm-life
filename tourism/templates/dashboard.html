@@ -1651,32 +1651,23 @@ function setEmpGroup(mode) {
 }
 
 function animateEmployeeTableUpdate(callback) {
-    const wrapper = document.getElementById('empTableWrapper');
-    const table = wrapper?.querySelector('table');
-    const inner = wrapper?.querySelector('.emp-table-inner');
     const tbody = document.getElementById('empTable');
-    if (!wrapper || !table || !inner || !tbody) {
+    if (!tbody) {
         callback();
         return;
     }
 
-    wrapper.classList.add('table-transitioning');
-    wrapper.classList.remove('is-open');
     tbody.classList.remove('table-body-entering');
     tbody.classList.add('table-body-leaving');
 
     requestAnimationFrame(() => {
         callback();
         requestAnimationFrame(() => {
-            const newHeight = Math.ceil(inner.scrollHeight || table.getBoundingClientRect().height || 0);
-            wrapper.style.setProperty('--emp-table-height', `${newHeight}px`);
-            wrapper.classList.add('is-open');
             tbody.classList.remove('table-body-leaving');
             tbody.classList.add('table-body-entering');
             setTimeout(() => {
-                wrapper.classList.remove('table-transitioning');
                 tbody.classList.remove('table-body-entering');
-            }, 320);
+            }, 240);
         });
     });
 }
@@ -1767,7 +1758,9 @@ function renderEmpTable(data) {
         }
 
         document.getElementById('empTable').innerHTML = html;
-        revealAnimatedRows('empTable');
+        requestAnimationFrame(() => {
+            revealAnimatedRows('empTable');
+        });
     };
 
     animateEmployeeTableUpdate(render);
