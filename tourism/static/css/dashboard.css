@@ -32,6 +32,8 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     z-index: 100;
+    /* Резервируем место под скроллбар, чтобы контент не сжимался */
+    scrollbar-gutter: stable;
     /* Тонкий скролл для сайдбара */
     scrollbar-width: thin;
     scrollbar-color: #334155 transparent;

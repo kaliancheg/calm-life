@@ -1792,6 +1792,15 @@ async function loadHeadcountViolations() {
         // Сортировка по убыванию суммы превышения
         currentHeadcountViolations.sort((a, b) => (b.excess_cost || 0) - (a.excess_cost || 0));
         
+        // Для режима otdel — сортируем детей внутри каждой группы
+        if (hcGroupMode === 'otdel') {
+            currentHeadcountViolations.forEach(group => {
+                if (group.children) {
+                    group.children.sort((a, b) => (b.excess_cost || 0) - (a.excess_cost || 0));
+                }
+            });
+        }
+        
         // Render grouped list with accordion (двухуровневая структура для group_by='otdel')
         if (hcGroupMode === 'otdel') {
             // Двухуровневая структура: Отдел -> Должности -> Даты
