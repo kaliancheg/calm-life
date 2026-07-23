@@ -251,7 +251,9 @@
 </div>
 
 <!-- Headcount Violations Block -->
-<div class="headcount-block" id="headcountBlock" style="display:none;">
+<div class="headcount-block-wrapper" id="headcountBlockWrapper">
+    <div class="headcount-block-inner">
+<div class="headcount-block" id="headcountBlock">
     <div class="section-header">
         <h2>⚠️ Нарушения штатного расписания</h2>
         <p class="section-subtitle">Превышение утверждённого лимита сотрудников по должности за выбранный период</p>
@@ -277,6 +279,8 @@
         <button class="filter-btn" id="hcGrpNone" onclick="setHcGroup('none')">Без группировки</button>
     </div>
     <div class="headcount-list" id="headcountList"></div>
+</div>
+    </div>
 </div>
 
 <!-- Employee Summary Block -->
@@ -1426,6 +1430,25 @@ function updateDashboard(data) {
 // Сохраняем все записи без агрегации по ФИО - для отображения по должностям/подразделениям
 currentAggregatedData = data;
 
+// Плавное обновление — добавляем класс для затемнения
+const aggregatedBlocks = document.querySelectorAll('.aggregated, .chart-card');
+const fotOverview = document.querySelector('.fot-overview');
+const lflBlock = document.querySelector('.lfl-block');
+if (fotOverview) fotOverview.classList.add('updating');
+if (lflBlock) lflBlock.classList.add('updating');
+aggregatedBlocks.forEach(block => block.classList.add('updating'));
+
+// Небольшая задержка чтобы CSS transition сработал
+requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+        // Теперь обновляем данные
+        performDashboardUpdate(data);
+    });
+});
+}
+
+function performDashboardUpdate(data) {
+
 const hours = data.reduce((s, r) => s + r.chasy, 0);
 const money = data.reduce((s, r) => s + r.itogo, 0);
 const employees = new Set(data.map(r => r.fio)).size;
@@ -1555,6 +1578,13 @@ otdelAgg[r.otdel].money += r.itogo;
 document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
 
 renderEmpTable(currentAggregatedData);
+
+// Убираем класс updating — плавное возвращение opacity
+setTimeout(() => {
+    aggregatedBlocks.forEach(block => block.classList.remove('updating'));
+    if (fotOverview) fotOverview.classList.remove('updating');
+    if (lflBlock) lflBlock.classList.remove('updating');
+}, 300);
 }
 
 function setEmpGroup(mode) {
@@ -1751,7 +1781,7 @@ async function loadHeadcountViolations() {
     const dt = dtRaw ? formatDateForInput(parseDisplayDate(dtRaw)) : '';
     
     if (!df || !dt) {
-        document.getElementById('headcountBlock').style.display = 'none';
+        document.getElementById('headcountBlockWrapper').classList.remove('visible');
         return;
     }
     
@@ -1767,22 +1797,22 @@ async function loadHeadcountViolations() {
         const resp = await fetch('/api/headcount/violations' + params);
         if (!resp.ok) {
             console.error('Headcount API error:', resp.status, resp.statusText);
-            document.getElementById('headcountBlock').style.display = 'none';
+            document.getElementById('headcountBlockWrapper').classList.remove('visible');
             return;
         }
         
         const data = await resp.json();
         currentHeadcountViolations = data.violations || [];
         
-        const block = document.getElementById('headcountBlock');
+        const wrapper = document.getElementById('headcountBlockWrapper');
         const list = document.getElementById('headcountList');
         
         if (currentHeadcountViolations.length === 0) {
-            block.style.display = 'none';
+            wrapper.classList.remove('visible');
             return;
         }
         
-        block.style.display = 'block';
+        wrapper.classList.add('visible');
         
         // Update summary counters
         document.getElementById('headcountViolDays').textContent = data.total_violations || 0;
@@ -1920,7 +1950,7 @@ async function loadHeadcountViolations() {
         
     } catch (err) {
         console.error('Error loading headcount violations:', err);
-        document.getElementById('headcountBlock').style.display = 'none';
+        document.getElementById('headcountBlockWrapper').classList.remove('visible');
     }
 }
 

@@ -644,12 +644,16 @@ body {
     border-radius: 15px;
     text-align: center;
     border: 1px solid rgba(138, 43, 226, 0.3);
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, opacity 0.3s ease;
 }
 
 .stat-card:hover {
     transform: translateY(-2px);
     border-color: rgba(138, 43, 226, 0.5);
+}
+
+.fot-overview.updating .stat-card {
+    opacity: 0.6;
 }
 
 .stat-value {
@@ -1070,12 +1074,16 @@ body {
     border-radius: 15px;
     text-align: center;
     border: 1px solid rgba(138, 43, 226, 0.3);
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, opacity 0.3s ease;
 }
 
 .lfl-card:hover {
     transform: translateY(-2px);
     border-color: rgba(138, 43, 226, 0.5);
+}
+
+.lfl-block.updating .lfl-card {
+    opacity: 0.6;
 }
 
 .lfl-card.lfl-change {
@@ -1376,6 +1384,11 @@ body {
     box-shadow: 0 8px 32px rgba(138, 43, 226, 0.1);
     min-width: 0;
     overflow: hidden;
+    transition: opacity 0.3s ease;
+}
+
+.chart-card.updating {
+    opacity: 0.6;
 }
 
 .chart-card h3 { 
@@ -1391,6 +1404,11 @@ body {
     margin: 25px 0;
     overflow-x: auto;
     border: 1px solid rgba(0, 255, 255, 0.2);
+    transition: opacity 0.3s ease;
+}
+
+.aggregated.updating {
+    opacity: 0.6;
 }
 
 .aggregated table {
@@ -1403,6 +1421,15 @@ body {
 .aggregated h3 { 
     color: #00ffff; 
     margin-bottom: 15px; 
+}
+
+/* FOT Overview Section - плавное обновление */
+.fot-overview {
+    transition: opacity 0.3s ease;
+}
+
+.fot-overview.updating {
+    opacity: 0.6;
 }
 
 .no-access {
@@ -1815,6 +1842,21 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 /* ========================================
    Headcount Violations Block
    ======================================== */
+
+/* Grid-wrapper для плавного появления/скрытия блока нарушений */
+.headcount-block-wrapper {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.headcount-block-wrapper.visible {
+    grid-template-rows: 1fr;
+}
+
+.headcount-block-inner {
+    overflow: hidden;
+}
 
 .headcount-block {
     margin: 20px 0;
