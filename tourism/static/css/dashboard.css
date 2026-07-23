@@ -435,6 +435,23 @@ body {
     border-color: rgba(0, 255, 255, 0.7);
 }
 
+/* Hover на весь блок date-group */
+.filter-group.date-group {
+    cursor: default;
+    transition: background 0.2s ease;
+    padding: 4px 8px;
+    border-radius: 10px;
+}
+
+.filter-group.date-group:hover {
+    background: rgba(0, 255, 255, 0.08);
+}
+
+.filter-group.date-group:hover input[type="date"] {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(0, 255, 255, 0.7);
+}
+
 .filter-group input[type="date"]:focus {
     background: rgba(255, 255, 255, 0.2);
     border-color: #00ffff;

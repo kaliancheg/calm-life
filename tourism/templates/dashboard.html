@@ -1249,14 +1249,20 @@ applyFilters();
 }
 
 function resetFilters() {
-selectedPod = '';
-selectedOtdels = [];
-document.querySelectorAll('#podButtons .filter-btn').forEach(btn => btn.classList.remove('active'));
-document.querySelector('#podButtons .filter-btn').classList.add('active');
-document.querySelectorAll('#otdelButtons .filter-btn').forEach(btn => btn.classList.remove('active'));
-document.querySelector('#otdelButtons .filter-btn').classList.add('active');
-initFilters();
-applyFilters();
+    selectedPod = '';
+    selectedOtdels = [];
+    
+    // Активируем кнопку "Все" в подразделении
+    document.querySelectorAll('#podButtons .filter-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector('#podButtons .filter-btn[data-pod=""]').classList.add('active');
+    
+    // Активируем кнопку "Все" в отделах
+    document.querySelectorAll('#otdelButtons .filter-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector('#otdelButtons .filter-btn[data-otdel=""]').classList.add('active');
+    
+    // Даты НЕ сбрасываем — оставляем как есть
+    // Применяем фильтры с текущими датами
+    applyFilters();
 }
 
 function shiftDates(direction, unit) {
@@ -1680,16 +1686,8 @@ async function fetchFotSummaryAndBreakdown() {
             summaryParams += `&otdel=`;
         }
         
-        const summaryResp = await fetch('/api/fot/summary' + summaryParams);
-        if (summaryResp.ok) {
-            const sdata = await summaryResp.json();
-            if (!sdata.error && sdata.totals) {
-                animateValue(document.getElementById('employees'), 0, sdata.totals.employees || 0, 200, false);
-                animateValue(document.getElementById('hours'), 0, sdata.totals.total_hours || 0, 200, false);
-                animateValue(document.getElementById('money'), 0, sdata.totals.total_money || 0, 200, true);
-                animateValue(document.getElementById('records'), 0, sdata.totals.records || 0, 200, false);
-            }
-        }
+        // KPI-карточки уже обновлены в updateDashboard() — не дублируем анимацию
+        // fetchFotSummaryAndBreakdown обновляет только breakdown-таблицу
 
         // Building breakdown params with multiple otdels
         let breakdownParams = `?from=${df}&to=${dt}&by=otdel&limit=50`;
