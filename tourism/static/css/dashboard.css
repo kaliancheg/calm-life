@@ -30,6 +30,7 @@ body {
     width: 280px;
     height: 100vh;
     overflow-y: auto;
+    overflow-x: hidden;
     z-index: 100;
     /* Тонкий скролл для сайдбара */
     scrollbar-width: thin;
@@ -65,6 +66,8 @@ body {
     margin-bottom: 0;
     padding: 16px 14px;
     border-radius: 0 20px 20px 0;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 .dashboard-sidebar .filters h2 {
@@ -159,6 +162,19 @@ body {
 }
 
 /* Кнопки подразделений и отделов — строго вертикально, узкие */
+.dashboard-sidebar .filters {
+    box-sizing: border-box;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+.dashboard-sidebar .filter-section {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
 .dashboard-sidebar .filter-buttons {
     flex-direction: column;
     gap: 4px;
@@ -167,6 +183,34 @@ body {
                 opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     max-height: 0;
     opacity: 0;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+.dashboard-sidebar .filter-buttons.show {
+    max-height: 500px;
+    opacity: 1;
+}
+
+.dashboard-sidebar .filter-section {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.dashboard-sidebar .filter-buttons {
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 0;
+    opacity: 0;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .dashboard-sidebar .filter-buttons.show {
@@ -179,7 +223,12 @@ body {
     font-size: 0.82em;
     text-align: left;
     width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* В сайдбаре даты — на одной линии */
