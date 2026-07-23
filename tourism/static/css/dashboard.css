@@ -242,8 +242,8 @@ body {
 /* Анимация строк и групп таблиц */
 .dashboard-row-animated {
     opacity: 0;
-    transform: translateY(4px);
-    transition: opacity 0.28s ease, transform 0.28s ease;
+    transform: translateY(3px);
+    transition: opacity 0.24s ease, transform 0.24s ease;
 }
 
 .dashboard-row-animated.is-visible {
@@ -265,12 +265,12 @@ body {
 }
 
 #empTable {
-    transition: opacity 0.28s ease, transform 0.28s ease;
+    transition: opacity 0.24s ease, transform 0.24s ease;
 }
 
 #empTable.table-body-leaving {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(3px);
 }
 
 #empTable.table-body-entering {
@@ -278,16 +278,27 @@ body {
     transform: translateY(0);
 }
 
-.table-wrapper {
+.emp-table-wrapper {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
     overflow: hidden;
-    transition: max-height 0.28s ease;
-    will-change: max-height;
+    transition: grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease;
+    will-change: grid-template-rows, opacity;
 }
 
-.table-wrapper.table-transitioning {
+.emp-table-wrapper.is-open {
+    opacity: 1;
+    grid-template-rows: 1fr;
+}
+
+.emp-table-wrapper.table-transitioning {
     overflow: hidden;
 }
 
+.emp-table-inner {
+    overflow: hidden;
+}
 /* В сайдбаре даты — на одной линии */
 .dashboard-sidebar .filter-row {
     grid-template-columns: 1fr !important;

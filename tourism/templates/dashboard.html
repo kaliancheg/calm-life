@@ -294,21 +294,23 @@
         <button class="filter-btn" id="grpOtdel" onclick="setEmpGroup('otdel')">По отделу</button>
         <button class="filter-btn" id="grpDolzhnost" onclick="setEmpGroup('dolzhnost')">По должности</button>
     </div>
-    <div class="table-wrapper" id="empTableWrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>ФИО</th>
-                    <th>Подразделение</th>
-                    <th>Должность</th>
-                    <th>Ставка</th>
-                    <th>Смены</th>
-                    <th>Часы</th>
-                    <th>Начислено</th>
-                </tr>
-            </thead>
-            <tbody id="empTable"></tbody>
-        </table>
+    <div class="table-wrapper emp-table-wrapper" id="empTableWrapper">
+        <div class="emp-table-inner">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ФИО</th>
+                        <th>Подразделение</th>
+                        <th>Должность</th>
+                        <th>Ставка</th>
+                        <th>Смены</th>
+                        <th>Часы</th>
+                        <th>Начислено</th>
+                    </tr>
+                </thead>
+                <tbody id="empTable"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -1634,7 +1636,6 @@ revealAnimatedRows('otdelTable');
 
 // Плавная анимация высоты таблиц
 smoothAnimateHeight('otdelTableWrapper');
-smoothAnimateHeight('empTableWrapper');
 }
 
 function setEmpGroup(mode) {
@@ -1652,32 +1653,30 @@ function setEmpGroup(mode) {
 function animateEmployeeTableUpdate(callback) {
     const wrapper = document.getElementById('empTableWrapper');
     const table = wrapper?.querySelector('table');
+    const inner = wrapper?.querySelector('.emp-table-inner');
     const tbody = document.getElementById('empTable');
-    if (!wrapper || !table || !tbody) {
+    if (!wrapper || !table || !inner || !tbody) {
         callback();
         return;
     }
 
-    const previousHeight = wrapper.offsetHeight || wrapper.scrollHeight || 0;
     wrapper.classList.add('table-transitioning');
-    wrapper.style.overflow = 'hidden';
-    wrapper.style.maxHeight = previousHeight + 'px';
+    wrapper.classList.remove('is-open');
     tbody.classList.remove('table-body-entering');
     tbody.classList.add('table-body-leaving');
 
     requestAnimationFrame(() => {
         callback();
         requestAnimationFrame(() => {
-            const newHeight = Math.ceil(table.getBoundingClientRect().height || table.offsetHeight || previousHeight);
-            wrapper.style.maxHeight = newHeight + 'px';
+            const newHeight = Math.ceil(inner.scrollHeight || table.getBoundingClientRect().height || 0);
+            wrapper.style.setProperty('--emp-table-height', `${newHeight}px`);
+            wrapper.classList.add('is-open');
             tbody.classList.remove('table-body-leaving');
             tbody.classList.add('table-body-entering');
             setTimeout(() => {
                 wrapper.classList.remove('table-transitioning');
-                wrapper.style.overflow = '';
-                wrapper.style.maxHeight = '';
                 tbody.classList.remove('table-body-entering');
-            }, 260);
+            }, 320);
         });
     });
 }
