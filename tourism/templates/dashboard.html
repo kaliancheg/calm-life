@@ -42,11 +42,11 @@
 </div>
 <div class="filter-section">
 <label class="filter-toggle-label" onclick="toggleFilterSection('podButtons', this)">Подразделение <span class="toggle-arrow">▼</span></label>
-<div class="filter-buttons" id="podButtons"></div>
+<div class="filter-buttons-grid" id="podButtonsGrid"><div class="filter-buttons-inner"><div class="filter-buttons" id="podButtons"></div></div></div>
 </div>
 <div class="filter-section">
 <label class="filter-toggle-label" onclick="toggleFilterSection('otdelButtons', this)">Отдел (служба) <span class="toggle-arrow">▼</span></label>
-<div class="filter-buttons" id="otdelButtons"></div>
+<div class="filter-buttons-grid" id="otdelButtonsGrid"><div class="filter-buttons-inner"><div class="filter-buttons" id="otdelButtons"></div></div></div>
 </div>
 <div class="filter-row date-nav-row">
 <div class="filter-group date-group"><label>Дата с</label><input type="date" id="dateFrom"></div>
@@ -327,39 +327,19 @@ console.log('=== SCRIPT STARTED ===');
 
 // ==================== FILTER SECTION TOGGLE ====================
 function toggleFilterSection(buttonsId, labelEl) {
-    const buttonsContainer = document.getElementById(buttonsId);
+    // buttonsId — это ID grid-обёртки (podButtonsGrid / otdelButtonsGrid)
+    const gridEl = document.getElementById(buttonsId);
     const arrow = labelEl.querySelector('.toggle-arrow');
+    const isExpanded = gridEl.classList.contains('expanded');
     
-    if (buttonsContainer.classList.contains('collapsed')) {
-        // Разворачиваем — устанавливаем точную высоту контента
-        buttonsContainer.classList.remove('collapsed');
-        buttonsContainer.classList.add('expanded');
-        // Устанавливаем max-height равным реальной высоте контента
-        buttonsContainer.style.maxHeight = buttonsContainer.scrollHeight + 'px';
-        arrow.textContent = '▼';
-        labelEl.classList.remove('collapsed');
-        
-        // После завершения анимации убираем max-height чтобы не ограничивал
-        setTimeout(() => {
-            if (!buttonsContainer.classList.contains('collapsed')) {
-                buttonsContainer.style.maxHeight = '';
-            }
-        }, 350);
-    } else {
-        // Сворачиваем — сначала фиксируем текущую высоту
-        buttonsContainer.style.maxHeight = buttonsContainer.scrollHeight + 'px';
-        // Форсируем reflow
-        buttonsContainer.offsetHeight;
-        // Запускаем анимацию сворачивания
-        buttonsContainer.classList.add('collapsed');
-        buttonsContainer.classList.remove('expanded');
+    if (isExpanded) {
+        gridEl.classList.remove('expanded');
         arrow.textContent = '▶';
         labelEl.classList.add('collapsed');
-        
-        // После завершения анимации очищаем inline max-height
-        setTimeout(() => {
-            buttonsContainer.style.maxHeight = '';
-        }, 350);
+    } else {
+        gridEl.classList.add('expanded');
+        arrow.textContent = '▼';
+        labelEl.classList.remove('collapsed');
     }
 }
 
@@ -1805,6 +1785,9 @@ async function loadHeadcountViolations() {
         document.getElementById('headcountViolDays').textContent = data.total_violations || 0;
         document.getElementById('headcountTotalExcess').textContent = `+${data.total_excess || 0}`;
         document.getElementById('headcountExcessCost').textContent = formatMoney(data.total_excess_cost || 0);
+        
+        // Сортировка по убыванию суммы превышения
+        currentHeadcountViolations.sort((a, b) => (b.excess_cost || 0) - (a.excess_cost || 0));
         
         // Render grouped list with accordion (двухуровневая структура для group_by='otdel')
         if (hcGroupMode === 'otdel') {

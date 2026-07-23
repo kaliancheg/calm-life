@@ -162,21 +162,21 @@ body {
 .dashboard-sidebar .filter-buttons {
     flex-direction: column;
     gap: 4px;
+}
+
+/* Grid-wrapper для плавной анимации через grid-template-rows (GPU-accelerated) */
+.filter-buttons-grid {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.filter-buttons-grid.expanded {
+    grid-template-rows: 1fr;
+}
+
+.filter-buttons-inner {
     overflow: hidden;
-    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Свернутое состояние — анимируется через JS max-height */
-.filter-buttons.collapsed {
-    max-height: 0 !important;
-    opacity: 0;
-}
-
-/* Развернутое состояние — JS устанавливает точный max-height */
-.filter-buttons.expanded {
-    max-height: 600px;
-    opacity: 1;
 }
 
 .dashboard-sidebar .filter-btn {
