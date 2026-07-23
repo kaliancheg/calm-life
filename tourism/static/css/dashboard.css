@@ -1515,25 +1515,12 @@ body {
     background: rgba(138,43,226,0.15); 
 }
 
-.group-children-row td {
-    padding: 0;
+.group-child-row {
+    display: none;
 }
 
-.group-children-wrapper {
-    max-height: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
-}
-
-.group-children-wrapper.is-open {
-    opacity: 1;
-}
-
-.group-children-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: rgba(138, 43, 226, 0.04);
+.group-child-row.is-open {
+    display: table-row;
 }
 
 .group-child-row td {
