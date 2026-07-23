@@ -239,21 +239,19 @@ body {
     white-space: nowrap;
 }
 
-/* Анимация строк и групп таблиц */
-.dashboard-row-animated {
-    opacity: 0;
-    transform: translateY(3px);
-    transition: opacity 0.24s ease, transform 0.24s ease;
+/* Анимация строк таблиц при обновлении */
+@keyframes rowFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
-.dashboard-row-animated.is-visible {
-    opacity: 1;
-    transform: translateY(0);
+tr.row-anim {
+    animation: rowFadeIn 0.25s ease forwards;
 }
 
 .group-header {
     cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.2s ease;
+    transition: background-color 0.2s ease;
 }
 
 .group-header:hover {
@@ -261,19 +259,7 @@ body {
 }
 
 .group-row {
-    transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-#empTable {
-    transition: none;
-}
-
-.emp-table-wrapper {
-    overflow: visible;
-}
-
-.emp-table-inner {
-    overflow: visible;
+    transition: opacity 0.25s ease;
 }
 /* В сайдбаре даты — на одной линии */
 .dashboard-sidebar .filter-row {
@@ -1446,24 +1432,6 @@ body {
     margin-bottom: 15px; 
 }
 
-/* ========================================
-   Smooth table body height animation
-   ======================================== */
-.table-wrapper {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden;
-}
-
-.table-wrapper.visible {
-    grid-template-rows: 1fr;
-}
-
-.table-wrapper-inner {
-    overflow: hidden;
-}
-
 /* Headcount violations block — smooth show/hide */
 .headcount-block {
     margin: 20px 0;
@@ -1518,25 +1486,6 @@ body {
 
 .group-row:hover td { 
     background: rgba(138,43,226,0.15); 
-}
-
-.group-child-row {
-    display: none;
-}
-
-.group-child-row.is-open {
-    display: table-row;
-}
-
-.group-child-row td {
-    padding: 10px 12px;
-    border-top: 1px solid rgba(255,255,255,0.06);
-    color: #e8e8ff;
-    cursor: pointer;
-}
-
-.group-child-row:hover td {
-    background: rgba(0,255,255,0.08);
 }
 
 /* Employee row clickable style */
