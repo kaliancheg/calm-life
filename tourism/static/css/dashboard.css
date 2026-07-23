@@ -268,9 +268,19 @@ body {
     transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
+#empTable.table-body-leaving {
+    opacity: 0;
+    transform: translateY(6px);
+}
+
+#empTable.table-body-entering {
+    opacity: 1;
+    transform: translateY(0);
+}
+
 .table-wrapper {
     overflow: hidden;
-    transition: max-height 0.3s ease;
+    transition: max-height 0.28s ease;
     will-change: max-height;
 }
 
@@ -2112,38 +2122,38 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     padding-left: 24px;
     padding-top: 0;
     padding-bottom: 0;
-    max-height: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: max-height 0.3s ease, opacity 0.25s ease, padding-top 0.25s ease, padding-bottom 0.25s ease;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease, padding-top 0.25s ease, padding-bottom 0.25s ease;
 }
 
 .hc-children.is-open {
     padding-top: 4px;
     padding-bottom: 4px;
-    opacity: 1;
+    grid-template-rows: 1fr;
 }
 
 .hc-children-inner {
     overflow: hidden;
-    will-change: height;
 }
 
 /* Таблица с датами — раскрывается ниже шапки */
 .hc-table-wrap {
-    max-height: 0;
+    display: grid;
+    grid-template-rows: 0fr;
     opacity: 0;
     overflow: hidden;
     border: 0 solid rgba(255, 107, 107, 0.15);
     border-top: none;
     border-bottom-left-radius: 8px;
     border-bottom-right-radius: 8px;
-    transition: max-height 0.3s ease, opacity 0.25s ease, border-width 0.25s ease;
+    transition: grid-template-rows 0.3s ease, opacity 0.25s ease, border-width 0.25s ease;
 }
 
 .hc-table-wrap.is-open {
     opacity: 1;
     border-width: 1px;
+    grid-template-rows: 1fr;
 }
 
 .hc-table {
