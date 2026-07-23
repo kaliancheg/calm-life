@@ -1942,7 +1942,7 @@ async function loadHeadcountViolations() {
                         <span class="hc-badge hc-badge-cost">💰 ${formatMoney(group.excess_cost || 0)}</span>
                         <span class="hc-badge hc-badge-days">📅 ${groupDateCount} дн.</span>
                     </div>
-                    <div class="hc-children" style="display:none;">
+                    <div class="hc-children">
                         ${childrenHtml}
                     </div>
                 </div>
@@ -2014,8 +2014,11 @@ function toggleHeadcountRow(element, event) {
         const children = group.querySelector('.hc-children');
         element.classList.toggle('expanded');
         if (children) {
-            const isHidden = children.style.display === 'none' || !children.style.display;
-            children.style.display = isHidden ? 'block' : 'none';
+            const shouldOpen = !children.classList.contains('is-open');
+            children.classList.toggle('is-open', shouldOpen);
+            requestAnimationFrame(() => {
+                children.style.maxHeight = shouldOpen ? `${children.scrollHeight}px` : '0px';
+            });
         }
         return;
     }
@@ -2026,8 +2029,11 @@ function toggleHeadcountRow(element, event) {
         const tableWrap = wrapper.querySelector('.hc-table-wrap');
         element.classList.toggle('expanded');
         if (tableWrap) {
-            const isHidden = tableWrap.style.display === 'none' || !tableWrap.style.display;
-            tableWrap.style.display = isHidden ? 'block' : 'none';
+            const shouldOpen = !tableWrap.classList.contains('is-open');
+            tableWrap.classList.toggle('is-open', shouldOpen);
+            requestAnimationFrame(() => {
+                tableWrap.style.maxHeight = shouldOpen ? `${tableWrap.scrollHeight}px` : '0px';
+            });
         }
     }
 }

@@ -2095,18 +2095,35 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 /* Контейнер дочерних элементов (для режима otdel) */
 .hc-children {
     padding-left: 24px;
+    padding-top: 0;
+    padding-bottom: 0;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.25s ease, padding-top 0.25s ease, padding-bottom 0.25s ease;
+}
+
+.hc-children.is-open {
     padding-top: 4px;
     padding-bottom: 4px;
+    opacity: 1;
 }
 
 /* Таблица с датами — раскрывается ниже шапки */
 .hc-table-wrap {
-    display: none;
-    border: 1px solid rgba(255, 107, 107, 0.15);
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    border: 0 solid rgba(255, 107, 107, 0.15);
     border-top: none;
     border-bottom-left-radius: 8px;
     border-bottom-right-radius: 8px;
-    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.25s ease, border-width 0.25s ease;
+}
+
+.hc-table-wrap.is-open {
+    opacity: 1;
+    border-width: 1px;
 }
 
 .hc-table {
