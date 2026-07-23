@@ -243,10 +243,12 @@
         <p class="section-subtitle">Разбивка ФОТ по отделам с данными по сотрудникам, часам и начислениям.</p>
     </div>
     <div class="breakdown-table-wrap">
-        <table>
-            <thead><tr><th>Отдел</th><th>Сотрудников</th><th>Смены</th><th>Часы</th><th>Начислено</th></tr></thead>
-            <tbody id="otdelTable"></tbody>
-        </table>
+        <div class="table-wrapper" id="otdelTableWrapper">
+            <table>
+                <thead><tr><th>Отдел</th><th>Сотрудников</th><th>Смены</th><th>Часы</th><th>Начислено</th></tr></thead>
+                <tbody id="otdelTable"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -292,20 +294,22 @@
         <button class="filter-btn" id="grpOtdel" onclick="setEmpGroup('otdel')">По отделу</button>
         <button class="filter-btn" id="grpDolzhnost" onclick="setEmpGroup('dolzhnost')">По должности</button>
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>ФИО</th>
-                <th>Подразделение</th>
-                <th>Должность</th>
-                <th>Ставка</th>
-                <th>Смены</th>
-                <th>Часы</th>
-                <th>Начислено</th>
-            </tr>
-        </thead>
-        <tbody id="empTable"></tbody>
-    </table>
+    <div class="table-wrapper" id="empTableWrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>ФИО</th>
+                    <th>Подразделение</th>
+                    <th>Должность</th>
+                    <th>Ставка</th>
+                    <th>Смены</th>
+                    <th>Часы</th>
+                    <th>Начислено</th>
+                </tr>
+            </thead>
+            <tbody id="empTable"></tbody>
+        </table>
+    </div>
 </div>
 
 <div class="charts">
@@ -1426,21 +1430,45 @@ const fileName = 'tourism_data_' + new Date().toISOString().slice(0,10) + '.xlsx
 XLSX.writeFile(wb, fileName);
 }
 
+// ========================================
+// Плавная анимация высоты таблиц
+// ========================================
+function smoothAnimateHeight(wrapperId) {
+    const wrapper = document.getElementById(wrapperId);
+    if (!wrapper) return;
+    
+    const table = wrapper.querySelector('table');
+    if (!table) return;
+    
+    // Запоминаем текущую высоту
+    const currentHeight = wrapper.offsetHeight;
+    
+    // Убираем transition на момент изменения контента
+    wrapper.style.transition = 'none';
+    wrapper.style.maxHeight = currentHeight + 'px';
+    
+    // Форсируем reflow
+    void wrapper.offsetHeight;
+    
+    // Обновляем высоту на новую
+    const newHeight = table.offsetHeight;
+    wrapper.style.maxHeight = newHeight + 'px';
+    
+    // Включаем transition обратно
+    wrapper.style.transition = '';
+    
+    // Через время анимации убираем max-height чтобы не ограничивал
+    setTimeout(() => {
+        if (wrapper.style.maxHeight !== '') {
+            wrapper.style.maxHeight = '';
+        }
+    }, 400);
+}
+
 function updateDashboard(data) {
 // Сохраняем все записи без агрегации по ФИО - для отображения по должностям/подразделениям
 currentAggregatedData = data;
 
-// Плавное затемнение всех обновляемых блоков через CSS animation
-const allUpdateable = document.querySelectorAll('.fot-overview, .aggregated, .chart-card, .lfl-block');
-
-// Убираем класс, чтобы анимация могла начаться заново
-allUpdateable.forEach(el => el.classList.remove('updating'));
-// Форсируем reflow — без этого браузер пропустит animation
-void document.body.offsetHeight;
-// Добавляем класс — запускаем анимацию
-allUpdateable.forEach(el => el.classList.add('updating'));
-
-// Данные обновляются во время анимации (0.5s)
 performDashboardUpdate(data);
 }
 
@@ -1574,6 +1602,10 @@ otdelAgg[r.otdel].money += r.itogo;
 document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
 
 renderEmpTable(currentAggregatedData);
+
+// Плавная анимация высоты таблиц
+smoothAnimateHeight('otdelTableWrapper');
+smoothAnimateHeight('empTableWrapper');
 }
 
 function setEmpGroup(mode) {
@@ -1677,12 +1709,7 @@ function renderEmpTable(data) {
 
 function toggleGroup(groupId) {
     expandedGroups[groupId] = !expandedGroups[groupId];
-renderEmpTable(currentAggregatedData);
-
-// Плавное возвращение opacity — через 350мс (конец transition)
-setTimeout(() => {
-    allUpdateable.forEach(el => el.classList.remove('updating'));
-}, 350);
+    renderEmpTable(currentAggregatedData);
 }
 
 // Calculate LFL only when pod/otdel filters change (not date filters)
