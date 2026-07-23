@@ -265,12 +265,13 @@ body {
 }
 
 #empTable {
-    transition: none;
+    transition: opacity 0.22s ease;
 }
 
 .table-wrapper {
     overflow: hidden;
-    transition: max-height 0.28s ease;
+    transition: max-height 0.3s ease, opacity 0.22s ease;
+    will-change: max-height, opacity;
 }
 
 .table-wrapper.table-transitioning {
@@ -1892,16 +1893,16 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     max-height: 0;
     opacity: 0;
     overflow: hidden;
-    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 }
 
 .headcount-block-wrapper.visible {
-    max-height: 6000px;
     opacity: 1;
 }
 
 .headcount-block-inner {
-    overflow: visible;
+    overflow: hidden;
+    will-change: height;
 }
 
 .headcount-block {
@@ -2123,6 +2124,11 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     padding-top: 4px;
     padding-bottom: 4px;
     opacity: 1;
+}
+
+.hc-children-inner {
+    overflow: hidden;
+    will-change: height;
 }
 
 /* Таблица с датами — раскрывается ниже шапки */

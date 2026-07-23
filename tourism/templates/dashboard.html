@@ -254,7 +254,7 @@
 
 <!-- Headcount Violations Block -->
 <div class="headcount-block-wrapper" id="headcountBlockWrapper">
-    <div class="headcount-block-inner">
+    <div class="headcount-block-inner" id="headcountBlockInner">
 <div class="headcount-block" id="headcountBlock">
     <div class="section-header">
         <h2>⚠️ Нарушения штатного расписания</h2>
@@ -1660,6 +1660,7 @@ function animateEmployeeTableUpdate(callback) {
     const previousHeight = wrapper.offsetHeight || wrapper.scrollHeight || 0;
     wrapper.classList.add('table-transitioning');
     wrapper.style.overflow = 'hidden';
+    wrapper.style.opacity = '0';
     wrapper.style.maxHeight = previousHeight + 'px';
 
     requestAnimationFrame(() => {
@@ -1667,11 +1668,13 @@ function animateEmployeeTableUpdate(callback) {
         requestAnimationFrame(() => {
             const newHeight = table.offsetHeight;
             wrapper.style.maxHeight = newHeight + 'px';
+            wrapper.style.opacity = '1';
             setTimeout(() => {
                 wrapper.classList.remove('table-transitioning');
                 wrapper.style.overflow = '';
                 wrapper.style.maxHeight = '';
-            }, 280);
+                wrapper.style.opacity = '';
+            }, 320);
         });
     });
 }
@@ -1894,6 +1897,9 @@ async function loadHeadcountViolations() {
         }
         
         wrapper.classList.add('visible');
+        requestAnimationFrame(() => {
+            syncHeadcountBlockHeight();
+        });
         
         // Update summary counters
         document.getElementById('headcountViolDays').textContent = data.total_violations || 0;
@@ -1973,7 +1979,7 @@ async function loadHeadcountViolations() {
                         <span class="hc-badge hc-badge-days">📅 ${groupDateCount} дн.</span>
                     </div>
                     <div class="hc-children">
-                        ${childrenHtml}
+                        ${childrenHtml ? `<div class="hc-children-inner">${childrenHtml}</div>` : ''}
                     </div>
                 </div>
                 `;
@@ -2035,6 +2041,15 @@ async function loadHeadcountViolations() {
     }
 }
 
+function syncHeadcountBlockHeight() {
+    const wrapper = document.getElementById('headcountBlockWrapper');
+    const inner = document.getElementById('headcountBlockInner');
+    if (!wrapper || !inner) return;
+
+    const targetHeight = Math.min(inner.scrollHeight, 12000);
+    wrapper.style.maxHeight = `${targetHeight}px`;
+}
+
 function toggleHeadcountRow(element, event) {
     if (event) event.stopPropagation();
     
@@ -2042,12 +2057,18 @@ function toggleHeadcountRow(element, event) {
     if (element.classList.contains('hc-header-parent')) {
         const group = element.closest('.hc-group');
         const children = group.querySelector('.hc-children');
+        const childrenInner = children?.querySelector('.hc-children-inner');
         element.classList.toggle('expanded');
         if (children) {
             const shouldOpen = !children.classList.contains('is-open');
             children.classList.toggle('is-open', shouldOpen);
             requestAnimationFrame(() => {
-                children.style.maxHeight = shouldOpen ? `${children.scrollHeight}px` : '0px';
+                if (childrenInner) {
+                    children.style.maxHeight = shouldOpen ? `${childrenInner.scrollHeight}px` : '0px';
+                } else {
+                    children.style.maxHeight = shouldOpen ? `${children.scrollHeight}px` : '0px';
+                }
+                syncHeadcountBlockHeight();
             });
         }
         return;
@@ -2063,6 +2084,7 @@ function toggleHeadcountRow(element, event) {
             tableWrap.classList.toggle('is-open', shouldOpen);
             requestAnimationFrame(() => {
                 tableWrap.style.maxHeight = shouldOpen ? `${tableWrap.scrollHeight}px` : '0px';
+                syncHeadcountBlockHeight();
             });
         }
     }
