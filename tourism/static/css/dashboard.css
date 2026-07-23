@@ -264,6 +264,19 @@ body {
     transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
+#empTable {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.table-wrapper.table-transitioning {
+    overflow: hidden;
+}
+
+.table-wrapper.table-transitioning #empTable {
+    opacity: 0;
+    transform: translateY(8px);
+}
+
 /* В сайдбаре даты — на одной линии */
 .dashboard-sidebar .filter-row {
     grid-template-columns: 1fr !important;
