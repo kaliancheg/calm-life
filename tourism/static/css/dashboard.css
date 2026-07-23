@@ -239,28 +239,7 @@ body {
     white-space: nowrap;
 }
 
-/* Анимация строк таблиц при обновлении */
-@keyframes rowFadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-tr.row-anim {
-    animation: rowFadeIn 0.25s ease forwards;
-}
-
-.group-header {
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.group-header:hover {
-    background: rgba(0, 255, 255, 0.08);
-}
-
-.group-row {
-    transition: opacity 0.25s ease;
-}
+/* (animation styles moved below) */
 /* В сайдбаре даты — на одной линии */
 .dashboard-sidebar .filter-row {
     grid-template-columns: 1fr !important;
@@ -1467,6 +1446,11 @@ tr.row-anim {
     font-weight:700; 
     color: #00ffff; 
     cursor: pointer; 
+    transition: background-color 0.2s ease;
+}
+
+.group-header:hover {
+    background: rgba(0,255,255,0.22);
 }
 
 .group-header td { 
@@ -1482,26 +1466,16 @@ tr.row-anim {
 .group-row { 
     background: rgba(138,43,226,0.08); 
     cursor: pointer;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.2s ease;
 }
 
 .group-row:hover td { 
     background: rgba(138,43,226,0.15); 
 }
 
-/* Плавное скрытие строк группы */
+/* Скрытые строки группы */
 .group-row.group-hidden {
-    opacity: 0;
-    height: 0;
-    overflow: hidden;
-    pointer-events: none;
-}
-
-.group-row.group-hidden td {
-    padding-top: 0;
-    padding-bottom: 0;
-    border: 0;
-    line-height: 0;
+    display: none;
 }
 
 /* Employee row clickable style */
@@ -1528,11 +1502,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     display: inline-block; 
     width:20px; 
     margin-right:8px; 
-    transition: transform 0.2s; 
-}
-
-.group-toggle.collapsed { 
-    transform: rotate(-90deg); 
+    text-align: center;
 }
 
 /* ========================================
