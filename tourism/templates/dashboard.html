@@ -329,14 +329,37 @@ console.log('=== SCRIPT STARTED ===');
 function toggleFilterSection(buttonsId, labelEl) {
     const buttonsContainer = document.getElementById(buttonsId);
     const arrow = labelEl.querySelector('.toggle-arrow');
-    if (buttonsContainer.style.display === 'none') {
-        buttonsContainer.style.display = 'flex';
+    
+    if (buttonsContainer.classList.contains('collapsed')) {
+        // Разворачиваем — устанавливаем точную высоту контента
+        buttonsContainer.classList.remove('collapsed');
+        buttonsContainer.classList.add('expanded');
+        // Устанавливаем max-height равным реальной высоте контента
+        buttonsContainer.style.maxHeight = buttonsContainer.scrollHeight + 'px';
         arrow.textContent = '▼';
         labelEl.classList.remove('collapsed');
+        
+        // После завершения анимации убираем max-height чтобы не ограничивал
+        setTimeout(() => {
+            if (!buttonsContainer.classList.contains('collapsed')) {
+                buttonsContainer.style.maxHeight = '';
+            }
+        }, 350);
     } else {
-        buttonsContainer.style.display = 'none';
+        // Сворачиваем — сначала фиксируем текущую высоту
+        buttonsContainer.style.maxHeight = buttonsContainer.scrollHeight + 'px';
+        // Форсируем reflow
+        buttonsContainer.offsetHeight;
+        // Запускаем анимацию сворачивания
+        buttonsContainer.classList.add('collapsed');
+        buttonsContainer.classList.remove('expanded');
         arrow.textContent = '▶';
         labelEl.classList.add('collapsed');
+        
+        // После завершения анимации очищаем inline max-height
+        setTimeout(() => {
+            buttonsContainer.style.maxHeight = '';
+        }, 350);
     }
 }
 
