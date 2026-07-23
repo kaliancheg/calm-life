@@ -1651,25 +1651,7 @@ function setEmpGroup(mode) {
 }
 
 function animateEmployeeTableUpdate(callback) {
-    const tbody = document.getElementById('empTable');
-    if (!tbody) {
-        callback();
-        return;
-    }
-
-    tbody.classList.remove('table-body-entering');
-    tbody.classList.add('table-body-leaving');
-
-    requestAnimationFrame(() => {
-        callback();
-        requestAnimationFrame(() => {
-            tbody.classList.remove('table-body-leaving');
-            tbody.classList.add('table-body-entering');
-            setTimeout(() => {
-                tbody.classList.remove('table-body-entering');
-            }, 240);
-        });
-    });
+    callback();
 }
 
 function renderEmpTable(data) {
@@ -1759,13 +1741,9 @@ function renderEmpTable(data) {
 
         document.getElementById('empTable').innerHTML = html;
         requestAnimationFrame(() => {
-            revealAnimatedRows('empTable');
             document.querySelectorAll('.group-children-wrapper').forEach(w => {
-                if (w.classList.contains('is-open')) {
-                    w.style.maxHeight = w.scrollHeight + 'px';
-                } else {
-                    w.style.maxHeight = '0px';
-                }
+                const targetHeight = w.classList.contains('is-open') ? `${w.scrollHeight}px` : '0px';
+                w.style.maxHeight = targetHeight;
             });
         });
     };
@@ -1775,7 +1753,17 @@ function renderEmpTable(data) {
 
 function toggleGroup(groupId) {
     expandedGroups[groupId] = !expandedGroups[groupId];
-    renderEmpTable(currentAggregatedData);
+    const wrapper = document.querySelector('.group-children-wrapper[data-group-id="' + groupId + '"]');
+    if (!wrapper) {
+        renderEmpTable(currentAggregatedData);
+        return;
+    }
+
+    const shouldOpen = expandedGroups[groupId] === true;
+    wrapper.classList.toggle('is-open', shouldOpen);
+    requestAnimationFrame(() => {
+        wrapper.style.maxHeight = shouldOpen ? `${wrapper.scrollHeight}px` : '0px';
+    });
 }
 
 // Calculate LFL only when pod/otdel filters change (not date filters)

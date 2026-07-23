@@ -265,17 +265,7 @@ body {
 }
 
 #empTable {
-    transition: opacity 0.24s ease, transform 0.24s ease;
-}
-
-#empTable.table-body-leaving {
-    opacity: 0;
-    transform: translateY(2px);
-}
-
-#empTable.table-body-entering {
-    opacity: 1;
-    transform: translateY(0);
+    transition: none;
 }
 
 .emp-table-wrapper {
@@ -1532,11 +1522,12 @@ body {
 .group-children-wrapper {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity: 0;
+    transition: max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
 }
 
 .group-children-wrapper.is-open {
-    max-height: 2000px;
+    opacity: 1;
 }
 
 .group-children-inner {
@@ -1556,6 +1547,14 @@ body {
     align-items: center;
     color: #e8e8ff;
     cursor: pointer;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.group-children-wrapper.is-open .group-child-row {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .group-child-row:hover {
