@@ -2116,6 +2116,26 @@ function animateHeadcountList(listElement, newHtml) {
     }, 250);
 }
 
+function hideHeadcountBlock() {
+    const wrapper = document.getElementById('headcountBlockWrapper');
+    if (!wrapper) return;
+    wrapper.classList.remove('visible');
+    // После завершения анимации убираем из потока, чтобы не было лишнего отступа
+    setTimeout(() => {
+        if (!wrapper.classList.contains('visible')) {
+            wrapper.style.display = 'none';
+        }
+    }, 300);
+}
+
+function showHeadcountBlock() {
+    const wrapper = document.getElementById('headcountBlockWrapper');
+    if (!wrapper) return;
+    wrapper.style.display = '';
+    void wrapper.offsetWidth; // force reflow
+    wrapper.classList.add('visible');
+}
+
 async function loadHeadcountViolations() {
     const dfRaw = document.getElementById('dateFrom').value;
     const dtRaw = document.getElementById('dateTo').value;
@@ -2124,7 +2144,7 @@ async function loadHeadcountViolations() {
     const dt = dtRaw ? formatDateForInput(parseDisplayDate(dtRaw)) : '';
     
     if (!df || !dt) {
-        document.getElementById('headcountBlockWrapper').classList.remove('visible');
+        hideHeadcountBlock();
         return;
     }
     
@@ -2140,7 +2160,7 @@ async function loadHeadcountViolations() {
         const resp = await fetch('/api/headcount/violations' + params);
         if (!resp.ok) {
             console.error('Headcount API error:', resp.status, resp.statusText);
-            document.getElementById('headcountBlockWrapper').classList.remove('visible');
+            hideHeadcountBlock();
             return;
         }
         
@@ -2151,11 +2171,11 @@ async function loadHeadcountViolations() {
         const list = document.getElementById('headcountList');
         
         if (currentHeadcountViolations.length === 0) {
-            wrapper.classList.remove('visible');
+            hideHeadcountBlock();
             return;
         }
         
-        wrapper.classList.add('visible');
+        showHeadcountBlock();
         
         // Анимация KPI счётчиков
         animateCounter('headcountViolDays', data.total_violations || 0);
@@ -2302,7 +2322,7 @@ async function loadHeadcountViolations() {
         
     } catch (err) {
         console.error('Error loading headcount violations:', err);
-        document.getElementById('headcountBlockWrapper').classList.remove('visible');
+        hideHeadcountBlock();
     }
 }
 
