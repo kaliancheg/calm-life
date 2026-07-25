@@ -243,6 +243,7 @@
         <p class="section-subtitle">Разбивка ФОТ по отделам с данными по сотрудникам, часам и начислениям.</p>
     </div>
     <div class="breakdown-table-wrap">
+        <div class="fot-table-wrapper" id="fotTableWrapper">
         <table>
             <colgroup>
                 <col class="col-name">
@@ -254,6 +255,7 @@
             <thead><tr><th>Отдел</th><th>Сотрудников</th><th>Смены</th><th>Часы</th><th>Начислено</th></tr></thead>
             <tbody id="otdelTable"></tbody>
         </table>
+        </div>
     </div>
 </div>
 
@@ -1728,7 +1730,8 @@ let fotTablePending = false;
 
 function animateFotTable(newRowsHtml) {
     const tbody = document.getElementById('otdelTable');
-    if (!tbody) return;
+    const wrapper = tbody.parentElement;
+    if (!tbody || !wrapper) return;
 
     const oldRows = Array.from(tbody.querySelectorAll('tr'));
     
@@ -1742,39 +1745,49 @@ function animateFotTable(newRowsHtml) {
     if (fotTablePending) return;
     fotTablePending = true;
 
-    // Даем браузеру отрисовать строки перед анимацией
-    requestAnimationFrame(() => {
-        // 1. Fade out старых строк
-        oldRows.forEach(row => row.classList.add('fade-out'));
+    // Запоминаем высоту wrapper
+    const startHeight = wrapper.offsetHeight;
 
-        // 2. Ждём окончания анимации, затем удаляем старые строки из DOM
+    // 1. Fade out старых строк
+    oldRows.forEach(row => {
+        row.animate([
+            { opacity: 1 },
+            { opacity: 0 }
+        ], { duration: 300, easing: 'ease' });
+    });
+
+    // 2. Ждём окончания анимации, затем заменяем содержимое
+    setTimeout(() => {
+        // Фиксируем высоту wrapper
+        wrapper.style.height = startHeight + 'px';
+        
+        // Заменяем содержимое
+        tbody.innerHTML = newRowsHtml;
+        const newRows = tbody.querySelectorAll('tr');
+        
+        // 3. Fade in новых строк
+        if (newRows.length > 0) {
+            newRows.forEach(row => {
+                row.animate([
+                    { opacity: 0 },
+                    { opacity: 1 }
+                ], { duration: 300, easing: 'ease' });
+            });
+        }
+        
+        // 4. Анимируем высоту wrapper к новой
+        const endHeight = wrapper.offsetHeight;
+        wrapper.animate([
+            { height: startHeight + 'px' },
+            { height: endHeight + 'px' }
+        ], { duration: 300, easing: 'ease' });
+        
+        // 5. Убираем фиксацию
         setTimeout(() => {
-            // Очищаем tbody полностью
-            tbody.innerHTML = '';
-            
-            // Создаём фрагмент и добавляем новые строки
-            const fragment = document.createDocumentFragment();
-            const temp = document.createElement('tbody');
-            temp.innerHTML = newRowsHtml;
-            while (temp.firstChild) {
-                fragment.appendChild(temp.firstChild);
-            }
-            tbody.appendChild(fragment);
-            
-            // 3. Fade in новых строк
-            const newRows = tbody.querySelectorAll('tr');
-            if (newRows.length === 0) {
-                fotTablePending = false;
-                return;
-            }
-
-            newRows.forEach(row => row.classList.add('fade-in'));
-            void tbody.offsetHeight; // force reflow
-            newRows.forEach(row => row.classList.remove('fade-in'));
-            
+            wrapper.style.height = '';
             fotTablePending = false;
         }, 300);
-    });
+    }, 300);
 }
 
 // ==================== HEADCOUNT VIOLATIONS ====================

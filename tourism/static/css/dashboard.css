@@ -820,6 +820,16 @@ body {
 }
 
 /* Breakdown table — fixed column widths + row animation */
+@keyframes fotFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes fotFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 .breakdown-table-wrap col.col-name {
     width: 30%;
 }
@@ -834,17 +844,28 @@ body {
     width: 20%;
 }
 
+/* Row animation keyframes */
+@keyframes fotFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes fotFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Table rows animation */
 .breakdown-table-wrap tbody tr {
-    opacity: 1;
     transition: opacity 0.3s ease;
 }
 
 .breakdown-table-wrap tbody tr.fade-out {
-    opacity: 0;
+    animation: fotFadeOut 0.3s ease forwards;
 }
 
 .breakdown-table-wrap tbody tr.fade-in {
-    opacity: 0;
+    animation: fotFadeIn 0.3s ease forwards;
 }
 
 /* LFL Analysis Block */
