@@ -2362,10 +2362,26 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 /* Раскрытая строка с сотрудниками */
 .hc-employees-row td {
     background: rgba(0, 0, 0, 0.25) !important;
+    padding: 0 !important;
+}
+
+.hc-employees-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    transition: grid-template-rows 0.3s ease;
+}
+
+.hc-employees-wrap.is-open {
+    grid-template-rows: 1fr;
+}
+
+.hc-employees-wrap-inner {
+    overflow: hidden;
 }
 
 .hc-employees-list {
-    padding: 6px 0;
+    padding: 6px 14px;
 }
 
 .hc-employee-tag {

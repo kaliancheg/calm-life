@@ -2340,14 +2340,13 @@ async function toggleHeadcountDateRow(row, event) {
         expandCell.textContent = expandCell.textContent === '▶' ? '▼' : '▶';
     }
     
-    const contentWrapper = document.getElementById('headcountContentWrapper');
-    
-    // Если уже есть блок с сотрудниками — просто скрываем/показываем
+    // Если уже есть блок с сотрудниками — переключаем grid-анимацию
     const existing = row.nextElementSibling;
     if (existing && existing.classList.contains('hc-employees-row')) {
-        const startHeight = contentWrapper.offsetHeight;
-        existing.style.display = existing.style.display === 'none' ? 'table-row' : 'none';
-        animateWrapperHeight('headcountContentWrapper', startHeight);
+        const wrap = existing.querySelector('.hc-employees-wrap');
+        if (wrap) {
+            wrap.classList.toggle('is-open');
+        }
         return;
     }
     
@@ -2355,22 +2354,17 @@ async function toggleHeadcountDateRow(row, event) {
     const pod = row.dataset.pod;
     const dolzhnost = row.dataset.dolzhnost;
     
-    // Создаём строку загрузки
+    // Создаём строку загрузки с grid-контейнером
     const loadingRow = document.createElement('tr');
     loadingRow.classList.add('hc-employees-row');
-    loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</td>';
-    
-    const startHeight = contentWrapper.offsetHeight;
+    loadingRow.innerHTML = '<td colspan="6"><div class="hc-employees-wrap is-open"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</div></div></div></td>';
     row.parentNode.insertBefore(loadingRow, row.nextSibling);
-    animateWrapperHeight('headcountContentWrapper', startHeight);
     
     try {
         let params = `?date=${date}&pod=${encodeURIComponent(pod)}&dolzhnost=${encodeURIComponent(dolzhnost)}`;
         const resp = await fetch('/api/headcount/employees' + params);
         if (!resp.ok) {
-            const h = contentWrapper.offsetHeight;
-            loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
-            animateWrapperHeight('headcountContentWrapper', h);
+            loadingRow.innerHTML = '<td colspan="6"><div class="hc-employees-wrap is-open"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</div></div></div></td>';
             return;
         }
         
@@ -2378,29 +2372,27 @@ async function toggleHeadcountDateRow(row, event) {
         const employees = data.employees || [];
         
         if (employees.length === 0) {
-            const h = contentWrapper.offsetHeight;
-            loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#888;padding:10px;">Нет данных</td>';
-            animateWrapperHeight('headcountContentWrapper', h);
+            loadingRow.innerHTML = '<td colspan="6"><div class="hc-employees-wrap is-open"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#888;padding:10px;">Нет данных</div></div></div></td>';
             return;
         }
         
-        const h = contentWrapper.offsetHeight;
         loadingRow.innerHTML = `
-            <td colspan="6" style="padding:8px 14px;">
-                <div class="hc-employees-list">
-                    <strong style="color:#00ffff;">Сотрудники (${employees.length}):</strong>
-                    <div style="margin-top:6px;">
-                        ${employees.map(e => `<span class="hc-employee-tag">${e.fio} ${e.status_field ? (e.status_field === 'Уволен' ? '🔴' : '🟢') : ''}</span>`).join('')}
+            <td colspan="6">
+                <div class="hc-employees-wrap is-open">
+                    <div class="hc-employees-wrap-inner">
+                        <div class="hc-employees-list">
+                            <strong style="color:#00ffff;">Сотрудники (${employees.length}):</strong>
+                            <div style="margin-top:6px;">
+                                ${employees.map(e => `<span class="hc-employee-tag">${e.fio} ${e.status_field ? (e.status_field === 'Уволен' ? '🔴' : '🟢') : ''}</span>`).join('')}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </td>
         `;
-        animateWrapperHeight('headcountContentWrapper', h);
     } catch (err) {
         console.error('Loading employees error:', err);
-        const h = contentWrapper.offsetHeight;
-        loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
-        animateWrapperHeight('headcountContentWrapper', h);
+        loadingRow.innerHTML = '<td colspan="6"><div class="hc-employees-wrap is-open"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</div></div></div></td>';
     }
 }
 
