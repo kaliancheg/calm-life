@@ -504,16 +504,18 @@ body {
 }
 
 .filter-group input[type="date"] {
-    padding: 12px;
+    padding: 8px;
     border: 2px solid rgba(0, 255, 255, 0.5);
-    border-radius: 10px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.15);
     color: #ffffff;
     font-family: 'Rajdhani', sans-serif;
-    font-size: 15px;
+    font-size: 11px;
     font-weight: 500;
-    width: fit-content;
+    width: 100%;
+    max-width: 140px;
     box-sizing: border-box;
+    text-align: center;
 }
 
 .filter-group input[type="date"]:hover {
@@ -527,6 +529,22 @@ body {
     transition: background 0.2s ease;
     padding: 4px 8px;
     border-radius: 10px;
+}
+
+.filter-group.date-group:hover {
+    background: rgba(0, 255, 255, 0.08);
+}
+
+.filter-group.date-group:hover input[type="date"] {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(0, 255, 255, 0.7);
+}
+
+.filter-group input[type="date"]:focus {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #00ffff;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    outline: none;
 }
 
 .filter-group.date-group:hover {
@@ -1141,13 +1159,24 @@ body {
     overflow: hidden;
 }
 
+/* LFL date inputs — compact and centered */
+.lfl-period-selectors input[type="date"] {
+    padding: 8px;
+    font-size: 11px;
+    width: 100%;
+    max-width: 130px;
+    margin: 0 auto;
+    display: block;
+    text-align: center;
+}
+
 /* LFL Custom Inputs - Single Line Horizontal Layout */
 .lfl-custom-inputs {
     display: flex;
-    gap: 40px;
+    gap: 25px;
     justify-content: center;
     align-items: flex-end;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     flex-wrap: nowrap;
 }
 
@@ -1155,15 +1184,14 @@ body {
     display: flex; 
     flex-direction: column;
     align-items: center; 
-    gap: 6px;
+    gap: 4px;
 }
 
 .lfl-input-wrapper label {
     color: #b8b8ff;
-    font-size: 0.85em;
+    font-size: 0.82em;
     font-weight: 500;
     text-align: center;
-    white-space: nowrap;
 }
 
 .lfl-date-inputs {
