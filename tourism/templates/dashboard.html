@@ -1254,12 +1254,8 @@ function selectPod(pod) {
     
     animateOtdelButtons(otdelButtonsHtml);
     
-    // Сбрасываем выбранные отделы при смене подразделения
-    selectedOtdels = [];
-    otdelContainer.querySelector('.filter-btn[data-otdel=""]').classList.add('active');
-    otdelContainer.querySelectorAll('.filter-btn[data-otdel!=""]').forEach(btn => {
-        btn.classList.remove('active');
-    });
+    // При выборе подразделения автоматически фильтруем по всем его отделам
+    selectedOtdels = filteredOtdels.slice(); // Копируем все отделы выбранного подразделения
     
     applyFilters();
     // Пересчитываем LFL, т.к. изменился фильтр подразделения
