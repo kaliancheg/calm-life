@@ -1601,10 +1601,86 @@ function setEmpGroup(mode) {
     if (mode === 'otdel') document.getElementById('grpOtdel').classList.add('active');
     if (mode === 'dolzhnost') document.getElementById('grpDolzhnost').classList.add('active');
     expandedGroups = {}; // Сбрасываем состояние групп (все свёрнуты по умолчанию)
-    renderEmpTable(currentAggregatedData); // Перерисовываем только таблицу, без пересчёта
+    renderEmpTable(currentAggregatedData, true); // Перерисовываем с анимацией
 }
 
-function renderEmpTable(data) {
+// Плавная замена содержимого сводки по сотрудникам
+function animateEmpContent(wrapper, tableEl, tbody, groupedContainer, tableHtml, groupedHtml, useGrouped) {
+    const startHeight = wrapper.offsetHeight;
+
+    // 1. Fade out текущего содержимого
+    const oldItems = useGrouped
+        ? Array.from(groupedContainer.querySelectorAll(':scope > *'))
+        : Array.from(tbody.querySelectorAll('tr'));
+
+    if (oldItems.length === 0) {
+        // Нет старых элементов — просто показываем
+        if (useGrouped) {
+            tableEl.style.display = 'none';
+            groupedContainer.classList.add('active');
+            groupedContainer.innerHTML = groupedHtml;
+        } else {
+            groupedContainer.classList.remove('active');
+            tableEl.style.display = '';
+            tbody.innerHTML = tableHtml;
+        }
+        return;
+    }
+
+    oldItems.forEach(item => {
+        item.style.transition = 'opacity 0.25s ease';
+        item.style.opacity = '0';
+    });
+
+    // 2. Ждём fade out, затем заменяем
+    setTimeout(() => {
+        if (useGrouped) {
+            tableEl.style.display = 'none';
+            groupedContainer.classList.add('active');
+            tbody.innerHTML = '';
+            groupedContainer.innerHTML = groupedHtml;
+        } else {
+            groupedContainer.classList.remove('active');
+            groupedContainer.innerHTML = '';
+            tableEl.style.display = '';
+            tbody.innerHTML = tableHtml;
+        }
+
+        // Новые элементы — невидимые
+        const newItems = useGrouped
+            ? Array.from(groupedContainer.querySelectorAll(':scope > *'))
+            : Array.from(tbody.querySelectorAll('tr'));
+        newItems.forEach(item => { item.style.opacity = '0'; });
+
+        const endHeight = wrapper.offsetHeight;
+
+        // 3. Анимация высоты
+        wrapper.style.transition = 'height 0.3s ease';
+        wrapper.style.height = startHeight + 'px';
+        void wrapper.offsetHeight;
+        wrapper.style.height = endHeight + 'px';
+
+        // 4. Fade in новых элементов
+        requestAnimationFrame(() => {
+            newItems.forEach(item => {
+                item.style.transition = 'opacity 0.3s ease';
+                item.style.opacity = '1';
+            });
+        });
+
+        // 5. Очистка
+        setTimeout(() => {
+            wrapper.style.height = '';
+            wrapper.style.transition = '';
+            newItems.forEach(item => {
+                item.style.opacity = '';
+                item.style.transition = '';
+            });
+        }, 300);
+    }, 250);
+}
+
+function renderEmpTable(data, animate) {
     // Группируем по уникальному ключу: ФИО + Должность + Подразделение + Отдел
     const empAgg = {};
     data.forEach(r => {
@@ -1634,38 +1710,39 @@ function renderEmpTable(data) {
 
     if (empGroupMode === 'none') {
         // === ОБЫЧНАЯ ТАБЛИЦА ===
-        groupedContainer.classList.remove('active');
-        tableEl.style.display = '';
-
-        let html = '';
+        let tableHtml = '';
         employees.forEach(r => {
             const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\'")}', '${r.podrazdelenie.replace(/'/g, "\'")}', '${r.dolzhnost.replace(/'/g, "\'")}', '${r.otdel.replace(/'/g, "\'")}', '${r.podrazdelenie.replace(/'/g, "\'")}')" `;
-            html += '<tr class="emp-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
+            tableHtml += '<tr class="emp-row" ' + onclick + '><td>' + r.fio + '</td><td>' + r.podrazdelenie + '</td><td>' + r.dolzhnost + '</td><td>' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</td><td>' + r.days + '</td><td>' + r.hours + '</td><td>' + formatMoney(r.money) + '</td></tr>';
         });
 
-        if (wrapper && tbody.querySelectorAll('tr').length > 0) {
-            const startHeight = wrapper.offsetHeight;
-            tbody.innerHTML = html;
-            const endHeight = wrapper.offsetHeight;
-            if (Math.abs(startHeight - endHeight) >= 2) {
-                wrapper.style.transition = 'height 0.3s ease';
-                wrapper.style.height = startHeight + 'px';
-                void wrapper.offsetHeight;
-                wrapper.style.height = endHeight + 'px';
-                setTimeout(() => {
-                    wrapper.style.height = '';
-                    wrapper.style.transition = '';
-                }, 300);
-            }
+        if (animate) {
+            animateEmpContent(wrapper, tableEl, tbody, groupedContainer, tableHtml, '', false);
         } else {
-            tbody.innerHTML = html;
+            groupedContainer.classList.remove('active');
+            groupedContainer.innerHTML = '';
+            tableEl.style.display = '';
+            if (wrapper && tbody.querySelectorAll('tr').length > 0) {
+                const startHeight = wrapper.offsetHeight;
+                tbody.innerHTML = tableHtml;
+                const endHeight = wrapper.offsetHeight;
+                if (Math.abs(startHeight - endHeight) >= 2) {
+                    wrapper.style.transition = 'height 0.3s ease';
+                    wrapper.style.height = startHeight + 'px';
+                    void wrapper.offsetHeight;
+                    wrapper.style.height = endHeight + 'px';
+                    setTimeout(() => {
+                        wrapper.style.height = '';
+                        wrapper.style.transition = '';
+                    }, 300);
+                }
+            } else {
+                tbody.innerHTML = tableHtml;
+            }
         }
 
     } else {
         // === ГРУППИРОВКА ЧЕРЕЗ DIV С GRID-АНИМАЦИЕЙ ===
-        tableEl.style.display = 'none';
-        groupedContainer.classList.add('active');
-
         const groupKey = empGroupMode === 'otdel' ? 'otdel' : 'dolzhnost';
         const groupIcon = empGroupMode === 'otdel' ? '📁' : '💼';
         const groups = {};
@@ -1680,49 +1757,55 @@ function renderEmpTable(data) {
             return { name, employees: emps, totalMoney, totalHours, totalDays, count: emps.length };
         }).sort((a, b) => b.totalMoney - a.totalMoney);
 
-        let html = '';
+        let groupedHtml = '';
         groupEntries.forEach((g, index) => {
             const groupId = empGroupMode + '_' + index + '_' + g.name.replace(/[^a-zA-Z0-9]/g, '_');
             const isExpanded = expandedGroups[groupId] === true;
             const toggleIcon = isExpanded ? '▼' : '▶';
             const openClass = isExpanded ? ' is-open' : '';
 
-            html += '<div class="emp-group" data-group-id="' + groupId + '">';
-            html += '<div class="emp-group-header" data-group-id="' + groupId + '" onclick="toggleGroup(\'' + groupId + '\')"><span class="group-toggle">' + toggleIcon + '</span>' + groupIcon + ' ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</div>';
-            html += '<div class="emp-group-body' + openClass + '" data-group-id="' + groupId + '">';
-            html += '<div class="emp-group-body-inner">';
+            groupedHtml += '<div class="emp-group" data-group-id="' + groupId + '">';
+            groupedHtml += '<div class="emp-group-header" data-group-id="' + groupId + '" onclick="toggleGroup(\'' + groupId + '\')"><span class="group-toggle">' + toggleIcon + '</span>' + groupIcon + ' ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</div>';
+            groupedHtml += '<div class="emp-group-body' + openClass + '" data-group-id="' + groupId + '">';
+            groupedHtml += '<div class="emp-group-body-inner">';
             g.employees.forEach(r => {
                 const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\'")}', '${r.podrazdelenie.replace(/'/g, "\'")}', '${r.dolzhnost.replace(/'/g, "\'")}', '${r.otdel.replace(/'/g, "\'")}', '${r.podrazdelenie.replace(/'/g, "\'")}')" `;
-                html += '<div class="emp-grid-row" ' + onclick + '>';
-                html += '<div class="emp-grid-cell">' + r.fio + '</div>';
-                html += '<div class="emp-grid-cell">' + r.podrazdelenie + '</div>';
-                html += '<div class="emp-grid-cell">' + r.dolzhnost + '</div>';
-                html += '<div class="emp-grid-cell">' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</div>';
-                html += '<div class="emp-grid-cell">' + r.days + '</div>';
-                html += '<div class="emp-grid-cell">' + r.hours + '</div>';
-                html += '<div class="emp-grid-cell">' + formatMoney(r.money) + '</div>';
-                html += '</div>';
+                groupedHtml += '<div class="emp-grid-row" ' + onclick + '>';
+                groupedHtml += '<div class="emp-grid-cell">' + r.fio + '</div>';
+                groupedHtml += '<div class="emp-grid-cell">' + r.podrazdelenie + '</div>';
+                groupedHtml += '<div class="emp-grid-cell">' + r.dolzhnost + '</div>';
+                groupedHtml += '<div class="emp-grid-cell">' + (r.stavka ? parseInt(r.stavka).toLocaleString('ru-RU') : '—') + '</div>';
+                groupedHtml += '<div class="emp-grid-cell">' + r.days + '</div>';
+                groupedHtml += '<div class="emp-grid-cell">' + r.hours + '</div>';
+                groupedHtml += '<div class="emp-grid-cell">' + formatMoney(r.money) + '</div>';
+                groupedHtml += '</div>';
             });
-            html += '</div></div></div>';
+            groupedHtml += '</div></div></div>';
         });
 
-        // Анимация высоты при замене содержимого
-        if (wrapper && groupedContainer.children.length > 0) {
-            const startHeight = wrapper.offsetHeight;
-            groupedContainer.innerHTML = html;
-            const endHeight = wrapper.offsetHeight;
-            if (Math.abs(startHeight - endHeight) >= 2) {
-                wrapper.style.transition = 'height 0.3s ease';
-                wrapper.style.height = startHeight + 'px';
-                void wrapper.offsetHeight;
-                wrapper.style.height = endHeight + 'px';
-                setTimeout(() => {
-                    wrapper.style.height = '';
-                    wrapper.style.transition = '';
-                }, 300);
-            }
+        if (animate) {
+            animateEmpContent(wrapper, tableEl, tbody, groupedContainer, '', groupedHtml, true);
         } else {
-            groupedContainer.innerHTML = html;
+            tableEl.style.display = 'none';
+            tbody.innerHTML = '';
+            groupedContainer.classList.add('active');
+            if (wrapper && groupedContainer.children.length > 0) {
+                const startHeight = wrapper.offsetHeight;
+                groupedContainer.innerHTML = groupedHtml;
+                const endHeight = wrapper.offsetHeight;
+                if (Math.abs(startHeight - endHeight) >= 2) {
+                    wrapper.style.transition = 'height 0.3s ease';
+                    wrapper.style.height = startHeight + 'px';
+                    void wrapper.offsetHeight;
+                    wrapper.style.height = endHeight + 'px';
+                    setTimeout(() => {
+                        wrapper.style.height = '';
+                        wrapper.style.transition = '';
+                    }, 300);
+                }
+            } else {
+                groupedContainer.innerHTML = groupedHtml;
+            }
         }
     }
 }
