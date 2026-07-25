@@ -794,9 +794,19 @@ body {
     position: relative;
 }
 
-.fot-table-container {
-    overflow: hidden;
+/* Employee table — fixed column widths */
+.aggregated .emp-table-wrapper table {
+    table-layout: fixed;
+    width: 100%;
 }
+
+.emp-col-name { width: 25%; }
+.emp-col-pod { width: 14%; }
+.emp-col-dolzhnost { width: 16%; }
+.emp-col-stavka { width: 11%; }
+.emp-col-days { width: 10%; }
+.emp-col-hours { width: 10%; }
+.emp-col-money { width: 14%; }
 
 .section-header {
     display: flex;

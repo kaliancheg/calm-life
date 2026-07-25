@@ -309,6 +309,15 @@
     </div>
     <div class="emp-table-wrapper" id="empTableWrapper">
     <table>
+        <colgroup>
+            <col class="emp-col-name">
+            <col class="emp-col-pod">
+            <col class="emp-col-dolzhnost">
+            <col class="emp-col-stavka">
+            <col class="emp-col-days">
+            <col class="emp-col-hours">
+            <col class="emp-col-money">
+        </colgroup>
         <thead>
             <tr>
                 <th>ФИО</th>
@@ -1722,7 +1731,7 @@ function toggleGroup(groupId) {
         // 1. Запоминаем высоту ДО показа строк
         const startHeight = wrapper.offsetHeight;
 
-        // 2. Показываем строки
+        // 2. Показываем строки (display возвращается, но opacity = 0)
         rows.forEach(row => {
             row.classList.remove('group-hidden');
             row.style.opacity = '0';
@@ -1731,17 +1740,16 @@ function toggleGroup(groupId) {
         // 3. Замеряем новую высоту
         const endHeight = wrapper.offsetHeight;
 
-        // 4. Фиксируем старую высоту и включаем transition
+        // 4. Фиксируем старую высоту
         wrapper.style.transition = 'height 0.3s ease';
         wrapper.style.height = startHeight + 'px';
 
-        // 5. Анимируем высоту и прозрачность строк
-        requestAnimationFrame(() => {
-            wrapper.style.height = endHeight + 'px';
-            rows.forEach(row => {
-                row.style.transition = 'opacity 0.3s ease';
-                row.style.opacity = '1';
-            });
+        // 5. Force reflow и анимируем к новой высоте + fade in строк
+        void wrapper.offsetHeight;
+        wrapper.style.height = endHeight + 'px';
+        rows.forEach(row => {
+            row.style.transition = 'opacity 0.3s ease';
+            row.style.opacity = '1';
         });
 
         // 6. Очищаем стили после анимации
@@ -1775,16 +1783,16 @@ function toggleGroup(groupId) {
 
             const endHeight = wrapper.offsetHeight;
 
+            // 4. Фиксируем старую высоту, force reflow, анимируем к новой
             wrapper.style.transition = 'height 0.3s ease';
             wrapper.style.height = startHeight + 'px';
+            void wrapper.offsetHeight;
+            wrapper.style.height = endHeight + 'px';
 
-            requestAnimationFrame(() => {
-                wrapper.style.height = endHeight + 'px';
-                setTimeout(() => {
-                    wrapper.style.height = '';
-                    wrapper.style.transition = '';
-                }, 300);
-            });
+            setTimeout(() => {
+                wrapper.style.height = '';
+                wrapper.style.transition = '';
+            }, 300);
         }, 300);
     }
 }
@@ -1851,23 +1859,22 @@ showFotBreakdown();
 
 // ==================== TABLE HEIGHT ANIMATION ====================
 
-function animateTableHeight(wrapperId) {
+function animateWrapperHeight(wrapperId, startHeight) {
     const wrapper = document.getElementById(wrapperId);
     if (!wrapper) return;
-    
-    const startHeight = wrapper.offsetHeight;
+
+    const endHeight = wrapper.offsetHeight;
+    if (Math.abs(startHeight - endHeight) < 2) return;
+
     wrapper.style.transition = 'height 0.3s ease';
     wrapper.style.height = startHeight + 'px';
-    
-    requestAnimationFrame(() => {
-        const endHeight = wrapper.offsetHeight;
-        wrapper.style.height = endHeight + 'px';
-        
-        setTimeout(() => {
-            wrapper.style.height = '';
-            wrapper.style.transition = '';
-        }, 300);
-    });
+    void wrapper.offsetHeight;
+    wrapper.style.height = endHeight + 'px';
+
+    setTimeout(() => {
+        wrapper.style.height = '';
+        wrapper.style.transition = '';
+    }, 300);
 }
 
 // ==================== FOT BREAKDOWN ROW ANIMATION ====================
@@ -2184,9 +2191,6 @@ function toggleHeadcountRow(element, event) {
             const shouldOpen = !children.classList.contains('is-open');
             children.classList.toggle('is-open', shouldOpen);
         }
-        
-        // Анимация высоты
-        animateTableHeight('headcountContentWrapper');
         return;
     }
     
@@ -2198,9 +2202,6 @@ function toggleHeadcountRow(element, event) {
             const shouldOpen = !tableWrap.classList.contains('is-open');
             tableWrap.classList.toggle('is-open', shouldOpen);
         }
-        
-        // Анимация высоты
-        animateTableHeight('headcountContentWrapper');
     }
 }
 
@@ -2213,11 +2214,14 @@ async function toggleHeadcountDateRow(row, event) {
         expandCell.textContent = expandCell.textContent === '▶' ? '▼' : '▶';
     }
     
+    const contentWrapper = document.getElementById('headcountContentWrapper');
+    
     // Если уже есть блок с сотрудниками — просто скрываем/показываем
     const existing = row.nextElementSibling;
     if (existing && existing.classList.contains('hc-employees-row')) {
+        const startHeight = contentWrapper.offsetHeight;
         existing.style.display = existing.style.display === 'none' ? 'table-row' : 'none';
-        animateTableHeight('headcountContentWrapper');
+        animateWrapperHeight('headcountContentWrapper', startHeight);
         return;
     }
     
@@ -2229,15 +2233,18 @@ async function toggleHeadcountDateRow(row, event) {
     const loadingRow = document.createElement('tr');
     loadingRow.classList.add('hc-employees-row');
     loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</td>';
+    
+    const startHeight = contentWrapper.offsetHeight;
     row.parentNode.insertBefore(loadingRow, row.nextSibling);
-    animateTableHeight('headcountContentWrapper');
+    animateWrapperHeight('headcountContentWrapper', startHeight);
     
     try {
         let params = `?date=${date}&pod=${encodeURIComponent(pod)}&dolzhnost=${encodeURIComponent(dolzhnost)}`;
         const resp = await fetch('/api/headcount/employees' + params);
         if (!resp.ok) {
+            const h = contentWrapper.offsetHeight;
             loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
-            animateTableHeight('headcountContentWrapper');
+            animateWrapperHeight('headcountContentWrapper', h);
             return;
         }
         
@@ -2245,11 +2252,13 @@ async function toggleHeadcountDateRow(row, event) {
         const employees = data.employees || [];
         
         if (employees.length === 0) {
+            const h = contentWrapper.offsetHeight;
             loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#888;padding:10px;">Нет данных</td>';
-            animateTableHeight('headcountContentWrapper');
+            animateWrapperHeight('headcountContentWrapper', h);
             return;
         }
         
+        const h = contentWrapper.offsetHeight;
         loadingRow.innerHTML = `
             <td colspan="6" style="padding:8px 14px;">
                 <div class="hc-employees-list">
@@ -2260,11 +2269,12 @@ async function toggleHeadcountDateRow(row, event) {
                 </div>
             </td>
         `;
-        animateTableHeight('headcountContentWrapper');
+        animateWrapperHeight('headcountContentWrapper', h);
     } catch (err) {
         console.error('Loading employees error:', err);
+        const h = contentWrapper.offsetHeight;
         loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
-        animateTableHeight('headcountContentWrapper');
+        animateWrapperHeight('headcountContentWrapper', h);
     }
 }
 
