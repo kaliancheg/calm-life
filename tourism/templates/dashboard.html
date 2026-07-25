@@ -373,6 +373,55 @@ function toggleFilterSection(buttonsId, labelEl) {
     }
 }
 
+// Плавная замена кнопок отделов при смене подразделения
+function animateOtdelButtons(newHtml) {
+    const container = document.getElementById('otdelButtons');
+    const currentBtns = container.querySelectorAll('.filter-btn');
+    
+    if (currentBtns.length === 0) {
+        container.innerHTML = newHtml;
+        return;
+    }
+    
+    // Fade out текущих кнопок
+    currentBtns.forEach(btn => {
+        btn.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        btn.style.opacity = '0';
+        btn.style.transform = 'translateY(-4px)';
+    });
+    
+    setTimeout(() => {
+        container.innerHTML = newHtml;
+        
+        // Новые кнопки — невидимые
+        const newBtns = container.querySelectorAll('.filter-btn');
+        newBtns.forEach(btn => {
+            btn.style.opacity = '0';
+            btn.style.transform = 'translateY(4px)';
+        });
+        
+        // Force reflow + fade in
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                newBtns.forEach(btn => {
+                    btn.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+                    btn.style.opacity = '1';
+                    btn.style.transform = 'translateY(0)';
+                });
+            });
+        });
+        
+        // Очистка inline-стилей
+        setTimeout(() => {
+            newBtns.forEach(btn => {
+                btn.style.opacity = '';
+                btn.style.transform = '';
+                btn.style.transition = '';
+            });
+        }, 280);
+    }, 200);
+}
+
 let allData = [];
 let selectedPod = '';
 let selectedOtdels = []; // Массив выбранных отделов (множественный выбор)
@@ -1181,14 +1230,40 @@ toggleOtdel(e.target.dataset.otdel, e.target);
 }
 
 function selectPod(pod) {
-selectedPod = pod;
-document.querySelectorAll('#podButtons .filter-btn').forEach(btn => {
-btn.classList.remove('active');
-if ((pod === '' && btn.dataset.pod === '') || btn.dataset.pod === pod) btn.classList.add('active');
-});
-applyFilters();
-// Пересчитываем LFL, т.к. изменился фильтр подразделения
-calculateLFL();
+    selectedPod = pod;
+    document.querySelectorAll('#podButtons .filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if ((pod === '' && btn.dataset.pod === '') || btn.dataset.pod === pod) btn.classList.add('active');
+    });
+    
+    // Перестраиваем кнопки отделов: показываем только те, что есть в выбранном подразделении
+    const otdelContainer = document.getElementById('otdelButtons');
+    let filteredOtdels;
+    if (!pod) {
+        // "Все" — показываем все отделы
+        filteredOtdels = [...new Set(allData.map(r => r.otdel))].sort();
+    } else {
+        // Только отделы выбранного подразделения
+        filteredOtdels = [...new Set(allData.filter(r => r.podrazdelenie === pod).map(r => r.otdel))].sort();
+    }
+    
+    let otdelButtonsHtml = '<button class="filter-btn active" data-otdel="">Все</button>';
+    filteredOtdels.forEach(o => {
+        otdelButtonsHtml += '<button class="filter-btn" data-otdel="' + o + '"> ' + o + '</button>';
+    });
+    
+    animateOtdelButtons(otdelButtonsHtml);
+    
+    // Сбрасываем выбранные отделы при смене подразделения
+    selectedOtdels = [];
+    otdelContainer.querySelector('.filter-btn[data-otdel=""]').classList.add('active');
+    otdelContainer.querySelectorAll('.filter-btn[data-otdel!=""]').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    applyFilters();
+    // Пересчитываем LFL, т.к. изменился фильтр подразделения
+    calculateLFL();
 }
 
 function toggleOtdel(otdel, btnElement) {
@@ -1293,9 +1368,13 @@ function resetFilters() {
     document.querySelectorAll('#podButtons .filter-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector('#podButtons .filter-btn[data-pod=""]').classList.add('active');
     
-    // Активируем кнопку "Все" в отделах
-    document.querySelectorAll('#otdelButtons .filter-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector('#otdelButtons .filter-btn[data-otdel=""]').classList.add('active');
+    // Восстанавливаем все отделы
+    const filteredOtdels = [...new Set(allData.map(r => r.otdel))].sort();
+    let otdelButtonsHtml = '<button class="filter-btn active" data-otdel="">Все</button>';
+    filteredOtdels.forEach(o => {
+        otdelButtonsHtml += '<button class="filter-btn" data-otdel="' + o + '"> ' + o + '</button>';
+    });
+    animateOtdelButtons(otdelButtonsHtml);
     
     // Даты НЕ сбрасываем — оставляем как есть
     // Применяем фильтры с текущими датами
