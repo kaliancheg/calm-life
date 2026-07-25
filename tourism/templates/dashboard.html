@@ -2334,18 +2334,16 @@ function toggleHeadcountRow(element, event) {
 async function toggleHeadcountDateRow(row, event) {
     if (event) event.stopPropagation();
     
-    // Поворачиваем стрелку
     const expandCell = row.querySelector('.hc-expand-cell');
-    if (expandCell) {
-        expandCell.textContent = expandCell.textContent === '▶' ? '▼' : '▶';
-    }
     
     // Если уже есть блок с сотрудниками — переключаем grid-анимацию
     const existing = row.nextElementSibling;
     if (existing && existing.classList.contains('hc-employees-row')) {
         const wrap = existing.querySelector('.hc-employees-wrap');
         if (wrap) {
+            const willOpen = !wrap.classList.contains('is-open');
             wrap.classList.toggle('is-open');
+            if (expandCell) expandCell.textContent = willOpen ? '▼' : '▶';
         }
         return;
     }
@@ -2354,45 +2352,60 @@ async function toggleHeadcountDateRow(row, event) {
     const pod = row.dataset.pod;
     const dolzhnost = row.dataset.dolzhnost;
     
-    // Создаём строку загрузки с grid-контейнером
+    // Создаём строку СО свёрнутым grid-контейнером (без is-open)
     const loadingRow = document.createElement('tr');
     loadingRow.classList.add('hc-employees-row');
-    loadingRow.innerHTML = '<td colspan="6"><div class="hc-employees-wrap is-open"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</div></div></div></td>';
+    loadingRow.innerHTML = '<td colspan="6"><div class="hc-employees-wrap"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</div></div></div></td>';
     row.parentNode.insertBefore(loadingRow, row.nextSibling);
+    
+    // Меняем стрелку на индикатор загрузки
+    if (expandCell) expandCell.innerHTML = '<span class="hc-loading-spinner"></span>';
     
     try {
         let params = `?date=${date}&pod=${encodeURIComponent(pod)}&dolzhnost=${encodeURIComponent(dolzhnost)}`;
         const resp = await fetch('/api/headcount/employees' + params);
+        
         if (!resp.ok) {
-            loadingRow.innerHTML = '<td colspan="6"><div class="hc-employees-wrap is-open"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</div></div></div></td>';
+            if (expandCell) expandCell.textContent = '▶';
+            loadingRow.querySelector('.hc-employees-list').innerHTML = '<span style="color:#ff6b6b;">Ошибка загрузки</span>';
+            loadingRow.querySelector('.hc-employees-wrap').classList.add('is-open');
             return;
         }
         
         const data = await resp.json();
         const employees = data.employees || [];
         
+        // Возвращаем стрелку в раскрытое состояние
+        if (expandCell) expandCell.textContent = '▼';
+        
+        const wrap = loadingRow.querySelector('.hc-employees-wrap');
+        const listEl = loadingRow.querySelector('.hc-employees-list');
+        
         if (employees.length === 0) {
-            loadingRow.innerHTML = '<td colspan="6"><div class="hc-employees-wrap is-open"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#888;padding:10px;">Нет данных</div></div></div></td>';
-            return;
+            listEl.innerHTML = '<span style="color:#888;">Нет данных</span>';
+        } else {
+            listEl.innerHTML = '<strong style="color:#00ffff;">Сотрудники (' + employees.length + '):</strong>' +
+                '<div style="margin-top:6px;">' +
+                employees.map(e => '<span class="hc-employee-tag">' + e.fio + ' ' + (e.status_field ? (e.status_field === 'Уволен' ? '🔴' : '🟢') : '') + '</span>').join('') +
+                '</div>';
         }
         
-        loadingRow.innerHTML = `
-            <td colspan="6">
-                <div class="hc-employees-wrap is-open">
-                    <div class="hc-employees-wrap-inner">
-                        <div class="hc-employees-list">
-                            <strong style="color:#00ffff;">Сотрудники (${employees.length}):</strong>
-                            <div style="margin-top:6px;">
-                                ${employees.map(e => `<span class="hc-employee-tag">${e.fio} ${e.status_field ? (e.status_field === 'Уволен' ? '🔴' : '🟢') : ''}</span>`).join('')}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </td>
-        `;
+        // Плавное раскрытие после готовности данных
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                wrap.classList.add('is-open');
+            });
+        });
     } catch (err) {
         console.error('Loading employees error:', err);
-        loadingRow.innerHTML = '<td colspan="6"><div class="hc-employees-wrap is-open"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</div></div></div></td>';
+        if (expandCell) expandCell.textContent = '▶';
+        const wrap = loadingRow.querySelector('.hc-employees-wrap');
+        loadingRow.querySelector('.hc-employees-list').innerHTML = '<span style="color:#ff6b6b;">Ошибка загрузки</span>';
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                wrap.classList.add('is-open');
+            });
+        });
     }
 }
 
