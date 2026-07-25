@@ -1730,10 +1730,10 @@ function animateFotTable(newRowsHtml) {
     const tbody = document.getElementById('otdelTable');
     if (!tbody) return;
 
-    const rows = tbody.querySelectorAll('tr');
+    const oldRows = Array.from(tbody.querySelectorAll('tr'));
     
-    // Если нет строк — просто показываем новые без анимации
-    if (rows.length === 0) {
+    // Если нет старых строк — просто показываем без анимации
+    if (oldRows.length === 0) {
         tbody.innerHTML = newRowsHtml;
         return;
     }
@@ -1742,26 +1742,39 @@ function animateFotTable(newRowsHtml) {
     if (fotTablePending) return;
     fotTablePending = true;
 
-    // 1. Fade out старых строк
-    rows.forEach(row => row.classList.add('fade-out'));
+    // Даем браузеру отрисовать строки перед анимацией
+    requestAnimationFrame(() => {
+        // 1. Fade out старых строк
+        oldRows.forEach(row => row.classList.add('fade-out'));
 
-    // 2. Ждём окончания анимации, затем заменяем содержимое
-    setTimeout(() => {
-        tbody.innerHTML = newRowsHtml;
-        
-        const newRows = tbody.querySelectorAll('tr');
-        if (newRows.length === 0) {
+        // 2. Ждём окончания анимации, затем удаляем старые строки из DOM
+        setTimeout(() => {
+            // Очищаем tbody полностью
+            tbody.innerHTML = '';
+            
+            // Создаём фрагмент и добавляем новые строки
+            const fragment = document.createDocumentFragment();
+            const temp = document.createElement('tbody');
+            temp.innerHTML = newRowsHtml;
+            while (temp.firstChild) {
+                fragment.appendChild(temp.firstChild);
+            }
+            tbody.appendChild(fragment);
+            
+            // 3. Fade in новых строк
+            const newRows = tbody.querySelectorAll('tr');
+            if (newRows.length === 0) {
+                fotTablePending = false;
+                return;
+            }
+
+            newRows.forEach(row => row.classList.add('fade-in'));
+            void tbody.offsetHeight; // force reflow
+            newRows.forEach(row => row.classList.remove('fade-in'));
+            
             fotTablePending = false;
-            return;
-        }
-
-        // 3. Fade in новых строк
-        newRows.forEach(row => row.classList.add('fade-in'));
-        void tbody.offsetHeight; // force reflow
-        newRows.forEach(row => row.classList.remove('fade-in'));
-        
-        fotTablePending = false;
-    }, 200);
+        }, 300);
+    });
 }
 
 // ==================== HEADCOUNT VIOLATIONS ====================

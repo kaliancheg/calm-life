@@ -835,17 +835,16 @@ body {
 }
 
 .breakdown-table-wrap tbody tr {
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    opacity: 1;
+    transition: opacity 0.3s ease;
 }
 
 .breakdown-table-wrap tbody tr.fade-out {
     opacity: 0;
-    transform: translateY(-4px);
 }
 
 .breakdown-table-wrap tbody tr.fade-in {
     opacity: 0;
-    transform: translateY(4px);
 }
 
 /* LFL Analysis Block */
