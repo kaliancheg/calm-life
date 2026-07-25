@@ -1760,10 +1760,6 @@ function animateFotTable(newRowsHtml) {
     if (fotTablePending) return;
     fotTablePending = true;
 
-    // Фиксируем высоту обёртки
-    const startHeight = contentWrapper.offsetHeight;
-    contentWrapper.style.height = startHeight + 'px';
-
     // 1. Fade out старых строк
     oldRows.forEach(row => {
         row.animate([
@@ -1772,13 +1768,34 @@ function animateFotTable(newRowsHtml) {
         ], { duration: 300, easing: 'ease' });
     });
 
-    // 2. Ждём окончания анимации, затем заменяем содержимое
+    // 2. Ждём окончания анимации, затем обновляем и анимируем высоту
     setTimeout(() => {
-        // Обновляем содержимое
+        // Запоминаем старую высоту ДО замены
+        const startHeight = contentWrapper.offsetHeight;
+        
+        // Заменяем содержимое
         tbody.innerHTML = newRowsHtml;
-        const newRows = tbody.querySelectorAll('tr');
+        
+        // Получаем новую высоту
+        const endHeight = contentWrapper.offsetHeight;
+        
+        // Если высота не изменилась — просто fade in и готово
+        if (startHeight === endHeight) {
+            const newRows = tbody.querySelectorAll('tr');
+            if (newRows.length > 0) {
+                newRows.forEach(row => {
+                    row.animate([
+                        { opacity: 0 },
+                        { opacity: 1 }
+                    ], { duration: 300, easing: 'ease' });
+                });
+            }
+            fotTablePending = false;
+            return;
+        }
         
         // 3. Fade in новых строк
+        const newRows = tbody.querySelectorAll('tr');
         if (newRows.length > 0) {
             newRows.forEach(row => {
                 row.animate([
@@ -1788,16 +1805,21 @@ function animateFotTable(newRowsHtml) {
             });
         }
         
-        // 4. Анимируем высоту обёртки к новой
-        const endHeight = contentWrapper.offsetHeight;
-        contentWrapper.animate([
-            { height: startHeight + 'px' },
-            { height: endHeight + 'px' }
-        ], { duration: 300, easing: 'ease' });
+        // 4. Анимируем высоту через CSS transition
+        // Ставим transition и фиксируем НАЧАЛЬНУЮ высоту
+        contentWrapper.style.transition = 'height 0.3s ease';
+        contentWrapper.style.height = startHeight + 'px';
         
-        // 5. Убираем фиксацию
+        // Force reflow — браузер должен отрисовать начальное состояние
+        void contentWrapper.offsetHeight;
+        
+        // Анимируем к новой высоте
+        contentWrapper.style.height = endHeight + 'px';
+        
+        // 5. Убираем фиксацию и transition после анимации
         setTimeout(() => {
             contentWrapper.style.height = '';
+            contentWrapper.style.transition = '';
             fotTablePending = false;
         }, 300);
     }, 300);
