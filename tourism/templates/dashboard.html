@@ -237,8 +237,6 @@
     </div>
 </div>
 
-<div class="fot-wrapper" id="fotWrapper">
-    <div class="fot-inner">
 <div class="aggregated breakdown-section">
     <div class="section-header">
         <h2>🏢 ФОТ по подразделениям</h2>
@@ -246,11 +244,16 @@
     </div>
     <div class="breakdown-table-wrap">
         <table>
+            <colgroup>
+                <col class="col-name">
+                <col class="col-count">
+                <col class="col-shifts">
+                <col class="col-hours">
+                <col class="col-money">
+            </colgroup>
             <thead><tr><th>Отдел</th><th>Сотрудников</th><th>Смены</th><th>Часы</th><th>Начислено</th></tr></thead>
             <tbody id="otdelTable"></tbody>
         </table>
-    </div>
-</div>
     </div>
 </div>
 
@@ -1563,9 +1566,8 @@ otdelAgg[r.otdel].days++;
 otdelAgg[r.otdel].hours += r.chasy;
 otdelAgg[r.otdel].money += r.itogo;
 });
-document.getElementById('otdelTable').innerHTML = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
-
-showFotBreakdown();
+const rowsHtml = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
+animateFotTable(rowsHtml);
 
 renderEmpTable(currentAggregatedData);
 }
@@ -1709,9 +1711,8 @@ async function fetchFotSummaryAndBreakdown() {
             const bdata = await brResp.json();
             if (!bdata.error && bdata.breakdown) {
                 // Update otdel table from server-side data
-                const rows = bdata.breakdown.map(r => `<tr><td>${r.key || '—'}</td><td>${r.employees}</td><td>${r.shifts || 0}</td><td>${Math.round(r.total_hours)}</td><td>${formatMoney(r.total_money)}</td></tr>`);
-                document.getElementById('otdelTable').innerHTML = rows.join('');
-                showFotBreakdown();
+                const rowsHtml = bdata.breakdown.map(r => `<tr><td>${r.key || '—'}</td><td>${r.employees}</td><td>${r.shifts || 0}</td><td>${Math.round(r.total_hours)}</td><td>${formatMoney(r.total_money)}</td></tr>`).join('');
+                animateFotTable(rowsHtml);
             }
         }
     } catch (err) {
@@ -1721,15 +1722,46 @@ async function fetchFotSummaryAndBreakdown() {
 
 console.log('=== SCRIPT FINISHED, calling loadData() ===');
 
-// ==================== FOT BREAKDOWN ANIMATION ====================
+// ==================== FOT BREAKDOWN ROW ANIMATION ====================
 
-function showFotBreakdown() {
-    const wrapper = document.getElementById('fotWrapper');
-    if (!wrapper) return;
-    // Force reflow for animation restart
-    wrapper.classList.remove('visible');
-    void wrapper.offsetWidth;
-    wrapper.classList.add('visible');
+let fotTablePending = false;
+
+function animateFotTable(newRowsHtml) {
+    const tbody = document.getElementById('otdelTable');
+    if (!tbody) return;
+
+    const rows = tbody.querySelectorAll('tr');
+    
+    // Если нет строк — просто показываем новые без анимации
+    if (rows.length === 0) {
+        tbody.innerHTML = newRowsHtml;
+        return;
+    }
+    
+    // Если уже идёт анимация — пропускаем
+    if (fotTablePending) return;
+    fotTablePending = true;
+
+    // 1. Fade out старых строк
+    rows.forEach(row => row.classList.add('fade-out'));
+
+    // 2. Ждём окончания анимации, затем заменяем содержимое
+    setTimeout(() => {
+        tbody.innerHTML = newRowsHtml;
+        
+        const newRows = tbody.querySelectorAll('tr');
+        if (newRows.length === 0) {
+            fotTablePending = false;
+            return;
+        }
+
+        // 3. Fade in новых строк
+        newRows.forEach(row => row.classList.add('fade-in'));
+        void tbody.offsetHeight; // force reflow
+        newRows.forEach(row => row.classList.remove('fade-in'));
+        
+        fotTablePending = false;
+    }, 200);
 }
 
 // ==================== HEADCOUNT VIOLATIONS ====================
