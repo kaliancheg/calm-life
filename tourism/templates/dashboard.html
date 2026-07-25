@@ -239,6 +239,7 @@
 
 <div class="fot-wrapper" id="fotWrapper">
     <div class="fot-inner">
+    <div class="fot-content-wrapper" id="fotContentWrapper">
 <div class="aggregated breakdown-section">
     <div class="section-header">
         <h2>🏢 ФОТ по подразделениям</h2>
@@ -258,6 +259,7 @@
         </table>
     </div>
 </div>
+    </div>
     </div>
 </div>
 
@@ -1743,7 +1745,8 @@ function showFotBreakdown() {
 
 function animateFotTable(newRowsHtml) {
     const tbody = document.getElementById('otdelTable');
-    if (!tbody) return;
+    const contentWrapper = document.getElementById('fotContentWrapper');
+    if (!tbody || !contentWrapper) return;
 
     const oldRows = Array.from(tbody.querySelectorAll('tr'));
     
@@ -1757,6 +1760,10 @@ function animateFotTable(newRowsHtml) {
     if (fotTablePending) return;
     fotTablePending = true;
 
+    // Фиксируем высоту обёртки
+    const startHeight = contentWrapper.offsetHeight;
+    contentWrapper.style.height = startHeight + 'px';
+
     // 1. Fade out старых строк
     oldRows.forEach(row => {
         row.animate([
@@ -1767,6 +1774,7 @@ function animateFotTable(newRowsHtml) {
 
     // 2. Ждём окончания анимации, затем заменяем содержимое
     setTimeout(() => {
+        // Обновляем содержимое
         tbody.innerHTML = newRowsHtml;
         const newRows = tbody.querySelectorAll('tr');
         
@@ -1780,7 +1788,18 @@ function animateFotTable(newRowsHtml) {
             });
         }
         
-        fotTablePending = false;
+        // 4. Анимируем высоту обёртки к новой
+        const endHeight = contentWrapper.offsetHeight;
+        contentWrapper.animate([
+            { height: startHeight + 'px' },
+            { height: endHeight + 'px' }
+        ], { duration: 300, easing: 'ease' });
+        
+        // 5. Убираем фиксацию
+        setTimeout(() => {
+            contentWrapper.style.height = '';
+            fotTablePending = false;
+        }, 300);
     }, 300);
 }
 
