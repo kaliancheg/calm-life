@@ -789,6 +789,11 @@ body {
     position: relative;
 }
 
+.emp-table-wrapper {
+    overflow: hidden;
+    position: relative;
+}
+
 .fot-table-container {
     overflow: hidden;
 }
@@ -1586,6 +1591,14 @@ body {
     transition: background 0.2s;
 }
 
+.group-row {
+    transition: opacity 0.3s ease;
+}
+
+.group-row.group-hidden {
+    display: none;
+}
+
 .emp-row:hover td { 
     background: rgba(0,255,255,0.1); 
 }
@@ -1963,6 +1976,11 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 
 .headcount-block-inner {
     overflow: hidden;
+}
+
+.headcount-content-wrapper {
+    overflow: hidden;
+    position: relative;
 }
 
 .headcount-block {

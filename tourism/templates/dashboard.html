@@ -266,7 +266,8 @@
 <!-- Headcount Violations Block -->
 <div class="headcount-block-wrapper" id="headcountBlockWrapper">
     <div class="headcount-block-inner" id="headcountBlockInner">
-<div class="headcount-block" id="headcountBlock">
+    <div class="headcount-content-wrapper" id="headcountContentWrapper">
+    <div class="headcount-block" id="headcountBlock">
     <div class="section-header">
         <h2>⚠️ Нарушения штатного расписания</h2>
         <p class="section-subtitle">Превышение утверждённого лимита сотрудников по должности за выбранный период</p>
@@ -292,7 +293,8 @@
         <button class="filter-btn" id="hcGrpNone" onclick="setHcGroup('none')">Без группировки</button>
     </div>
     <div class="headcount-list" id="headcountList"></div>
-</div>
+    </div>
+    </div>
     </div>
 </div>
 
@@ -305,6 +307,7 @@
         <button class="filter-btn" id="grpOtdel" onclick="setEmpGroup('otdel')">По отделу</button>
         <button class="filter-btn" id="grpDolzhnost" onclick="setEmpGroup('dolzhnost')">По должности</button>
     </div>
+    <div class="emp-table-wrapper" id="empTableWrapper">
     <table>
         <thead>
             <tr>
@@ -319,6 +322,7 @@
         </thead>
         <tbody id="empTable"></tbody>
     </table>
+    </div>
 </div>
 
 <div class="charts">
@@ -1648,7 +1652,52 @@ function renderEmpTable(data) {
         });
     }
 
-    document.getElementById('empTable').innerHTML = html;
+    const tbody = document.getElementById('empTable');
+    const wrapper = document.getElementById('empTableWrapper');
+    const oldRows = Array.from(tbody.querySelectorAll('tr'));
+
+    // Если есть старые строки — анимируем замену
+    if (oldRows.length > 0 && wrapper) {
+        // Fade out
+        oldRows.forEach(row => {
+            row.animate([
+                { opacity: 1 },
+                { opacity: 0 }
+            ], { duration: 300, easing: 'ease' });
+        });
+
+        setTimeout(() => {
+            const startHeight = wrapper.offsetHeight;
+            tbody.innerHTML = html;
+            const endHeight = wrapper.offsetHeight;
+
+            // Fade in
+            const newRows = tbody.querySelectorAll('tr');
+            if (newRows.length > 0) {
+                newRows.forEach(row => {
+                    row.animate([
+                        { opacity: 0 },
+                        { opacity: 1 }
+                    ], { duration: 300, easing: 'ease' });
+                });
+            }
+
+            // Анимация высоты
+            if (Math.abs(startHeight - endHeight) >= 2) {
+                wrapper.style.transition = 'height 0.3s ease';
+                wrapper.style.height = startHeight + 'px';
+                requestAnimationFrame(() => {
+                    wrapper.style.height = endHeight + 'px';
+                    setTimeout(() => {
+                        wrapper.style.height = '';
+                        wrapper.style.transition = '';
+                    }, 300);
+                });
+            }
+        }, 300);
+    } else {
+        tbody.innerHTML = html;
+    }
 }
 
 function toggleGroup(groupId) {
@@ -1664,11 +1713,49 @@ function toggleGroup(groupId) {
         }
     }
 
-    // Показываем/скрываем дочерние строки — без перерисовки таблицы
+    // Показываем/скрываем дочерние строки с анимацией
     const rows = document.querySelectorAll('.group-row[data-group-id="' + groupId + '"]');
     rows.forEach(row => {
-        row.classList.toggle('group-hidden', !isExpanded);
+        if (isExpanded) {
+            row.classList.remove('group-hidden');
+            row.style.opacity = '0';
+            requestAnimationFrame(() => {
+                row.animate([
+                    { opacity: 0 },
+                    { opacity: 1 }
+                ], { duration: 300, easing: 'ease' });
+            });
+        } else {
+            row.animate([
+                { opacity: 1 },
+                { opacity: 0 }
+            ], {
+                duration: 300,
+                easing: 'ease',
+                fill: 'forwards'
+            }).onfinish = () => {
+                row.classList.add('group-hidden');
+            };
+        }
     });
+
+    // Анимация высоты таблицы
+    const empTableWrapper = document.getElementById('empTableWrapper');
+    if (empTableWrapper) {
+        const startHeight = empTableWrapper.offsetHeight;
+        empTableWrapper.style.transition = 'height 0.3s ease';
+        empTableWrapper.style.height = startHeight + 'px';
+        
+        requestAnimationFrame(() => {
+            const endHeight = empTableWrapper.offsetHeight;
+            empTableWrapper.style.height = endHeight + 'px';
+            
+            setTimeout(() => {
+                empTableWrapper.style.height = '';
+                empTableWrapper.style.transition = '';
+            }, 300);
+        });
+    }
 }
 
 // Calculate LFL only when pod/otdel filters change (not date filters)
@@ -1730,6 +1817,27 @@ console.log('=== SCRIPT FINISHED, calling loadData() ===');
 
 // Show FOT breakdown on initial load
 showFotBreakdown();
+
+// ==================== TABLE HEIGHT ANIMATION ====================
+
+function animateTableHeight(wrapperId) {
+    const wrapper = document.getElementById(wrapperId);
+    if (!wrapper) return;
+    
+    const startHeight = wrapper.offsetHeight;
+    wrapper.style.transition = 'height 0.3s ease';
+    wrapper.style.height = startHeight + 'px';
+    
+    requestAnimationFrame(() => {
+        const endHeight = wrapper.offsetHeight;
+        wrapper.style.height = endHeight + 'px';
+        
+        setTimeout(() => {
+            wrapper.style.height = '';
+            wrapper.style.transition = '';
+        }, 300);
+    });
+}
 
 // ==================== FOT BREAKDOWN ROW ANIMATION ====================
 
@@ -2045,6 +2153,9 @@ function toggleHeadcountRow(element, event) {
             const shouldOpen = !children.classList.contains('is-open');
             children.classList.toggle('is-open', shouldOpen);
         }
+        
+        // Анимация высоты
+        animateTableHeight('headcountContentWrapper');
         return;
     }
     
@@ -2056,6 +2167,9 @@ function toggleHeadcountRow(element, event) {
             const shouldOpen = !tableWrap.classList.contains('is-open');
             tableWrap.classList.toggle('is-open', shouldOpen);
         }
+        
+        // Анимация высоты
+        animateTableHeight('headcountContentWrapper');
     }
 }
 
@@ -2072,6 +2186,7 @@ async function toggleHeadcountDateRow(row, event) {
     const existing = row.nextElementSibling;
     if (existing && existing.classList.contains('hc-employees-row')) {
         existing.style.display = existing.style.display === 'none' ? 'table-row' : 'none';
+        animateTableHeight('headcountContentWrapper');
         return;
     }
     
@@ -2084,12 +2199,14 @@ async function toggleHeadcountDateRow(row, event) {
     loadingRow.classList.add('hc-employees-row');
     loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</td>';
     row.parentNode.insertBefore(loadingRow, row.nextSibling);
+    animateTableHeight('headcountContentWrapper');
     
     try {
         let params = `?date=${date}&pod=${encodeURIComponent(pod)}&dolzhnost=${encodeURIComponent(dolzhnost)}`;
         const resp = await fetch('/api/headcount/employees' + params);
         if (!resp.ok) {
             loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
+            animateTableHeight('headcountContentWrapper');
             return;
         }
         
@@ -2098,6 +2215,7 @@ async function toggleHeadcountDateRow(row, event) {
         
         if (employees.length === 0) {
             loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#888;padding:10px;">Нет данных</td>';
+            animateTableHeight('headcountContentWrapper');
             return;
         }
         
@@ -2111,9 +2229,11 @@ async function toggleHeadcountDateRow(row, event) {
                 </div>
             </td>
         `;
+        animateTableHeight('headcountContentWrapper');
     } catch (err) {
-        console.error('Error loading employees:', err);
+        console.error('Loading employees error:', err);
         loadingRow.innerHTML = '<td colspan="6" style="text-align:center;color:#ff6b6b;padding:10px;">Ошибка загрузки</td>';
+        animateTableHeight('headcountContentWrapper');
     }
 }
 
