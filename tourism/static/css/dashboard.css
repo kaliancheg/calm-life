@@ -1076,7 +1076,7 @@ body {
     grid-template-columns: 1fr 1fr;
     gap: 20px;
     margin-top: 20px;
-    padding-top: 20px;
+    padding-top: 5px;
     border-top: 1px solid rgba(138, 43, 226, 0.3);
 }
 
