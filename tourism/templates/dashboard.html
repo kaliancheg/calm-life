@@ -1731,11 +1731,8 @@ function toggleGroup(groupId) {
         // 1. Запоминаем высоту ДО показа строк
         const startHeight = wrapper.offsetHeight;
 
-        // 2. Показываем строки (display возвращается, но opacity = 0)
-        rows.forEach(row => {
-            row.classList.remove('group-hidden');
-            row.style.opacity = '0';
-        });
+        // 2. Показываем строки (overflow:hidden на wrapper их обрежет)
+        rows.forEach(row => row.classList.remove('group-hidden'));
 
         // 3. Замеряем новую высоту
         const endHeight = wrapper.offsetHeight;
@@ -1744,22 +1741,14 @@ function toggleGroup(groupId) {
         wrapper.style.transition = 'height 0.3s ease';
         wrapper.style.height = startHeight + 'px';
 
-        // 5. Force reflow и анимируем к новой высоте + fade in строк
+        // 5. Force reflow и анимируем к новой высоте
         void wrapper.offsetHeight;
         wrapper.style.height = endHeight + 'px';
-        rows.forEach(row => {
-            row.style.transition = 'opacity 0.3s ease';
-            row.style.opacity = '1';
-        });
 
         // 6. Очищаем стили после анимации
         setTimeout(() => {
             wrapper.style.height = '';
             wrapper.style.transition = '';
-            rows.forEach(row => {
-                row.style.opacity = '';
-                row.style.transition = '';
-            });
         }, 300);
 
     } else {
@@ -1767,32 +1756,26 @@ function toggleGroup(groupId) {
         // 1. Запоминаем высоту ДО скрытия строк
         const startHeight = wrapper.offsetHeight;
 
-        // 2. Fade out строк
-        rows.forEach(row => {
-            row.style.transition = 'opacity 0.3s ease';
-            row.style.opacity = '0';
-        });
+        // 2. Временно скрываем строки, чтобы замерить конечную высоту
+        rows.forEach(row => row.classList.add('group-hidden'));
+        const endHeight = wrapper.offsetHeight;
 
-        // 3. Ждём окончания fade out, затем скрываем и анимируем высоту
+        // 3. Показываем строки обратно — wrapper обрежет их на startHeight
+        rows.forEach(row => row.classList.remove('group-hidden'));
+
+        // 4. Фиксируем старую высоту
+        wrapper.style.transition = 'height 0.3s ease';
+        wrapper.style.height = startHeight + 'px';
+
+        // 5. Force reflow и анимируем к новой высоте (строки обрезаются)
+        void wrapper.offsetHeight;
+        wrapper.style.height = endHeight + 'px';
+
+        // 6. После анимации — реально скрываем строки
         setTimeout(() => {
-            rows.forEach(row => {
-                row.classList.add('group-hidden');
-                row.style.opacity = '';
-                row.style.transition = '';
-            });
-
-            const endHeight = wrapper.offsetHeight;
-
-            // 4. Фиксируем старую высоту, force reflow, анимируем к новой
-            wrapper.style.transition = 'height 0.3s ease';
-            wrapper.style.height = startHeight + 'px';
-            void wrapper.offsetHeight;
-            wrapper.style.height = endHeight + 'px';
-
-            setTimeout(() => {
-                wrapper.style.height = '';
-                wrapper.style.transition = '';
-            }, 300);
+            rows.forEach(row => row.classList.add('group-hidden'));
+            wrapper.style.height = '';
+            wrapper.style.transition = '';
         }, 300);
     }
 }
@@ -1995,6 +1978,94 @@ function setHcGroup(mode) {
     loadHeadcountViolations();
 }
 
+// Плавная анимация счётчика
+function animateCounter(elementId, targetValue, prefix, useFormatMoney) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    prefix = prefix || '';
+    
+    const currentText = el.textContent.replace(/[^\d]/g, '');
+    const startValue = parseInt(currentText) || 0;
+    const endValue = typeof targetValue === 'number' ? targetValue : (parseInt(targetValue) || 0);
+    
+    if (startValue === endValue) {
+        el.textContent = useFormatMoney ? formatMoney(endValue) : prefix + endValue;
+        return;
+    }
+    
+    const duration = 400;
+    const startTime = performance.now();
+    
+    function update(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(startValue + (endValue - startValue) * eased);
+        el.textContent = useFormatMoney ? formatMoney(current) : prefix + current;
+        if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+}
+
+// Плавная замена списка нарушений
+function animateHeadcountList(listElement, newHtml) {
+    const contentWrapper = document.getElementById('headcountContentWrapper');
+    if (!contentWrapper || !listElement) return;
+    
+    const oldItems = listElement.querySelectorAll(':scope > *');
+    
+    // Если список пуст — просто заполняем
+    if (oldItems.length === 0) {
+        listElement.innerHTML = newHtml;
+        return;
+    }
+    
+    const startHeight = contentWrapper.offsetHeight;
+    
+    // 1. Fade out старых элементов
+    oldItems.forEach(item => {
+        item.style.transition = 'opacity 0.25s ease';
+        item.style.opacity = '0';
+    });
+    
+    // 2. Ждём fade out, затем заменяем
+    setTimeout(() => {
+        listElement.innerHTML = newHtml;
+        const newItems = listElement.querySelectorAll(':scope > *');
+        
+        // Новые элементы — невидимые
+        newItems.forEach(item => {
+            item.style.opacity = '0';
+        });
+        
+        const endHeight = contentWrapper.offsetHeight;
+        
+        // 3. Анимация высоты
+        contentWrapper.style.transition = 'height 0.3s ease';
+        contentWrapper.style.height = startHeight + 'px';
+        void contentWrapper.offsetHeight;
+        contentWrapper.style.height = endHeight + 'px';
+        
+        // 4. Fade in новых элементов
+        requestAnimationFrame(() => {
+            newItems.forEach(item => {
+                item.style.transition = 'opacity 0.3s ease';
+                item.style.opacity = '1';
+            });
+        });
+        
+        // 5. Очистка
+        setTimeout(() => {
+            contentWrapper.style.height = '';
+            contentWrapper.style.transition = '';
+            newItems.forEach(item => {
+                item.style.opacity = '';
+                item.style.transition = '';
+            });
+        }, 300);
+    }, 250);
+}
+
 async function loadHeadcountViolations() {
     const dfRaw = document.getElementById('dateFrom').value;
     const dtRaw = document.getElementById('dateTo').value;
@@ -2036,10 +2107,11 @@ async function loadHeadcountViolations() {
         
         wrapper.classList.add('visible');
         
-        // Update summary counters
-        document.getElementById('headcountViolDays').textContent = data.total_violations || 0;
-        document.getElementById('headcountTotalExcess').textContent = `+${data.total_excess || 0}`;
-        document.getElementById('headcountExcessCost').textContent = formatMoney(data.total_excess_cost || 0);
+        // Анимация KPI счётчиков
+        animateCounter('headcountViolDays', data.total_violations || 0);
+        animateCounter('headcountTotalExcess', data.total_excess || 0, '+');
+        animateCounter('headcountExcessCost', data.total_excess_cost || 0, '', true);
+
         
         // Сортировка по убыванию суммы превышения
         currentHeadcountViolations.sort((a, b) => (b.excess_cost || 0) - (a.excess_cost || 0));
@@ -2054,9 +2126,10 @@ async function loadHeadcountViolations() {
         }
         
         // Render grouped list with accordion (двухуровневая структура для group_by='otdel')
+        let listHtml = '';
         if (hcGroupMode === 'otdel') {
             // Двухуровневая структура: Отдел -> Должности -> Даты
-            list.innerHTML = currentHeadcountViolations.map((group, groupIndex) => {
+            listHtml = currentHeadcountViolations.map((group, groupIndex) => {
                 const isGroupExpanded = group.children && group.children.length > 0;
                 const groupTotalExcess = group.excess;
                 const groupDateCount = group.date_count;
@@ -2123,7 +2196,7 @@ async function loadHeadcountViolations() {
             }).join('');
         } else {
             // Одиночный уровень: должность или отдел+должность
-            list.innerHTML = currentHeadcountViolations.map((v, index) => {
+            listHtml = currentHeadcountViolations.map((v, index) => {
                 let displayName = '';
                 if (hcGroupMode === 'dolzhnost') {
                     displayName = `${v.podrazdelenie} / ${v.dolzhnost}`;
@@ -2173,6 +2246,9 @@ async function loadHeadcountViolations() {
                 `;
             }).join('');
         }
+        
+        // Анимированная замена списка
+        animateHeadcountList(list, listHtml);
         
     } catch (err) {
         console.error('Error loading headcount violations:', err);

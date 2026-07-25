@@ -1530,7 +1530,7 @@ body {
 
 /* Headcount violations block — smooth show/hide */
 .headcount-block {
-    margin: 25px 0;
+    margin: 0;
     padding: 25px;
     background: linear-gradient(135deg, rgba(255, 107, 107, 0.08), rgba(255, 165, 0, 0.05));
     border: 1px solid rgba(255, 107, 107, 0.3);
@@ -1599,14 +1599,6 @@ body {
 .emp-row { 
     cursor: pointer;
     transition: background 0.2s;
-}
-
-.group-row {
-    transition: opacity 0.3s ease;
-}
-
-.group-row.group-hidden {
-    display: none;
 }
 
 .emp-row:hover td { 
@@ -1994,7 +1986,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 .headcount-block {
-    margin: 25px 0;
+    margin: 0;
     padding: 25px;
     background: linear-gradient(135deg, rgba(255, 107, 107, 0.08), rgba(255, 165, 0, 0.05));
     border: 1px solid rgba(255, 107, 107, 0.3);
