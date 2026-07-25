@@ -786,6 +786,11 @@ body {
 
 .fot-content-wrapper {
     overflow: hidden;
+    position: relative;
+}
+
+.fot-table-container {
+    overflow: hidden;
 }
 
 .section-header {
