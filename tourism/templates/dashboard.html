@@ -61,7 +61,7 @@
 <button class="btn-nav" onclick="shiftDates(1, 'month')" title="Следующий месяц">⏩</button>
 </div>
 </div>
-<div class="filter-section"><label>Быстрый выбор</label>
+<div class="filter-section"><label class="centered">Быстрый выбор</label>
 <div class="btn-row">
 <button class="btn-past" onclick="setYesterday()">🌙 Позавчера</button>
 <div class="btn-row-compact">
@@ -105,7 +105,7 @@
         </div>
     </div>
     
-    <div class="lfl-period-selectors" id="customPeriodSelector" style="display:none;">
+    <div class="lfl-period-selectors" id="customPeriodSelector">
         <!-- Date inputs - horizontal layout on single line -->
         <div class="lfl-custom-inputs">
             <div class="lfl-input-wrapper">
@@ -434,17 +434,25 @@ function setLFLMode(mode) {
     const navButtons = document.getElementById('lflNavButtons');
     
     if (mode === 'custom') {
-        customSelector.style.display = 'block';
         navButtons.style.display = 'none';
         setCustomPeriodDefaults();
         // Обновляем подсветку кнопок после установки периодов
         setTimeout(() => updateQuickSelectorsHighlight(), 50);
+        // Плавное раскрытие через grid-анимацию
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                customSelector.classList.add('is-open');
+            });
+        });
     } else {
-        customSelector.style.display = 'none';
-        navButtons.style.display = 'flex';
-        // Инициализируем инпуты для month/week режимов
-        initializeLFLPeriods(mode);
-        calculateLFL();
+        // Плавное сворачивание через grid-анимацию
+        customSelector.classList.remove('is-open');
+        setTimeout(() => {
+            navButtons.style.display = 'flex';
+            // Инициализируем инпуты для month/week режимов
+            initializeLFLPeriods(mode);
+            calculateLFL();
+        }, 350);
     }
 }
 
