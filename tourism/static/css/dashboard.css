@@ -1595,6 +1595,70 @@ body {
     display: none;
 }
 
+/* Div-based grouped container — smooth grid animation */
+.emp-grouped-container {
+    display: none;
+}
+.emp-grouped-container.active {
+    display: block;
+}
+
+.emp-group {
+    margin-bottom: 0;
+}
+
+.emp-group-header {
+    background: rgba(0,255,255,0.15);
+    font-weight: 700;
+    color: #00ffff;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border-top: 2px solid rgba(0,255,255,0.4);
+    padding: 14px 12px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.05em;
+}
+
+.emp-group-header:hover {
+    background: rgba(0,255,255,0.22);
+}
+
+.emp-group-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    transition: grid-template-rows 0.3s ease;
+}
+
+.emp-group-body.is-open {
+    grid-template-rows: 1fr;
+}
+
+.emp-group-body-inner {
+    overflow: hidden;
+}
+
+.emp-grid-row {
+    display: grid;
+    grid-template-columns: 25% 14% 16% 11% 10% 10% 14%;
+    background: rgba(138,43,226,0.08);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.emp-grid-row:hover {
+    background: rgba(138,43,226,0.15);
+}
+
+.emp-grid-cell {
+    padding: 14px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    color: #e8e8ff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Employee row clickable style */
 .emp-row { 
     cursor: pointer;
