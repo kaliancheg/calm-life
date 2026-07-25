@@ -76,6 +76,23 @@ body {
     border-radius: 0 20px 20px 0;
     box-sizing: border-box;
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.dashboard-sidebar .filters-top {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #334155 transparent;
+}
+
+.dashboard-sidebar .filters-bottom {
+    flex-shrink: 0;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 255, 255, 0.15);
 }
 
 .dashboard-sidebar .filters h2 {
@@ -186,7 +203,6 @@ body {
 .dashboard-sidebar .filter-buttons {
     display: grid;
     grid-template-rows: 0fr;
-    gap: 4px;
     overflow: hidden;
     transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                 opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -196,8 +212,25 @@ body {
     box-sizing: border-box;
 }
 
-.dashboard-sidebar .filter-buttons > * {
+.dashboard-sidebar .filter-buttons-inner {
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dashboard-sidebar .filter-buttons-inner .filter-btn {
+    transition: opacity 0.25s ease, transform 0.25s ease, background-color 0.15s ease;
+}
+
+.dashboard-sidebar .filter-buttons-inner.animating .filter-btn {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+.dashboard-sidebar .filter-buttons-inner.fade-in .filter-btn {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .dashboard-sidebar .filter-buttons.show {

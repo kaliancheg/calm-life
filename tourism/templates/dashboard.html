@@ -40,14 +40,17 @@
 <button class="filter-icon-btn" onclick="resetFilters()" title="Сбросить фильтры">✕</button>
 </div>
 </div>
+<div class="filters-top">
 <div class="filter-section">
 <label class="filter-toggle-label" onclick="toggleFilterSection('podButtons', this)">Подразделение <span class="toggle-arrow">▼</span></label>
-<div class="filter-buttons" id="podButtons"></div>
+<div class="filter-buttons" id="podButtons"><div class="filter-buttons-inner"></div></div>
 </div>
 <div class="filter-section">
 <label class="filter-toggle-label" onclick="toggleFilterSection('otdelButtons', this)">Отдел (служба) <span class="toggle-arrow">▼</span></label>
-<div class="filter-buttons" id="otdelButtons"></div>
+<div class="filter-buttons" id="otdelButtons"><div class="filter-buttons-inner"></div></div>
 </div>
+</div>
+<div class="filters-bottom">
 <div class="filter-row date-nav-row">
 <div class="filter-group date-group"><label>Дата с</label><input type="date" id="dateFrom"></div>
 <div class="filter-group date-group"><label>Дата по</label><input type="date" id="dateTo"></div>
@@ -376,48 +379,27 @@ function toggleFilterSection(buttonsId, labelEl) {
 // Плавная замена кнопок отделов при смене подразделения
 function animateOtdelButtons(newHtml) {
     const container = document.getElementById('otdelButtons');
-    const currentBtns = container.querySelectorAll('.filter-btn');
+    const inner = container.querySelector('.filter-buttons-inner');
+    const currentBtns = inner.querySelectorAll('.filter-btn');
     
     if (currentBtns.length === 0) {
-        container.innerHTML = newHtml;
+        inner.innerHTML = newHtml;
         return;
     }
     
-    // Fade out текущих кнопок
-    currentBtns.forEach(btn => {
-        btn.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-        btn.style.opacity = '0';
-        btn.style.transform = 'translateY(-4px)';
-    });
+    // Fade out текущих кнопок через CSS-класс
+    inner.classList.add('animating');
     
     setTimeout(() => {
-        container.innerHTML = newHtml;
+        inner.innerHTML = newHtml;
         
-        // Новые кнопки — невидимые
-        const newBtns = container.querySelectorAll('.filter-btn');
-        newBtns.forEach(btn => {
-            btn.style.opacity = '0';
-            btn.style.transform = 'translateY(4px)';
-        });
+        // Добавляем класс fade-in для появления новых кнопок
+        inner.classList.remove('animating');
+        inner.classList.add('fade-in');
         
-        // Force reflow + fade in
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                newBtns.forEach(btn => {
-                    btn.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-                    btn.style.opacity = '1';
-                    btn.style.transform = 'translateY(0)';
-                });
-            });
-        });
-        
-        // Очистка inline-стилей
+        // Очистка класса fade-in после анимации
         setTimeout(() => {
-            newBtns.forEach(btn => {
-                btn.style.opacity = '';
-                btn.style.transform = '';
-                btn.style.transition = '';
-            });
+            inner.classList.remove('fade-in');
         }, 280);
     }, 200);
 }
@@ -1200,14 +1182,16 @@ const otdels = [...new Set(allData.map(r => r.otdel))].sort();
 const dates = allData.map(r => r.data).sort();
 
 const podContainer = document.getElementById('podButtons');
+const podInner = podContainer.querySelector('.filter-buttons-inner');
 let podButtonsHtml = '<button class="filter-btn active" data-pod="">Все</button>';
 pods.forEach(p => { podButtonsHtml += '<button class="filter-btn" data-pod="' + p + '"> ' + p + '</button>'; });
-podContainer.innerHTML = podButtonsHtml;
+podInner.innerHTML = podButtonsHtml;
 
 const otdelContainer = document.getElementById('otdelButtons');
+const otdelInner = otdelContainer.querySelector('.filter-buttons-inner');
 let otdelButtonsHtml = '<button class="filter-btn active" data-otdel="">Все</button>';
 otdels.forEach(o => { otdelButtonsHtml += '<button class="filter-btn" data-otdel="' + o + '"> ' + o + '</button>'; });
-otdelContainer.innerHTML = otdelButtonsHtml;
+otdelInner.innerHTML = otdelButtonsHtml;
 
 document.getElementById('dateTo').value = formatDateForDisplay(new Date(dates[dates.length-1]));
 document.getElementById('dateFrom').value = formatDateForDisplay(new Date(dates[0]));
@@ -1237,13 +1221,10 @@ function selectPod(pod) {
     });
     
     // Перестраиваем кнопки отделов: показываем только те, что есть в выбранном подразделении
-    const otdelContainer = document.getElementById('otdelButtons');
     let filteredOtdels;
     if (!pod) {
-        // "Все" — показываем все отделы
         filteredOtdels = [...new Set(allData.map(r => r.otdel))].sort();
     } else {
-        // Только отделы выбранного подразделения
         filteredOtdels = [...new Set(allData.filter(r => r.podrazdelenie === pod).map(r => r.otdel))].sort();
     }
     
@@ -1254,11 +1235,10 @@ function selectPod(pod) {
     
     animateOtdelButtons(otdelButtonsHtml);
     
-    // При выборе подразделения автоматически фильтруем по всем его отделам
-    selectedOtdels = filteredOtdels.slice(); // Копируем все отделы выбранного подразделения
+    // Сбрасываем выбранные отделы — "Все" означает все отделы в рамках выбранного подразделения
+    selectedOtdels = [];
     
     applyFilters();
-    // Пересчитываем LFL, т.к. изменился фильтр подразделения
     calculateLFL();
 }
 
@@ -1266,32 +1246,47 @@ function toggleOtdel(otdel, btnElement) {
     if (otdel === '') {
         // "Все" — сбрасываем все выбранные отделы
         selectedOtdels = [];
-        document.querySelectorAll('#otdelButtons .filter-btn').forEach(btn => btn.classList.remove('active'));
-        btnElement.classList.add('active');
     } else {
         // Убираем active с кнопки "Все"
-        document.querySelector('#otdelButtons .filter-btn[data-otdel=""]').classList.remove('active');
+        const allBtn = document.querySelector('#otdelButtons .filter-btn[data-otdel=""]');
+        if (allBtn) allBtn.classList.remove('active');
         
         // Toggle отдела в массиве
         const index = selectedOtdels.indexOf(otdel);
         if (index > -1) {
             // Уже выбран — убираем
             selectedOtdels.splice(index, 1);
-            btnElement.classList.remove('active');
         } else {
             // Не выбран — добавляем
             selectedOtdels.push(otdel);
-            btnElement.classList.add('active');
         }
         
         // Если ничего не выбрано — активируем "Все"
         if (selectedOtdels.length === 0) {
-            document.querySelector('#otdelButtons .filter-btn[data-otdel=""]').classList.add('active');
+            if (allBtn) allBtn.classList.add('active');
         }
     }
+    
+    // Синхронизируем визуальное состояние всех кнопок
+    updateOtdelButtonsActive();
+    
     applyFilters();
-    // Пересчитываем LFL, т.к. изменился фильтр отдела
     calculateLFL();
+}
+
+// Обновлённая функция для работы с filter-buttons-inner
+function updateOtdelButtonsActive() {
+    const inner = document.querySelector('#otdelButtons .filter-buttons-inner');
+    if (!inner) return;
+    const btns = inner.querySelectorAll('.filter-btn');
+    btns.forEach(btn => {
+        const otdel = btn.dataset.otdel;
+        if (otdel === '') {
+            btn.classList.toggle('active', selectedOtdels.length === 0);
+        } else {
+            btn.classList.toggle('active', selectedOtdels.includes(otdel));
+        }
+    });
 }
 
 function formatDateForInput(date) {
