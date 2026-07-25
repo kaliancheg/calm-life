@@ -1159,6 +1159,7 @@ def api_fot_breakdown():
     date_from = request.args.get('from')
     date_to = request.args.get('to')
     by = request.args.get('by', 'podrazdelenie')
+    pod = request.args.get('pod')
     otdels = request.args.getlist('otdel')  # Множественный выбор отделов
     otdels = [o for o in otdels if o]
     limit = int(request.args.get('limit', 50))
@@ -1178,6 +1179,9 @@ def api_fot_breakdown():
         if date_to:
             conditions.append('data <= %s')
             params.append(date_to)
+        if pod:
+            conditions.append('podrazdelenie = %s')
+            params.append(pod)
         if otdels:
             placeholders = ','.join(['%s'] * len(otdels))
             conditions.append(f'otdel IN ({placeholders})')

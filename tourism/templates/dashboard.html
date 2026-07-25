@@ -1863,6 +1863,9 @@ async function fetchFotSummaryAndBreakdown() {
 
         // Building breakdown params with multiple otdels
         let breakdownParams = `?from=${df}&to=${dt}&by=otdel&limit=50`;
+        if (podVal) {
+            breakdownParams += `&pod=${encodeURIComponent(podVal)}`;
+        }
         if (selectedOtdels.length > 0) {
             selectedOtdels.forEach(otdel => {
                 breakdownParams += `&otdel=${encodeURIComponent(otdel)}`;
