@@ -983,7 +983,7 @@ body {
     align-items: center; 
     margin-bottom: 20px;
     flex-wrap: wrap; 
-    gap: 15px;
+    gap: 5px;
 }
 
 .lfl-header h3 {
