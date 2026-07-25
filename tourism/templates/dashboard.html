@@ -1608,10 +1608,16 @@ function setEmpGroup(mode) {
 function animateEmpContent(wrapper, tableEl, tbody, groupedContainer, tableHtml, groupedHtml, useGrouped) {
     const startHeight = wrapper.offsetHeight;
 
+    // Определяем, что СЕЙЧАС отображается (не то, что будет)
+    const currentlyGrouped = groupedContainer.classList.contains('active');
+
     // 1. Fade out текущего содержимого
-    const oldItems = useGrouped
-        ? Array.from(groupedContainer.querySelectorAll(':scope > *'))
-        : Array.from(tbody.querySelectorAll('tr'));
+    let oldItems;
+    if (currentlyGrouped) {
+        oldItems = Array.from(groupedContainer.querySelectorAll(':scope > *'));
+    } else {
+        oldItems = Array.from(tbody.querySelectorAll('tr'));
+    }
 
     if (oldItems.length === 0) {
         // Нет старых элементов — просто показываем
@@ -1636,8 +1642,8 @@ function animateEmpContent(wrapper, tableEl, tbody, groupedContainer, tableHtml,
     setTimeout(() => {
         if (useGrouped) {
             tableEl.style.display = 'none';
-            groupedContainer.classList.add('active');
             tbody.innerHTML = '';
+            groupedContainer.classList.add('active');
             groupedContainer.innerHTML = groupedHtml;
         } else {
             groupedContainer.classList.remove('active');
