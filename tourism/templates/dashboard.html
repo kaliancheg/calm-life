@@ -1586,7 +1586,7 @@ otdelAgg[r.otdel].hours += r.chasy;
 otdelAgg[r.otdel].money += r.itogo;
 });
 const rowsHtml = Object.values(otdelAgg).sort((a, b) => b.money - a.money).map(r => '<tr><td>'+r.otdel+'</td><td>'+r.employees.size+'</td><td>'+r.days+'</td><td>'+r.hours+'</td><td>'+formatMoney(r.money)+'</td></tr>').join('');
-animateFotTable(rowsHtml);
+// FOT-таблицу обновляет fetchFotSummaryAndBreakdown с сервера — здесь не трогаем
 
 renderEmpTable(currentAggregatedData);
 }
@@ -1663,47 +1663,23 @@ function renderEmpTable(data) {
 
     const tbody = document.getElementById('empTable');
     const wrapper = document.getElementById('empTableWrapper');
-    const oldRows = Array.from(tbody.querySelectorAll('tr'));
 
-    // Если есть старые строки — анимируем замену
-    if (oldRows.length > 0 && wrapper) {
-        // Fade out
-        oldRows.forEach(row => {
-            row.animate([
-                { opacity: 1 },
-                { opacity: 0 }
-            ], { duration: 300, easing: 'ease' });
-        });
+    if (wrapper && tbody.querySelectorAll('tr').length > 0) {
+        // Анимация только высоты, без мигания содержимого
+        const startHeight = wrapper.offsetHeight;
+        tbody.innerHTML = html;
+        const endHeight = wrapper.offsetHeight;
 
-        setTimeout(() => {
-            const startHeight = wrapper.offsetHeight;
-            tbody.innerHTML = html;
-            const endHeight = wrapper.offsetHeight;
-
-            // Fade in
-            const newRows = tbody.querySelectorAll('tr');
-            if (newRows.length > 0) {
-                newRows.forEach(row => {
-                    row.animate([
-                        { opacity: 0 },
-                        { opacity: 1 }
-                    ], { duration: 300, easing: 'ease' });
-                });
-            }
-
-            // Анимация высоты
-            if (Math.abs(startHeight - endHeight) >= 2) {
-                wrapper.style.transition = 'height 0.3s ease';
-                wrapper.style.height = startHeight + 'px';
-                requestAnimationFrame(() => {
-                    wrapper.style.height = endHeight + 'px';
-                    setTimeout(() => {
-                        wrapper.style.height = '';
-                        wrapper.style.transition = '';
-                    }, 300);
-                });
-            }
-        }, 300);
+        if (Math.abs(startHeight - endHeight) >= 2) {
+            wrapper.style.transition = 'height 0.3s ease';
+            wrapper.style.height = startHeight + 'px';
+            void wrapper.offsetHeight;
+            wrapper.style.height = endHeight + 'px';
+            setTimeout(() => {
+                wrapper.style.height = '';
+                wrapper.style.transition = '';
+            }, 300);
+        }
     } else {
         tbody.innerHTML = html;
     }
