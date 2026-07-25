@@ -237,13 +237,14 @@
     </div>
 </div>
 
+<div class="fot-wrapper" id="fotWrapper">
+    <div class="fot-inner">
 <div class="aggregated breakdown-section">
     <div class="section-header">
         <h2>🏢 ФОТ по подразделениям</h2>
         <p class="section-subtitle">Разбивка ФОТ по отделам с данными по сотрудникам, часам и начислениям.</p>
     </div>
     <div class="breakdown-table-wrap">
-        <div class="fot-table-wrapper" id="fotTableWrapper">
         <table>
             <colgroup>
                 <col class="col-name">
@@ -255,7 +256,8 @@
             <thead><tr><th>Отдел</th><th>Сотрудников</th><th>Смены</th><th>Часы</th><th>Начислено</th></tr></thead>
             <tbody id="otdelTable"></tbody>
         </table>
-        </div>
+    </div>
+</div>
     </div>
 </div>
 
@@ -1724,14 +1726,24 @@ async function fetchFotSummaryAndBreakdown() {
 
 console.log('=== SCRIPT FINISHED, calling loadData() ===');
 
+// Show FOT breakdown on initial load
+showFotBreakdown();
+
 // ==================== FOT BREAKDOWN ROW ANIMATION ====================
 
 let fotTablePending = false;
 
+function showFotBreakdown() {
+    const wrapper = document.getElementById('fotWrapper');
+    if (!wrapper) return;
+    wrapper.classList.remove('visible');
+    void wrapper.offsetWidth;
+    wrapper.classList.add('visible');
+}
+
 function animateFotTable(newRowsHtml) {
     const tbody = document.getElementById('otdelTable');
-    const wrapper = tbody.parentElement;
-    if (!tbody || !wrapper) return;
+    if (!tbody) return;
 
     const oldRows = Array.from(tbody.querySelectorAll('tr'));
     
@@ -1745,9 +1757,6 @@ function animateFotTable(newRowsHtml) {
     if (fotTablePending) return;
     fotTablePending = true;
 
-    // Запоминаем высоту wrapper
-    const startHeight = wrapper.offsetHeight;
-
     // 1. Fade out старых строк
     oldRows.forEach(row => {
         row.animate([
@@ -1758,10 +1767,6 @@ function animateFotTable(newRowsHtml) {
 
     // 2. Ждём окончания анимации, затем заменяем содержимое
     setTimeout(() => {
-        // Фиксируем высоту wrapper
-        wrapper.style.height = startHeight + 'px';
-        
-        // Заменяем содержимое
         tbody.innerHTML = newRowsHtml;
         const newRows = tbody.querySelectorAll('tr');
         
@@ -1775,18 +1780,7 @@ function animateFotTable(newRowsHtml) {
             });
         }
         
-        // 4. Анимируем высоту wrapper к новой
-        const endHeight = wrapper.offsetHeight;
-        wrapper.animate([
-            { height: startHeight + 'px' },
-            { height: endHeight + 'px' }
-        ], { duration: 300, easing: 'ease' });
-        
-        // 5. Убираем фиксацию
-        setTimeout(() => {
-            wrapper.style.height = '';
-            fotTablePending = false;
-        }, 300);
+        fotTablePending = false;
     }, 300);
 }
 

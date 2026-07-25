@@ -755,14 +755,33 @@ body {
     opacity: 1;
 }
 
-.fot-overview,
-.breakdown-section {
+.fot-overview {
     background: rgba(25, 28, 58, 0.7);
     padding: 25px;
     border-radius: 20px;
     border: 1px solid rgba(0, 255, 255, 0.25);
     box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
     margin: 25px 0;
+}
+
+/* FOT breakdown — smooth show/hide animation */
+.fot-wrapper {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    overflow: hidden;
+    margin: 0;
+    transition: grid-template-rows 0.35s ease, opacity 0.3s ease, margin 0.3s ease;
+}
+
+.fot-wrapper.visible {
+    opacity: 1;
+    grid-template-rows: 1fr;
+    margin: 25px 0;
+}
+
+.fot-inner {
+    overflow: hidden;
 }
 
 .section-header {
@@ -817,6 +836,26 @@ body {
 
 .breakdown-table-wrap td {
     white-space: nowrap;
+}
+
+/* Fixed column widths */
+.breakdown-table-wrap col.col-name {
+    width: 30%;
+}
+
+.breakdown-table-wrap col.col-count,
+.breakdown-table-wrap col.col-shifts,
+.breakdown-table-wrap col.col-hours {
+    width: 10%;
+}
+
+.breakdown-table-wrap col.col-money {
+    width: 20%;
+}
+
+/* Row fade animation */
+.breakdown-table-wrap tbody tr {
+    transition: opacity 0.3s ease;
 }
 
 /* Breakdown table — fixed column widths + row animation */
@@ -1454,6 +1493,10 @@ body {
     border-spacing: 0;
     border-radius: 12px;
     overflow: hidden;
+}
+
+.aggregated.breakdown-section {
+    margin: 0;
 }
 
 .aggregated h3 { 
