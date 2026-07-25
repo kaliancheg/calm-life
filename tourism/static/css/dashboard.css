@@ -2384,6 +2384,14 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     padding: 6px 14px;
 }
 
+/* Сетка сотрудников: 5 колонок на десктопе */
+.hc-employees-list > div {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px 6px;
+    margin-top: 6px;
+}
+
 /* Спиннер загрузки в ячейке раскрытия */
 .hc-loading-spinner {
     display: inline-block;
@@ -2400,14 +2408,16 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 .hc-employee-tag {
-    display: inline-block;
-    padding: 3px 10px;
-    margin: 3px 4px 3px 0;
+    display: block;
+    padding: 4px 10px;
     background: rgba(0, 255, 255, 0.1);
     border: 1px solid rgba(0, 255, 255, 0.25);
     border-radius: 6px;
     color: #e8e8ff;
     font-size: 0.85em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Mobile */
@@ -2420,6 +2430,10 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     .hc-header {
         flex-wrap: wrap;
         gap: 6px;
+    }
+
+    .hc-employees-list > div {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
