@@ -109,14 +109,6 @@
         <!-- Date inputs - horizontal layout on single line -->
         <div class="lfl-custom-inputs">
             <div class="lfl-input-wrapper">
-                <label>Текущий период:</label>
-                <div class="lfl-date-inputs">
-                    <input type="date" id="lflCurrentFrom">
-                    <span class="lfl-date-separator">—</span>
-                    <input type="date" id="lflCurrentTo">
-                </div>
-            </div>
-            <div class="lfl-input-wrapper">
                 <label>Сравниваемый период:</label>
                 <div class="lfl-date-inputs">
                     <input type="date" id="lflPrevFrom">
@@ -124,32 +116,31 @@
                     <input type="date" id="lflPrevTo">
                 </div>
             </div>
+            <div class="lfl-input-wrapper">
+                <label>Текущий период:</label>
+                <div class="lfl-date-inputs">
+                    <input type="date" id="lflCurrentFrom">
+                    <span class="lfl-date-separator">—</span>
+                    <input type="date" id="lflCurrentTo">
+                </div>
+            </div>
         </div>
         <!-- Quick month/year selectors for Custom mode - years above months -->
         <div class="lfl-custom-quick-select">
-            <div class="lfl-custom-period-section">
-                <h4>Текущий период</h4>
-                <div class="lfl-years-row" id="lflCustomCurrentYears"></div>
-                <div class="lfl-months-row" id="lflCustomCurrentMonths"></div>
-            </div>
             <div class="lfl-custom-period-section">
                 <h4>Сравниваемый период</h4>
                 <div class="lfl-years-row" id="lflCustomPrevYears"></div>
                 <div class="lfl-months-row" id="lflCustomPrevMonths"></div>
             </div>
+            <div class="lfl-custom-period-section">
+                <h4>Текущий период</h4>
+                <div class="lfl-years-row" id="lflCustomCurrentYears"></div>
+                <div class="lfl-months-row" id="lflCustomCurrentMonths"></div>
+            </div>
         </div>
     </div>
     
     <div class="lfl-comparison">
-        <div class="lfl-card">
-            <div class="lfl-label" id="lfl-current-label">Текущий период</div>
-            <div class="lfl-value" id="lfl-current-money">0 ₽</div>
-            <div class="lfl-dates" id="lfl-current-dates"></div>
-            <div class="lfl-sub-metrics">
-                <div class="lfl-sub-metric">👥 <span id="lfl-current-employees">0</span></div>
-                <div class="lfl-sub-metric">⏰ <span id="lfl-current-hours">0</span> ч</div>
-            </div>
-        </div>
         <div class="lfl-card">
             <div class="lfl-label" id="lfl-previous-label">Предыдущий период</div>
             <div class="lfl-value" id="lfl-previous-money">0 ₽</div>
@@ -157,6 +148,15 @@
             <div class="lfl-sub-metrics">
                 <div class="lfl-sub-metric">👥 <span id="lfl-previous-employees">0</span></div>
                 <div class="lfl-sub-metric">⏰ <span id="lfl-previous-hours">0</span> ч</div>
+            </div>
+        </div>
+        <div class="lfl-card">
+            <div class="lfl-label" id="lfl-current-label">Текущий период</div>
+            <div class="lfl-value" id="lfl-current-money">0 ₽</div>
+            <div class="lfl-dates" id="lfl-current-dates"></div>
+            <div class="lfl-sub-metrics">
+                <div class="lfl-sub-metric">👥 <span id="lfl-current-employees">0</span></div>
+                <div class="lfl-sub-metric">⏰ <span id="lfl-current-hours">0</span> ч</div>
             </div>
         </div>
         <div class="lfl-card lfl-change" onclick="openLFLDetails()" style="cursor: pointer;">
