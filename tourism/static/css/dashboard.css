@@ -700,7 +700,7 @@ body {
     font-size: 2.25em;
     font-weight: 700;
     color: #00ffff;
-    text-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    text-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
     transition: text-shadow 0.3s ease-out;
     white-space: nowrap;
     overflow: hidden;
@@ -709,23 +709,23 @@ body {
 
 /* Плавное усиление свечения при анимации — как в LFL */
 .stat-card .stat-value.animating {
-    text-shadow: 0 0 8px currentColor, 0 0 20px currentColor, 0 0 35px currentColor !important;
+    text-shadow: 0 0 10px currentColor, 0 0 25px currentColor !important;
     transition: text-shadow 0.3s ease-out;
 }
 
 .stat-card:nth-child(2) .stat-value { 
     color: #8a2be2; 
-    text-shadow: 0 0 15px rgba(138, 43, 226, 0.3);
+    text-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
 }
 
 .stat-card:nth-child(3) .stat-value { 
     color: #00ff88; 
-    text-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+    text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
 }
 
 .stat-card:nth-child(4) .stat-value { 
     color: #ff9500; 
-    text-shadow: 0 0 15px rgba(255, 149, 0, 0.3);
+    text-shadow: 0 0 15px rgba(255, 149, 0, 0.5);
 }
 
 .stat-card .stat-value.animating {
