@@ -1801,331 +1801,549 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 }
 
 /* ========================================
-   SIDEBAR — Mobile Responsive
-   На мобильных сайдбар становится обычным блоком сверху,
-   фильтры возвращаются к стандартному мобильному виду
+   MOBILE RESPONSIVE — Мобильная версия
    ======================================== */
 @media (max-width: 768px) {
-    /* На мобильных — полный padding body */
+    /* ===== Общие настройки ===== */
     body {
-        padding: 10px;
+        padding: 8px;
     }
 
-.dashboard-main {
+    .container {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+
+    /* ===== Sidebar → обычный блок сверху ===== */
+    .dashboard-sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        overflow-y: visible;
+        scrollbar-gutter: auto;
+    }
+
+    .dashboard-sidebar .filters {
+        margin-bottom: 12px;
+        border-radius: 16px;
+        padding: 12px;
+        height: auto;
+    }
+
+    .dashboard-sidebar .filters h2 {
+        font-size: 1em;
+        margin-bottom: 8px;
+    }
+
+    .dashboard-sidebar .filters-header {
+        margin-bottom: 8px;
+    }
+
+    .dashboard-sidebar .filters-header-btns {
+        gap: 4px;
+    }
+
+    .dashboard-sidebar .filter-icon-btn {
+        width: 26px;
+        height: 26px;
+        font-size: 0.75em;
+    }
+
+    /* ===== Фильтры — компактные ===== */
+    .dashboard-sidebar .filter-section {
+        margin-bottom: 8px;
+    }
+
+    .dashboard-sidebar .filter-toggle-label {
+        padding: 3px 6px;
+        font-size: 0.85em;
+    }
+
+    .dashboard-sidebar .filter-buttons-inner {
+        gap: 3px;
+    }
+
+    .dashboard-sidebar .filter-buttons-inner .filter-btn {
+        padding: 3px 8px;
+        font-size: 0.78em;
+    }
+
+    /* Даты — компактно на одной строке */
+    .dashboard-sidebar .filter-row.date-nav-row {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 4px;
+    }
+
+    .dashboard-sidebar .date-nav {
+        grid-column: 1 / -1;
+        justify-content: center;
+        gap: 3px;
+        margin-top: 2px;
+    }
+
+    .dashboard-sidebar .btn-nav {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+
+    .dashboard-sidebar .filter-group.date-group label {
+        font-size: 0.7em;
+    }
+
+    .dashboard-sidebar .filter-group.date-group input[type="date"],
+    .dashboard-sidebar .filter-group.date-group input.flatpickr-input {
+        font-size: 11px;
+        padding: 4px 4px;
+    }
+
+    /* Быстрый выбор — компактно */
+    .dashboard-sidebar .filter-section label.centered {
+        font-size: 0.75em;
+    }
+
+    .dashboard-sidebar .btn-row {
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .dashboard-sidebar .btn-row-compact {
+        width: 100%;
+    }
+
+    .dashboard-sidebar .btn-past,
+    .dashboard-sidebar .btn-month {
+        padding: 4px 8px;
+        font-size: 0.78em;
+    }
+
+    /* ===== Main content ===== */
+    .dashboard-main {
         margin-left: 0;
         padding-right: 0;
     }
 
     .header {
         margin-left: 0;
-    }
-
-    .loading,
-    .no-access {
-        margin-left: 0;
-    }
-
-    .dashboard-sidebar {
-        width: 100%;
-        position: static;
-        height: auto;
-        overflow-y: visible;
-    }
-
-    .dashboard-sidebar .filters {
-        margin-bottom: 25px;
-        border-radius: 20px;
-    }
-
-    /* Сбрасываем сайдбар-специфичные overrides —
-       пусть работает стандартный мобильный CSS */
-    .dashboard-sidebar .filter-row,
-    .dashboard-sidebar .date-nav-row {
-        grid-template-columns: 1fr !important;
-    }
-
-    .dashboard-sidebar .filter-group.date-group input[type="date"] {
-        width: fit-content;
-    }
-
-    .dashboard-sidebar .btn-row {
         flex-direction: column;
-    }
-
-    .dashboard-sidebar .btn-past,
-    .dashboard-sidebar .btn-month,
-    .dashboard-sidebar .btn-export,
-    .dashboard-sidebar .btn-secondary {
-        width: 100%;
-    }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    body { 
-        padding: 10px; 
-    }
-    
-    .container { 
-        padding: 0 10px 0 0 !important;
-    }
-    
-    .header { 
-        flex-direction: column; 
-        gap: 15px; 
-        text-align: center; 
+        gap: 8px;
+        align-items: stretch;
         padding-right: 0;
-    }
-    
-    .header h1 { 
-        font-size: 1.8em; 
+        margin-bottom: 12px;
     }
 
-    /* Заголовок дашборда на мобильных — компактнее */
-    .page-title {
-        font-size: 1.5em;
-        margin: 0 0 10px 0;
-    }
-    
-    .user-info { 
-        flex-direction: column; 
-        gap: 10px; 
-    }
-    
-    .filters { 
-        padding: 15px; 
-    }
-    
-    .filters h2 { 
-        font-size: 1.3em; 
-    }
-    
-    .filter-section label { 
-        font-size: 0.95em; 
-    }
-    
-    .filter-buttons { 
-        flex-direction: column; 
-        gap: 6px; 
-    }
-    
-    .filter-btn { 
-        width: 100%; 
-        padding: 10px 15px; 
-        font-size: 0.95em; 
-    }
-    
-    .filter-row { 
-        grid-template-columns: 1fr !important; 
-    }
-    
-    .btn-row { 
-        flex-direction: column; 
-    }
-    
-    .btn-secondary, .btn-past, .btn-month, .btn-export { 
-        width: 100%; 
-    }
-    
-    .stats { 
-        grid-template-columns: repeat(2, 1fr); 
-        gap: 12px; 
-    }
-    
-    .stat-card { 
-        padding: 15px; 
-    }
-    
-    .stat-value { 
-        font-size: 1.8em; 
-    }
-    
-    .stat-label { 
-        font-size: 0.9em; 
-    }
-    
-    /* LFL Block - Mobile */
-    .lfl-block { 
-        padding: 15px; 
-    }
-    
-    .lfl-header { 
-        flex-direction: column; 
-        align-items: flex-start; 
-    }
-    
-    .lfl-controls { 
-        width: 100%; 
+    .user-info {
         flex-direction: row;
         flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
     }
-    
+
+    .user-name {
+        font-size: 0.9em;
+    }
+
+    .admin-link, .logout-btn {
+        padding: 5px 12px;
+        font-size: 0.8em;
+    }
+
+    /* ===== Заголовок ===== */
+    .page-title {
+        font-size: 1.3em;
+        margin: 0 0 10px 0;
+        text-align: center;
+    }
+
+    /* ===== KPI-карточки 2x2 ===== */
+    .fot-overview {
+        padding: 12px;
+        margin: 10px 0;
+    }
+
+    .fot-overview .section-header h2 {
+        font-size: 1.2em;
+    }
+
+    .fot-overview .section-subtitle {
+        display: none;
+    }
+
+    .stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin: 12px 0;
+    }
+
+    .stat-card {
+        padding: 12px 8px;
+        border-radius: 12px;
+    }
+
+    .stat-value {
+        font-size: 1.5em;
+    }
+
+    .stat-label {
+        font-size: 0.75em;
+        margin-top: 4px;
+    }
+
+    /* ===== LFL-блок — компактный ===== */
+    .lfl-block {
+        padding: 12px;
+        margin: 10px 0;
+    }
+
+    .lfl-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .lfl-header h3 {
+        font-size: 1.1em;
+        text-align: center;
+    }
+
+    .lfl-controls {
+        flex-direction: column;
+        gap: 6px;
+    }
+
     .lfl-nav-buttons {
         order: -1;
         width: 100%;
-        margin-bottom: 10px;
-        height: 40px;
-    }
-    
-    .lfl-nav-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 16px;
-    }
-    
-    .lfl-nav-label {
-        font-size: 0.95em;
-        min-width: 140px;
-    }
-    
-    .lfl-btn { 
-        flex: 1; 
-        font-size: 0.9em; 
-        padding: 8px 12px; 
-    }
-    
-    .lfl-comparison { 
-        grid-template-columns: 1fr; 
-    }
-    
-    .lfl-card { 
-        padding: 15px; 
-    }
-    
-    .lfl-value { 
-        font-size: 1.8em; 
-    }
-    
-    /* LFL Custom Inputs - Mobile: Stack vertically */
-    .lfl-custom-inputs { 
-        flex-direction: column; 
-        gap: 15px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-    
-    .lfl-input-wrapper {
-        width: 100%;
-        max-width: 350px;
-    }
-    
-    .lfl-date-inputs {
-        flex-wrap: wrap;
+        height: 34px;
         justify-content: center;
-        gap: 6px;
     }
-    
-    .lfl-date-inputs input[type="date"] {
-        width: 100%;
-        max-width: 150px;
+
+    .lfl-nav-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
     }
-    
-    .lfl-date-separator {
-        font-size: 1em;
-    }
-    
-    /* LFL Custom Quick Select - Mobile */
-    .lfl-custom-quick-select {
-        grid-template-columns: 1fr; 
-        gap: 15px;
-        margin-top: 15px;
-        padding-top: 15px;
-    }
-    
-    .lfl-custom-period-section h4 {
-        font-size: 0.95em;
-        margin-bottom: 10px;
-    }
-    
-    .lfl-years-row {
-        margin-bottom: 10px;
-    }
-    
-    .lfl-month-btn,
-    .lfl-year-btn {
-        padding: 5px 10px;
+
+    .lfl-nav-label {
+        min-width: 100px;
         font-size: 0.8em;
     }
-    
+
+    .lfl-btn {
+        padding: 5px 10px;
+        font-size: 0.8em;
+        flex: 1;
+    }
+
+    /* LFL comparison — в колонку */
+    .lfl-comparison {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .lfl-card {
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    .lfl-label {
+        font-size: 0.85em;
+    }
+
+    .lfl-value {
+        font-size: 1.5em;
+    }
+
+    .lfl-sub-metrics {
+        gap: 10px;
+        font-size: 0.8em;
+    }
+
+    .lfl-dates, .lfl-delta {
+        font-size: 0.8em;
+    }
+
+    /* LFL date inputs — компактно */
+    .lfl-custom-inputs {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    .lfl-input-wrapper label {
+        font-size: 0.78em;
+    }
+
+    .lfl-date-inputs {
+        justify-content: center;
+    }
+
+    .lfl-date-inputs input[type="date"] {
+        width: 80px;
+        font-size: 10px;
+        padding: 3px 4px;
+    }
+
+    .lfl-custom-quick-select {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 12px;
+        padding-top: 12px;
+    }
+
+    .lfl-custom-period-section h4 {
+        font-size: 0.9em;
+    }
+
+    .lfl-years-row, .lfl-months-row {
+        gap: 4px;
+    }
+
+    .lfl-month-btn, .lfl-year-btn {
+        padding: 4px 8px;
+        font-size: 0.78em;
+    }
+
+    /* ===== Таблицы — компактные ===== */
+    .section-header {
+        margin-bottom: 12px;
+    }
+
+    .section-header h2 {
+        font-size: 1.2em;
+    }
+
+    .section-subtitle {
+        display: none;
+    }
+
+    .aggregated {
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 16px;
+    }
+
+    .aggregated h3 {
+        font-size: 1.1em;
+        margin-bottom: 10px;
+    }
+
+    /* Breakdown таблица */
+    .breakdown-table-wrap {
+        border-radius: 10px;
+    }
+
+    .breakdown-table-wrap th,
+    .breakdown-table-wrap td {
+        padding: 8px 10px;
+        font-size: 0.85em;
+    }
+
+    /* ===== Сводка по сотрудникам — иконки вместо кнопок ===== */
+    .group-controls {
+        margin-bottom: 10px;
+    }
+
+    .group-controls span {
+        font-size: 0.8em;
+    }
+
+    .group-controls .filter-btn {
+        padding: 4px 10px;
+        font-size: 0.8em;
+        min-height: 28px;
+    }
+
+    /* Кнопки-иконки на мобильных — компактный квадрат */
+    .group-controls .filter-btn[title] {
+        width: 36px;
+        height: 32px;
+        padding: 4px 6px;
+        font-size: 1.1em;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* LFL кнопки-иконки */
+    .lfl-btn[title] {
+        width: 40px;
+        height: 34px;
+        padding: 4px;
+        font-size: 1.2em;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Кнопки быстрого выбора — только иконка */
+    .btn-past[title],
+    .btn-month[title] {
+        width: 40px;
+        height: 32px;
+        padding: 4px;
+        font-size: 1.1em;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .headcount-group-controls .filter-btn[title] {
+        width: 36px;
+        height: 28px;
+        padding: 4px 6px;
+        font-size: 1em;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* ===== Headcount блок — компактный ===== */
+    .headcount-block {
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .headcount-block .section-header h2 {
+        font-size: 1.1em;
+    }
+
+    .headcount-summary {
+        gap: 15px;
+        padding: 8px 12px;
+        flex-wrap: wrap;
+    }
+
+    .headcount-stat-value {
+        font-size: 1.3em;
+    }
+
+    .headcount-group-controls {
+        padding: 6px 8px;
+        gap: 6px;
+    }
+
+    .headcount-group-controls .filter-btn {
+        padding: 4px 8px;
+        font-size: 0.8em;
+    }
+
+    .hc-header {
+        padding: 8px 10px;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .hc-title {
+        font-size: 0.85em;
+    }
+
+    .hc-badge {
+        padding: 2px 6px;
+        font-size: 0.75em;
+    }
+
+    .hc-table th {
+        padding: 6px 8px;
+        font-size: 0.75em;
+    }
+
+    .hc-table td {
+        padding: 5px 8px;
+        font-size: 0.8em;
+    }
+
+    /* ===== Графики — СКРЫТЬ на мобильных ===== */
     .charts {
-        grid-template-columns: 1fr; 
+        display: none !important;
     }
-    
-    .chart-card { 
-        padding: 15px; 
+
+    /* ===== Footer ===== */
+    .footer {
+        padding: 15px 10px;
+        font-size: 0.8em;
+        margin-top: 20px;
     }
-    
-    .chart-card h3 { 
-        font-size: 1.1em; 
+
+    /* ===== Модалки ===== */
+    .modal-overlay {
+        padding: 10px;
     }
-    
-    .aggregated { 
-        padding: 15px; 
-    }
-    
-    .aggregated h3 { 
-        font-size: 1.1em; 
-    }
-    
-    /* LFL Modal - Mobile */
+
     .lfl-modal-content {
         max-width: 100%;
         width: 100%;
         max-height: 90vh;
-        border-radius: 12px;
+        border-radius: 16px;
     }
-    
+
     .modal-header {
-        padding: 15px;
+        padding: 12px 15px;
     }
-    
+
     .modal-header h3 {
-        font-size: 1.2em;
-    }
-    
-    .modal-body {
-        padding: 15px;
-    }
-    
-    .lfl-modal-summary {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-    }
-    
-    .lfl-modal-summary-card {
-        padding: 10px;
-    }
-    
-    .lfl-modal-summary-value {
         font-size: 1.1em;
     }
-    
-    .lfl-modal-table th,
-    .lfl-modal-table td {
-        padding: 8px 10px;
-        font-size: 0.85em;
+
+    .modal-body {
+        padding: 12px 15px;
     }
-    
+
+    .lfl-modal-summary {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
     .lfl-modal-section h4 {
         font-size: 1em;
     }
+
+    .lfl-modal-table th,
+    .lfl-modal-table td {
+        padding: 6px 8px;
+        font-size: 0.85em;
+    }
 }
 
+/* ===== Очень маленькие экраны (360px и меньше) ===== */
 @media (max-width: 480px) {
-    .container { 
-        padding: 0 5px !important;
+    body {
+        padding: 4px;
     }
-    
-    .stats { 
-        grid-template-columns: 1fr; 
+
+    .page-title {
+        font-size: 1.15em;
     }
-    
-    .stat-value { 
-        font-size: 1.5em; 
+
+    .stats {
+        gap: 6px;
     }
-    
-    .header h1 { 
-        font-size: 1.4em; 
+
+    .stat-card {
+        padding: 10px 6px;
+    }
+
+    .stat-value {
+        font-size: 1.3em;
+    }
+
+    .stat-label {
+        font-size: 0.7em;
+    }
+
+    .lfl-block, .aggregated, .headcount-block {
+        padding: 10px;
+    }
+
+    .lfl-value {
+        font-size: 1.3em;
+    }
+
+    .breakdown-table-wrap th,
+    .breakdown-table-wrap td {
+        padding: 6px 8px;
+        font-size: 0.8em;
     }
 }
 

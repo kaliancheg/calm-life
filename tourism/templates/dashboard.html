@@ -63,10 +63,10 @@
 </div>
 <div class="filter-section"><label class="centered">Быстрый выбор</label>
 <div class="btn-row">
-<button class="btn-past" onclick="setYesterday()">🌙 Позавчера</button>
+<button class="btn-past" onclick="setYesterday()" title="Позавчера">🌙</button>
 <div class="btn-row-compact">
-<button class="btn-month" onclick="setLastMonth()">📆 Пред. мес.</button>
-<button class="btn-month" onclick="setCurrentMonth()">📅 Тек. мес.</button>
+<button class="btn-month" onclick="setLastMonth()" title="Пред. мес.">📆</button>
+<button class="btn-month" onclick="setCurrentMonth()" title="Тек. мес.">📅</button>
 </div>
 </div>
 </div>
@@ -99,9 +99,9 @@
         <span class="lfl-nav-label" id="lflNavLabel">Январь 2026</span>
         <button class="lfl-nav-btn" onclick="shiftLFLPeriod(1)" title="Следующий период">▶</button>
     </div>
-            <button class="lfl-btn active" data-mode="month" onclick="setLFLMode('month')">Месяц к месяцу</button>
-            <button class="lfl-btn" data-mode="week" onclick="setLFLMode('week')">Неделя к неделе</button>
-            <button class="lfl-btn" data-mode="custom" onclick="setLFLMode('custom')">Свой период</button>
+            <button class="lfl-btn active" data-mode="month" onclick="setLFLMode('month')" title="Месяц к месяцу">📅</button>
+            <button class="lfl-btn" data-mode="week" onclick="setLFLMode('week')" title="Неделя к неделе">📆</button>
+            <button class="lfl-btn" data-mode="custom" onclick="setLFLMode('custom')" title="Свой период">📝</button>
         </div>
     </div>
     
@@ -293,9 +293,9 @@
     </div>
     <div class="headcount-group-controls">
         <span>Группировка:</span>
-        <button class="filter-btn active" id="hcGrpDolzhnost" onclick="setHcGroup('dolzhnost')">По должности</button>
-        <button class="filter-btn" id="hcGrpOtdel" onclick="setHcGroup('otdel')">По отделу</button>
-        <button class="filter-btn" id="hcGrpNone" onclick="setHcGroup('none')">Без группировки</button>
+        <button class="filter-btn active" id="hcGrpDolzhnost" onclick="setHcGroup('dolzhnost')" title="По должности">💼</button>
+        <button class="filter-btn" id="hcGrpOtdel" onclick="setHcGroup('otdel')" title="По отделу">🏢</button>
+        <button class="filter-btn" id="hcGrpNone" onclick="setHcGroup('none')" title="Без группировки">📋</button>
     </div>
     <div class="headcount-list" id="headcountList"></div>
     </div>
@@ -308,9 +308,9 @@
     <h3>📋 Сводка по сотрудникам</h3>
     <div class="group-controls">
         <span>Группировка:</span>
-        <button class="filter-btn active" id="grpNone" onclick="setEmpGroup('none')">Без группировки</button>
-        <button class="filter-btn" id="grpOtdel" onclick="setEmpGroup('otdel')">По отделу</button>
-        <button class="filter-btn" id="grpDolzhnost" onclick="setEmpGroup('dolzhnost')">По должности</button>
+        <button class="filter-btn active" id="grpNone" onclick="setEmpGroup('none')" title="Без группировки">👤</button>
+        <button class="filter-btn" id="grpOtdel" onclick="setEmpGroup('otdel')" title="По отделу">🏢</button>
+        <button class="filter-btn" id="grpDolzhnost" onclick="setEmpGroup('dolzhnost')" title="По должности">💼</button>
     </div>
     <div class="emp-table-wrapper" id="empTableWrapper">
     <table id="empTableEl">
