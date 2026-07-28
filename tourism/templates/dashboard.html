@@ -1854,7 +1854,6 @@ function renderEmpTable(data, animate) {
             groupedHtml += '<div class="emp-group-header" data-group-id="' + groupId + '" onclick="toggleGroup(\'' + groupId + '\')"><span class="group-toggle">' + toggleIcon + '</span>' + groupIcon + ' ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</div>';
             groupedHtml += '<div class="emp-group-body' + openClass + '" data-group-id="' + groupId + '">';
             groupedHtml += '<div class="emp-group-body-inner">';
-            groupedHtml += '<div class="emp-group-table-wrap">';
             // Шапка таблицы
             groupedHtml += '<div class="emp-group-header-row">';
             groupedHtml += '<div class="emp-group-header-cell">ФИО</div>';
@@ -1878,7 +1877,6 @@ function renderEmpTable(data, animate) {
                 groupedHtml += '<div class="emp-grid-cell">' + formatMoney(r.money) + '</div>';
                 groupedHtml += '</div>';
             });
-            groupedHtml += '</div>'; // emp-group-table-wrap
             groupedHtml += '</div></div></div>';
         });
 

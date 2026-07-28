@@ -1695,6 +1695,13 @@ body {
     display: block;
 }
 
+/* Скруглённые углы и рамка для сгруппированного вида — как у обычной таблицы */
+.emp-grouped-container {
+    border-radius: 12px;
+    border: 1px solid rgba(0, 255, 255, 0.12);
+    overflow: hidden;
+}
+
 .emp-group {
     margin-bottom: 0;
 }
@@ -1728,13 +1735,6 @@ body {
 
 .emp-group-body-inner {
     overflow: hidden;
-}
-
-/* Обёртка с скруглёнными углами для сгруппированного вида — как у обычной таблицы */
-.emp-group-table-wrap {
-    overflow: hidden;
-    border-radius: 12px;
-    border: 1px solid rgba(0, 255, 255, 0.12);
 }
 
 /* Шапка таблицы в сгруппированном виде */
