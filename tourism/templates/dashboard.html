@@ -1545,10 +1545,10 @@ const money = data.reduce((s, r) => s + r.itogo, 0);
 const employees = new Set(data.map(r => r.fio)).size;
 const records = data.length;
 
-animateValue(document.getElementById('employees'), 0, employees, 200, false);
-animateValue(document.getElementById('hours'), 0, hours, 200, false);
-animateValue(document.getElementById('money'), 0, money, 200, true);
-animateValue(document.getElementById('records'), 0, records, 200, false);
+animateValue(document.getElementById('employees'), 0, employees, 300, false);
+animateValue(document.getElementById('hours'), 0, hours, 300, false);
+animateValue(document.getElementById('money'), 0, money, 300, true);
+animateValue(document.getElementById('records'), 0, records, 300, false);
 
 const dateMap = {};
 currentAggregatedData.forEach(r => { if (!dateMap[r.data]) dateMap[r.data] = 0; dateMap[r.data] += r.itogo; });
