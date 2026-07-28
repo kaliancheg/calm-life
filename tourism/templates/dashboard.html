@@ -1854,6 +1854,17 @@ function renderEmpTable(data, animate) {
             groupedHtml += '<div class="emp-group-header" data-group-id="' + groupId + '" onclick="toggleGroup(\'' + groupId + '\')"><span class="group-toggle">' + toggleIcon + '</span>' + groupIcon + ' ' + g.name + ' (' + g.count + ' чел.) — ' + formatMoney(g.totalMoney) + '</div>';
             groupedHtml += '<div class="emp-group-body' + openClass + '" data-group-id="' + groupId + '">';
             groupedHtml += '<div class="emp-group-body-inner">';
+            // Шапка таблицы
+            groupedHtml += '<div class="emp-group-header-row">';
+            groupedHtml += '<div class="emp-group-header-cell">ФИО</div>';
+            groupedHtml += '<div class="emp-group-header-cell">Подразделение</div>';
+            groupedHtml += '<div class="emp-group-header-cell">Должность</div>';
+            groupedHtml += '<div class="emp-group-header-cell">Ставка</div>';
+            groupedHtml += '<div class="emp-group-header-cell">Смены</div>';
+            groupedHtml += '<div class="emp-group-header-cell">Часы</div>';
+            groupedHtml += '<div class="emp-group-header-cell">Начислено</div>';
+            groupedHtml += '</div>';
+            // Данные сотрудников
             g.employees.forEach(r => {
                 const onclick = `onclick="openEmpDetailModal('${r.fio.replace(/'/g, "\'")}', '${r.podrazdelenie.replace(/'/g, "\'")}', '${r.dolzhnost.replace(/'/g, "\'")}', '${r.otdel.replace(/'/g, "\'")}', '${r.podrazdelenie.replace(/'/g, "\'")}')" `;
                 groupedHtml += '<div class="emp-grid-row" ' + onclick + '>';
