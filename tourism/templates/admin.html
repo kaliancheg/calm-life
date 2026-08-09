@@ -244,9 +244,15 @@
             <div class="card-header">
                 <h2 class="card-title">📥 Импорт данных из Excel</h2>
             </div>
-            <div class="form-group">
+<div class="form-group">
                 <label>Выберите файл Excel (.xlsx или .xls):</label>
-                <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls">
+                <div class="file-upload-wrapper">
+                    <button class="btn btn-secondary" onclick="document.getElementById('excelFile').click()" id="fileSelectBtn">
+                        📁 Выбрать файл
+                    </button>
+                    <span id="fileNameDisplay" class="file-name-display">Файл не выбран</span>
+                    <input type="file" id="excelFile" class="file-input-hidden" accept=".xlsx,.xls" onchange="updateFileName()">
+                </div>
             </div>
             <div class="form-group">
                 <label>Лист для импорта:</label>
@@ -260,7 +266,20 @@
                 <button class="btn btn-primary" onclick="uploadExcel()">📤 Загрузить и импортировать</button>
                 <button class="btn btn-danger" onclick="openClearPeriodModal()">🗑️ Очистка данных за период</button>
             </div>
-            <div id="importResult" style="margin-top:20px; display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Result Modal -->
+<div class="modal-overlay" id="uploadResultModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title" id="uploadResultTitle">Результат загрузки</h2>
+            <button class="modal-close-btn" onclick="closeUploadResultModal()">&times;</button>
+        </div>
+        <div id="uploadResultContent"></div>
+        <div style="display:flex; justify-content:center; margin-top:25px;">
+            <button class="btn btn-primary" onclick="closeUploadResultModal()">Закрыть</button>
         </div>
     </div>
 </div>
@@ -703,6 +722,16 @@ async function savePermissions() {
 }
 
 // ==================== EXCEL IMPORT ====================
+function updateFileName() {
+    const fileInput = document.getElementById('excelFile');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    if (fileInput.files.length > 0) {
+        fileNameDisplay.textContent = fileInput.files[0].name;
+    } else {
+        fileNameDisplay.textContent = 'Файл не выбран';
+    }
+}
+
 async function uploadExcel() {
     const fileInput = document.getElementById('excelFile');
     const sheetName = document.getElementById('excelSheet').value;
@@ -717,8 +746,6 @@ async function uploadExcel() {
     formData.append('file', file);
     formData.append('sheet', sheetName);
     
-    showToast('Загрузка файла...', 'info');
-    
     try {
         const response = await fetch('/admin/import-excel', {
             method: 'POST',
@@ -727,26 +754,70 @@ async function uploadExcel() {
         
         const result = await response.json();
         
-        if (!response.ok) {
-            showToast(result.error || 'Ошибка импорта', 'error');
-            return;
-        }
-        
-        const resultDiv = document.getElementById('importResult');
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = `<div class="toast success">${result.message}</div>`;
-        
-        showToast(result.message, 'success');
-        
         // Очищаем форму
         fileInput.value = '';
+        document.getElementById('fileNameDisplay').textContent = 'Файл не выбран';
         
         // Перезагружаем статистику
         loadDashboardStats();
         
+        if (!response.ok) {
+            showUploadResultModal('error', result.error || 'Ошибка импорта');
+            return;
+        }
+        
+        // Показываем модальное окно с результатом
+        showUploadResultModal('success', result.message, result);
+        
     } catch (error) {
         showToast('Ошибка: ' + error.message, 'error');
     }
+}
+
+function showUploadResultModal(type, message, result = null) {
+    const modal = document.getElementById('uploadResultModal');
+    const title = document.getElementById('uploadResultTitle');
+    const content = document.getElementById('uploadResultContent');
+    
+    if (type === 'success') {
+        title.textContent = '✅ Загрузка завершена успешно';
+        title.style.color = 'var(--success)';
+        
+        let detailsHtml = `<p style="font-size:1.1em;margin-bottom:20px;">${message}</p>`;
+        
+        if (result && result.inserted !== undefined) {
+            detailsHtml += `
+                <div style="background:rgba(16,185,129,0.1);padding:20px;border-radius:12px;border:1px solid rgba(16,185,129,0.3);margin-bottom:15px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+                        <span style="color:var(--gray);">Загружено записей:</span>
+                        <strong style="color:var(--success);font-size:1.3em;">${result.inserted}</strong>
+                    </div>
+                    ${result.skipped !== undefined ? `
+                    <div style="display:flex;justify-content:space-between;">
+                        <span style="color:var(--gray);">Пропущено записей:</span>
+                        <strong style="color:var(--warning);font-size:1.3em;">${result.skipped}</strong>
+                    </div>` : ''}
+                </div>
+            `;
+        }
+        
+        content.innerHTML = detailsHtml;
+    } else {
+        title.textContent = '❌ Ошибка загрузки';
+        title.style.color = 'var(--danger)';
+        
+        content.innerHTML = `
+            <div style="background:rgba(239,68,68,0.1);padding:20px;border-radius:12px;border:1px solid rgba(239,68,68,0.3);">
+                <p style="color:var(--danger);font-size:1.1em;">${message}</p>
+            </div>
+        `;
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeUploadResultModal() {
+    document.getElementById('uploadResultModal').classList.remove('active');
 }
     
 // ==================== CLEAR RECORDS BY PERIOD ====================

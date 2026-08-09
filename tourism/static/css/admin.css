@@ -316,8 +316,58 @@ select.form-control:focus {
 .modal-close:hover { color: var(--danger); }
 
 /* =========================================
-   Единая кнопка закрытия модалок
-   ========================================= */
+    Кнопка загрузки файла
+    ========================================= */
+.file-upload-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.file-input-hidden {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.file-name-display {
+    color: var(--gray);
+    font-size: 0.95em;
+    font-style: italic;
+    flex-grow: 1;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-upload-wrapper .btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* =========================================
+    Модальное окно результата загрузки
+    ========================================= */
+.modal-overlay#uploadResultModal .modal {
+    max-width: 500px;
+}
+
+.modal-overlay#uploadResultModal .modal .modal-title {
+    text-align: center;
+    font-size: 1.4em;
+}
+
+.modal-overlay#uploadResultModal .modal > div:last-child {
+    justify-content: center;
+}
+
+/* =========================================
+    Модальное окно очистки данных за период
+    ========================================= */
 .modal .modal-close-btn {
     width: 32px;
     height: 32px;
