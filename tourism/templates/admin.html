@@ -823,14 +823,29 @@ async function uploadExcel() {
         });
         
         if (!uploadResponse.ok) {
-            const error = await uploadResponse.json();
+            let errorMsg = 'Ошибка загрузки файла';
+            try {
+                const errorData = await uploadResponse.json();
+                errorMsg = errorData.error || errorMsg;
+            } catch (e) {
+                errorMsg = `Ошибка ${uploadResponse.status}: ${uploadResponse.statusText}`;
+            }
             hideProgressBar();
-            showToast(error.error || 'Ошибка загрузки файла', 'error');
+            showToast(errorMsg, 'error');
             return;
         }
         
         const uploadResult = await uploadResponse.json();
+        
+        // Проверяем, что получили job_id
+        if (!uploadResult.job_id) {
+            hideProgressBar();
+            showToast('Ошибка: сервер не вернул job_id', 'error');
+            return;
+        }
+        
         currentJobId = uploadResult.job_id;
+        console.log('Job ID:', currentJobId);
         
         updateProgress(30, 'Файл принят. Обработка данных...', 0, '—');
         
@@ -838,35 +853,40 @@ async function uploadExcel() {
         startProgressPolling();
         
     } catch (error) {
+        console.error('Upload error:', error);
         hideProgressBar();
         showToast('Ошибка: ' + error.message, 'error');
     }
 }
 
 function startProgressPolling() {
-    // Опрос прогресса каждые 500мс
+    // Опрос прогресса каждые 1000мс (1 секунда)
     progressInterval = setInterval(async () => {
         if (!currentJobId) return;
         
         try {
             const response = await fetch(`/admin/import-progress/${currentJobId}`);
             
+            if (response.status === 503) {
+                // Задача ещё выполняется
+                const data = await response.json();
+                updateProgress(
+                    data.percent || 30,
+                    data.status_text || 'Обработка данных...',
+                    data.processed,
+                    data.total
+                );
+                return;
+            }
+            
             if (!response.ok) {
-                // Если ошибка 503 — задача ещё выполняется
-                if (response.status === 503) {
-                    const data = await response.json();
-                    updateProgress(
-                        data.percent || 30,
-                        data.status_text || 'Обработка данных...',
-                        data.processed,
-                        data.total
-                    );
-                    return;
-                }
-                throw new Error('Ошибка получения прогресса');
+                // Ошибка при получении прогресса
+                console.error('Progress request failed:', response.status, response.statusText);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
+            console.log('Progress update:', data);
             
             if (data.status === 'completed') {
                 // Задача завершена
@@ -901,7 +921,7 @@ function startProgressPolling() {
                 progressInterval = null;
                 hideProgressBar();
                 showToast(data.error || 'Ошибка импорта', 'error');
-            } else {
+            } else if (data.status === 'running' || data.status === 'processing') {
                 // Задача выполняется
                 updateProgress(
                     data.percent || 30,
@@ -916,9 +936,9 @@ function startProgressPolling() {
             clearInterval(progressInterval);
             progressInterval = null;
             hideProgressBar();
-            showToast('Ошибка проверки прогресса', 'error');
+            showToast('Ошибка проверки прогресса: ' + error.message, 'error');
         }
-    }, 500);
+    }, 1000);
 }
 
 function createFormData(file, sheetName) {

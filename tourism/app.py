@@ -1814,10 +1814,11 @@ def import_excel_stream():
         # Создаём job_id
         job_id = str(uuid.uuid4())
         
-        # Сохраняем файл во временную директорию
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp:
-            file.save(tmp.name)
-            tmp_path = tmp.name
+        # Сохраняем файл во временную директорию (копируем данные, а не ссылку на файл!)
+        tmp_path = tempfile.mktemp(suffix='.xlsx')
+        file.save(tmp_path)
+        
+        logger.info(f'File saved to {tmp_path}, job_id={job_id}')
         
         # Создаём запись о job-е
         with import_jobs_lock:
@@ -1832,7 +1833,6 @@ def import_excel_stream():
                 'message': '',
                 'error': None,
                 'tmp_path': tmp_path,
-                'file': file,
                 'sheet_name': sheet_name
             }
         
@@ -1843,6 +1843,8 @@ def import_excel_stream():
         )
         thread.daemon = True
         thread.start()
+        
+        logger.info(f'Job {job_id} started for file {file.filename}')
         
         return jsonify({
             'success': True,
