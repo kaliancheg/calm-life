@@ -1,4 +1,7 @@
-﻿from flask import Flask, render_template, jsonify, redirect, url_for, request, flash, session, g
+﻿import threading
+import uuid
+import time
+from flask import Flask, render_template, jsonify, redirect, url_for, request, flash, session, g
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from functools import wraps
 from datetime import datetime, timedelta
@@ -32,6 +35,10 @@ app.config['SESSION_TIMEOUT'] = timedelta(hours=1)
 # Security settings for brute-force protection
 app.config['MAX_LOGIN_ATTEMPTS'] = 3  # Максимум неудачных попыток
 app.config['BLOCK_DURATION'] = timedelta(minutes=15)  # Блокировка на 15 минут
+
+# Хранилище job-ов для импорта Excel
+import_jobs = {}
+import_jobs_lock = threading.Lock()
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -1783,9 +1790,7 @@ def import_excel():
 @app.route('/admin/import-excel-stream', methods=['POST'])
 @login_required
 def import_excel_stream():
-    """Загрузка и импорт Excel файла с прогрессом через SSE (только администраторы)"""
-    from flask import Response
-    
+    """Загрузка Excel файла с возвращением job_id для отслеживания прогресса (только администраторы)"""
     # Проверяем, что пользователь администратор
     if current_user.role != 'admin':
         logger.warning(f'User {current_user.username} tried to access import-excel-stream without admin role')
@@ -1804,48 +1809,397 @@ def import_excel_stream():
         
         sheet_name = request.form.get('sheet', 'Архив')
         
-        logger.info(f'User {current_user.username} streaming import Excel file: {file.filename}, sheet: {sheet_name}')
+        logger.info(f'User {current_user.username} importing Excel file: {file.filename}, sheet: {sheet_name}')
+        
+        # Создаём job_id
+        job_id = str(uuid.uuid4())
         
         # Сохраняем файл во временную директорию
         with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp:
             file.save(tmp.name)
             tmp_path = tmp.name
         
-        def generate_progress():
-            """Генератор для SSE-ответа с прогрессом"""
-            try:
-                # Этап 1: Чтение файла
-                yield f"data: {json.dumps({'type': 'progress', 'percent': 10, 'text': 'Чтение файла...'})}\n\n"
-                
-                if sheet_name == 'Штатное_расписание':
-                    # Импорт штатного расписания
-                    result = _import_headcount_limits_stream(tmp_path, file, sheet_name, generate_progress)
-                elif sheet_name == 'Реестр':
-                    df = pd.read_excel(tmp_path, sheet_name=sheet_name, header=1)
-                    result = _import_records_stream(df, file, sheet_name, generate_progress)
-                else:
-                    df = pd.read_excel(tmp_path, sheet_name=sheet_name)
-                    result = _import_records_stream(df, file, sheet_name, generate_progress)
-                
-                # Отправляем финальный результат
-                yield f"data: {json.dumps({'type': 'result', 'success': True, 'inserted': result['inserted'], 'skipped': result.get('skipped', 0), 'message': result['message']})}\n\n"
-                
-            except Exception as e:
-                logger.error(f'Streaming import error: {e}')
-                yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
-            finally:
-                # Удаляем временный файл
-                if os.path.exists(tmp_path):
-                    os.remove(tmp_path)
-                yield "data: [DONE]\n\n"
+        # Создаём запись о job-е
+        with import_jobs_lock:
+            import_jobs[job_id] = {
+                'status': 'pending',
+                'percent': 0,
+                'status_text': 'Ожидание обработки...',
+                'processed': 0,
+                'total': 0,
+                'inserted': 0,
+                'skipped': 0,
+                'message': '',
+                'error': None,
+                'tmp_path': tmp_path,
+                'file': file,
+                'sheet_name': sheet_name
+            }
         
-        return Response(generate_progress(), mimetype='text/event-stream')
+        # Запускаем фоновую задачу для импорта
+        thread = threading.Thread(
+            target=_run_import_job,
+            args=(job_id, tmp_path, file, sheet_name)
+        )
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'success': True,
+            'job_id': job_id,
+            'message': 'Файл принят на обработку'
+        })
     
     except Exception as e:
-        logger.error(f'Error importing Excel stream: {e}')
+        logger.error(f'Error starting import: {e}')
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/import-progress/<job_id>')
+@login_required
+def import_progress(job_id):
+    """Получение прогресса импорта по job_id (только администраторы)"""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Доступ запрещён'}), 403
+    
+    with import_jobs_lock:
+        job = import_jobs.get(job_id)
+    
+    if not job:
+        return jsonify({'error': 'Job не найден'}), 404
+    
+    if job['status'] == 'completed':
+        return jsonify({
+            'status': 'completed',
+            'percent': 100,
+            'inserted': job['inserted'],
+            'skipped': job['skipped'],
+            'message': job['message']
+        })
+    elif job['status'] == 'failed':
+        return jsonify({
+            'status': 'failed',
+            'error': job['error']
+        })
+    else:
+        # Job выполняется
+        return jsonify({
+            'status': 'running',
+            'percent': job['percent'],
+            'status_text': job['status_text'],
+            'processed': job['processed'],
+            'total': job['total']
+        }), 503  # 503 означает, что задача ещё выполняется
+
+
+def _run_import_job(job_id, tmp_path, file, sheet_name):
+    """Фоновая задача импорта с обновлением прогресса"""
+    try:
+        with import_jobs_lock:
+            import_jobs[job_id]['status'] = 'processing'
+            import_jobs[job_id]['percent'] = 10
+            import_jobs[job_id]['status_text'] = 'Чтение файла...'
+        
+        # Читаем Excel файл
+        if sheet_name == 'Штатное_расписание':
+            result = _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name)
+        elif sheet_name == 'Реестр':
+            df = pd.read_excel(tmp_path, sheet_name=sheet_name, header=1)
+            result = _import_records_threaded(job_id, df, file, sheet_name)
+        else:
+            df = pd.read_excel(tmp_path, sheet_name=sheet_name)
+            result = _import_records_threaded(job_id, df, file, sheet_name)
+        
+        # Завершаем job
+        with import_jobs_lock:
+            import_jobs[job_id]['status'] = 'completed'
+            import_jobs[job_id]['percent'] = 100
+            import_jobs[job_id]['status_text'] = 'Готово'
+            import_jobs[job_id]['inserted'] = result['inserted']
+            import_jobs[job_id]['skipped'] = result.get('skipped', 0)
+            import_jobs[job_id]['message'] = result['message']
+        
+        logger.info(f'Import job {job_id} completed: {result}')
+        
+    except Exception as e:
+        logger.error(f'Import job {job_id} failed: {e}')
+        with import_jobs_lock:
+            import_jobs[job_id]['status'] = 'failed'
+            import_jobs[job_id]['error'] = str(e)
+    
+    finally:
+        # Удаляем временный файл
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except:
+                pass
+
+
+def _import_records_threaded(job_id, df, file, sheet_name):
+    """Потоковая версия импорта записей с обновлением прогресса через job"""
+    if df.empty:
+        return {'error': 'Файл пустой'}, 400
+    
+    # Маппинг колонок
+    df_mapped = pd.DataFrame()
+    df_mapped['snils'] = df.iloc[:, 0].astype(str).str.strip()
+    df_mapped['podrazdelenie'] = df.iloc[:, 1].astype(str).str.strip()
+    df_mapped['sp_nsp'] = df.iloc[:, 2].astype(str).str.strip()
+    df_mapped['fio'] = df.iloc[:, 3].astype(str).str.strip()
+    df_mapped['otdel'] = df.iloc[:, 4].astype(str).str.strip()
+    df_mapped['dolzhnost'] = df.iloc[:, 5].astype(str).str.strip()
+    df_mapped['rukovoditel'] = df.iloc[:, 6].astype(str).str.strip()
+    df_mapped['status_field'] = df.iloc[:, 7].astype(str).str.strip()
+    df_mapped['data'] = pd.to_datetime(df.iloc[:, 8], errors='coerce')
+    df_mapped['chasy'] = pd.to_numeric(df.iloc[:, 9], errors='coerce').fillna(0)
+    df_mapped['stavka_oklad'] = df.iloc[:, 10].astype(str).str.strip()
+    df_mapped['stavka'] = df.iloc[:, 11].astype(str).str.strip()
+    df_mapped['itogo'] = pd.to_numeric(df.iloc[:, 12], errors='coerce').fillna(0)
+    df_mapped['nachisleno'] = df_mapped['itogo']
+    
+    if df_mapped.empty or 'fio' not in df_mapped.columns:
+        return {'error': 'Неверный формат файла или отсутствуют обязательные колонки'}, 400
+    
+    df_mapped = df_mapped.dropna(subset=['fio'])
+    df_mapped['fio'] = df_mapped['fio'].str.strip()
+    df_mapped = df_mapped[df_mapped['fio'] != 'nan']
+    df_mapped = df_mapped[df_mapped['fio'] != '']
+    
+    if df_mapped.empty:
+        return {'error': 'Нет валидных данных для импорта'}, 400
+    
+    total_rows = len(df_mapped)
+    
+    with import_jobs_lock:
+        if job_id in import_jobs:
+            import_jobs[job_id]['percent'] = 20
+            import_jobs[job_id]['status_text'] = 'Импорт данных...'
+            import_jobs[job_id]['total'] = total_rows
+    
+    conn = mysql.connector.connect(**MYSQL_CONFIG)
+    cursor = conn.cursor()
+    inserted = 0
+    skipped = 0
+    
+    # Отправляем данные пакетами для лучшей производительности
+    batch_size = 100
+    batch = []
+    
+    for idx, row in df_mapped.iterrows():
+        try:
+            data = row.get('data')
+            if pd.isna(data):
+                skipped += 1
+                continue
+            
+            if isinstance(data, datetime):
+                data_str = data.strftime('%Y-%m-%d')
+            else:
+                data_str = str(data)
+            
+            fio = str(row.get('fio', '')).strip()
+            snils = str(row.get('snils', '')).strip() if pd.notna(row.get('snils')) else None
+            sp_nsp = str(row.get('sp_nsp', '')).strip() if pd.notna(row.get('sp_nsp')) else None
+            podrazdelenie = str(row.get('podrazdelenie', '')).strip() if pd.notna(row.get('podrazdelenie')) else None
+            otdel = str(row.get('otdel', '')).strip() if pd.notna(row.get('otdel')) else None
+            dolzhnost = str(row.get('dolzhnost', '')).strip() if pd.notna(row.get('dolzhnost')) else None
+            rukovoditel = str(row.get('rukovoditel', '')).strip() if pd.notna(row.get('rukovoditel')) else None
+            status_field = str(row.get('status_field', '')).strip() if pd.notna(row.get('status_field')) else None
+            chasy = float(row.get('chasy', 0)) if pd.notna(row.get('chasy')) else 0.0
+            stavka_oklad = str(row.get('stavka_oklad', '')).strip() if pd.notna(row.get('stavka_oklad')) else None
+            stavka = str(row.get('stavka', '')).strip() if pd.notna(row.get('stavka')) else None
+            nachisleno = float(row.get('nachisleno', 0)) if pd.notna(row.get('nachisleno')) else 0.0
+            itogo = float(row.get('itogo', 0)) if pd.notna(row.get('itogo')) else 0.0
+            
+            if not fio or fio == 'nan':
+                skipped += 1
+                continue
+            
+            batch.append((
+                fio, snils, sp_nsp, podrazdelenie, otdel, dolzhnost, rukovoditel, status_field, 
+                data_str, chasy, stavka_oklad, stavka, nachisleno, itogo
+            ))
+            
+            # Вставляем пакетом
+            if len(batch) >= batch_size:
+                cursor.executemany("""
+                    INSERT INTO records 
+                    (fio, snils, sp_nsp, podrazdelenie, otdel, dolzhnost, rukovoditel, status_field, data, chasy, stavka_oklad, stavka, nachisleno, itogo)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    chasy = VALUES(chasy),
+                    nachisleno = VALUES(nachisleno),
+                    itogo = VALUES(itogo),
+                    sp_nsp = VALUES(sp_nsp),
+                    rukovoditel = VALUES(rukovoditel),
+                    status_field = VALUES(status_field),
+                    stavka_oklad = VALUES(stavka_oklad),
+                    stavka = VALUES(stavka)
+                """, batch)
+                inserted += len(batch)
+                batch = []
+                
+                # Обновляем прогресс
+                progress = 20 + int(((inserted + skipped) / total_rows) * 70)
+                with import_jobs_lock:
+                    if job_id in import_jobs:
+                        import_jobs[job_id]['percent'] = progress
+                        import_jobs[job_id]['processed'] = inserted
+                        import_jobs[job_id]['status_text'] = f'Обработано {inserted} из {total_rows}'
+        
+        except Exception:
+            skipped += 1
+            continue
+    
+    # Вставляем оставшиеся данные
+    if batch:
+        cursor.executemany("""
+            INSERT INTO records 
+            (fio, snils, sp_nsp, podrazdelenie, otdel, dolzhnost, rukovoditel, status_field, data, chasy, stavka_oklad, stavka, nachisleno, itogo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+            chasy = VALUES(chasy),
+            nachisleno = VALUES(nachisleno),
+            itogo = VALUES(itogo),
+            sp_nsp = VALUES(sp_nsp),
+            rukovoditel = VALUES(rukovoditel),
+            status_field = VALUES(status_field),
+            stavka_oklad = VALUES(stavka_oklad),
+            stavka = VALUES(stavka)
+        """, batch)
+        inserted += len(batch)
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    log_action(current_user.id, 'import', 'excel', {
+        'filename': file.filename,
+        'sheet': sheet_name,
+        'inserted': inserted,
+        'skipped': skipped
+    })
+    
+    with import_jobs_lock:
+        if job_id in import_jobs:
+            import_jobs[job_id]['percent'] = 95
+            import_jobs[job_id]['status_text'] = 'Сохранение данных...'
+    
+    return {
+        'success': True,
+        'inserted': inserted,
+        'skipped': skipped,
+        'message': f'Импортировано {inserted} записей, пропущено {skipped}'
+    }
+
+
+def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name):
+    """Потоковая версия импорта штатного расписания с обновлением прогресса"""
+    try:
+        df = pd.read_excel(tmp_path, sheet_name=sheet_name)
+        
+        if df.empty:
+            return {'error': 'Лист "Штатное_расписание" пустой'}, 400
+        
+        # Маппинг колонок
+        col_map = {}
+        for col in df.columns:
+            col_lower = str(col).lower().strip()
+            if 'подраз' in col_lower:
+                col_map['podrazdelenie'] = col
+            elif 'должность' in col_lower:
+                col_map['dolzhnost'] = col
+            elif col_lower in ('месяц', 'мес', 'month'):
+                col_map['month'] = col
+            elif col_lower in ('год', 'year'):
+                col_map['year'] = col
+            elif col_lower in ('лимит', 'макс', 'max_count', 'кол-во'):
+                col_map['max_count'] = col
+            elif 'загр' in col_lower:
+                col_map['occupancy'] = col
+        
+        required = ['podrazdelenie', 'dolzhnost', 'month', 'year', 'max_count']
+        missing = [r for r in required if r not in col_map]
+        if missing:
+            return {'error': f'Не найдены колонки: {", ".join(missing)}'}, 400
+        
+        total_rows = len(df)
+        
+        with import_jobs_lock:
+            if job_id in import_jobs:
+                import_jobs[job_id]['percent'] = 20
+                import_jobs[job_id]['status_text'] = 'Импорт штатного расписания...'
+                import_jobs[job_id]['total'] = total_rows
+        
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM headcount_limits')
+        
+        inserted = 0
+        skipped = 0
+        
+        for idx, row in df.iterrows():
+            try:
+                podrazdelenie = str(row[col_map['podrazdelenie']]).strip()
+                dolzhnost = str(row[col_map['dolzhnost']]).strip()
+                
+                if not podrazdelenie or podrazdelenie == 'nan' or not dolzhnost or dolzhnost == 'nan':
+                    skipped += 1
+                    continue
+                
+                month = int(float(row[col_map['month']]))
+                year = int(float(row[col_map['year']]))
+                max_count = int(float(row[col_map['max_count']]))
+                occupancy = str(row[col_map.get('occupancy', '')]).strip() if col_map.get('occupancy') and pd.notna(row.get(col_map['occupancy'])) else None
+                
+                cursor.execute('''
+                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, year, month, max_count, occupancy_hint)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE max_count=VALUES(max_count), occupancy_hint=VALUES(occupancy_hint)
+                ''', (podrazdelenie, dolzhnost, year, month, max_count, occupancy))
+                inserted += 1
+                
+                # Обновляем прогресс каждые 50 записей
+                if inserted % 50 == 0:
+                    progress = 20 + int((inserted / total_rows) * 70)
+                    with import_jobs_lock:
+                        if job_id in import_jobs:
+                            import_jobs[job_id]['percent'] = progress
+                            import_jobs[job_id]['processed'] = inserted
+                            import_jobs[job_id]['status_text'] = f'Обработано {inserted} из {total_rows}'
+                
+            except Exception:
+                skipped += 1
+                continue
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        log_action(current_user.id, 'import', 'headcount_limits', {
+            'filename': file.filename,
+            'inserted': inserted,
+            'skipped': skipped
+        })
+        
+        with import_jobs_lock:
+            if job_id in import_jobs:
+                import_jobs[job_id]['percent'] = 95
+                import_jobs[job_id]['status_text'] = 'Сохранение...'
+        
+        return {
+            'success': True,
+            'inserted': inserted,
+            'skipped': skipped,
+            'message': f'Штатное расписание: загружено {inserted} лимитов, пропущено {skipped}'
+        }
+    
+    except Exception as e:
+        logger.error(f'Error importing headcount_limits: {e}')
+        return {'error': str(e)}, 500
 
 
 def _import_records_stream(df, file, sheet_name, progress_callback):

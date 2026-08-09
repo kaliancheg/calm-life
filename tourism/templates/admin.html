@@ -736,7 +736,8 @@ async function savePermissions() {
 }
 
 // ==================== EXCEL IMPORT ====================
-let progressEventSource = null;
+let currentJobId = null;
+let progressInterval = null;
 
 function updateFileName() {
     const fileInput = document.getElementById('excelFile');
@@ -784,6 +785,13 @@ function hideProgressBar() {
     container.style.display = 'none';
     uploadBtn.disabled = false;
     uploadBtn.textContent = '📤 Загрузить и импортировать';
+    
+    // Очищаем job и интервал
+    currentJobId = null;
+    if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+    }
 }
 
 function completeProgressBar() {
@@ -805,117 +813,119 @@ async function uploadExcel() {
     
     // Показываем прогресс-бар
     showProgressBar();
-    updateProgress(5, 'Подготовка данных...', 0, '—');
+    updateProgress(10, 'Отправка файла на сервер...', 0, '—');
     
-    // Используем XMLHttpRequest для отслеживания upload progress
-    const xhr = new XMLHttpRequest();
-    let uploadComplete = false;
-    
-    // Отслеживаем отправку данных на сервер
-    xhr.upload.addEventListener('progress', function(e) {
-        if (e.lengthComputable) {
-            const percent = Math.round((e.loaded / e.total) * 30); // До 30% — это загрузка на сервер
-            updateProgress(percent, `Загрузка на сервер: ${formatFileSize(e.loaded)} / ${formatFileSize(e.total)}`, undefined, undefined);
-        }
-    });
-    
-    xhr.addEventListener('load', function() {
-        uploadComplete = true;
+    try {
+        // ШАГ 1: Отправляем файл на сервер для сохранения
+        const uploadResponse = await fetch('/admin/import-excel-stream', {
+            method: 'POST',
+            body: createFormData(file, sheetName)
+        });
         
-        if (xhr.status >= 200 && xhr.status < 300) {
-            // Успешный ответ — анализируем SSE-потоки
-            const responseText = xhr.responseText;
-            processSSEData(responseText);
-        } else {
+        if (!uploadResponse.ok) {
+            const error = await uploadResponse.json();
             hideProgressBar();
-            try {
-                const error = JSON.parse(xhr.responseText);
-                showToast(error.error || 'Ошибка импорта', 'error');
-            } catch (e) {
-                showToast('Ошибка импорта', 'error');
-            }
+            showToast(error.error || 'Ошибка загрузки файла', 'error');
+            return;
         }
-    });
-    
-    xhr.addEventListener('error', function() {
+        
+        const uploadResult = await uploadResponse.json();
+        currentJobId = uploadResult.job_id;
+        
+        updateProgress(30, 'Файл принят. Обработка данных...', 0, '—');
+        
+        // ШАГ 2: Начинаем polling прогресса
+        startProgressPolling();
+        
+    } catch (error) {
         hideProgressBar();
-        showToast('Ошибка соединения с сервером', 'error');
-    });
-    
-    // Отправляем данные
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+}
+
+function startProgressPolling() {
+    // Опрос прогресса каждые 500мс
+    progressInterval = setInterval(async () => {
+        if (!currentJobId) return;
+        
+        try {
+            const response = await fetch(`/admin/import-progress/${currentJobId}`);
+            
+            if (!response.ok) {
+                // Если ошибка 503 — задача ещё выполняется
+                if (response.status === 503) {
+                    const data = await response.json();
+                    updateProgress(
+                        data.percent || 30,
+                        data.status_text || 'Обработка данных...',
+                        data.processed,
+                        data.total
+                    );
+                    return;
+                }
+                throw new Error('Ошибка получения прогресса');
+            }
+            
+            const data = await response.json();
+            
+            if (data.status === 'completed') {
+                // Задача завершена
+                clearInterval(progressInterval);
+                progressInterval = null;
+                
+                // Очищаем форму
+                const fileInput = document.getElementById('excelFile');
+                fileInput.value = '';
+                document.getElementById('fileNameDisplay').textContent = 'Файл не выбран';
+                
+                // Перезагружаем статистику
+                loadDashboardStats();
+                
+                // Завершаем прогресс-бар
+                completeProgressBar();
+                updateProgress(100, 'Импорт завершён!', data.inserted, data.inserted + (data.skipped || 0));
+                
+                // Показываем модальное окно с результатом
+                setTimeout(() => {
+                    hideProgressBar();
+                    showUploadResultModal('success', data.message, {
+                        inserted: data.inserted,
+                        skipped: data.skipped || 0,
+                        message: data.message
+                    });
+                }, 500);
+                
+            } else if (data.status === 'failed') {
+                // Задача завершилась с ошибкой
+                clearInterval(progressInterval);
+                progressInterval = null;
+                hideProgressBar();
+                showToast(data.error || 'Ошибка импорта', 'error');
+            } else {
+                // Задача выполняется
+                updateProgress(
+                    data.percent || 30,
+                    data.status_text || 'Обработка данных...',
+                    data.processed,
+                    data.total
+                );
+            }
+            
+        } catch (error) {
+            console.error('Progress polling error:', error);
+            clearInterval(progressInterval);
+            progressInterval = null;
+            hideProgressBar();
+            showToast('Ошибка проверки прогресса', 'error');
+        }
+    }, 500);
+}
+
+function createFormData(file, sheetName) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('sheet', sheetName);
-    xhr.send(formData);
-}
-
-function processSSEData(text) {
-    const lines = text.split('\n');
-    let lastResult = null;
-    
-    for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('data: ')) {
-            const data = trimmed.substring(6);
-            if (data === '[DONE]') {
-                continue;
-            }
-            
-            try {
-                const parsed = JSON.parse(data);
-                
-                if (parsed.type === 'progress') {
-                    updateProgress(parsed.percent, parsed.text, parsed.processed, parsed.total);
-                    lastResult = parsed;
-                } else if (parsed.type === 'result') {
-                    // Очищаем форму
-                    const fileInput = document.getElementById('excelFile');
-                    fileInput.value = '';
-                    document.getElementById('fileNameDisplay').textContent = 'Файл не выбран';
-                    
-                    // Перезагружаем статистику
-                    loadDashboardStats();
-                    
-                    // Завершаем прогресс-бар
-                    completeProgressBar();
-                    updateProgress(100, 'Импорт завершён!', parsed.inserted, parsed.inserted + parsed.skipped);
-                    
-                    // Показываем модальное окно с результатом
-                    setTimeout(() => {
-                        hideProgressBar();
-                        showUploadResultModal('success', parsed.message, parsed);
-                    }, 500);
-                    
-                    return; // Выходим после обработки результата
-                } else if (parsed.type === 'error') {
-                    hideProgressBar();
-                    showToast(parsed.error || 'Ошибка импорта', 'error');
-                    return;
-                }
-            } catch (e) {
-                // Не JSON, пропускаем
-            }
-        }
-    }
-    
-    // Если SSE результат не найден, пробуем обычный JSON
-    try {
-        const result = JSON.parse(text);
-        if (result.success) {
-            const fileInput = document.getElementById('excelFile');
-            fileInput.value = '';
-            document.getElementById('fileNameDisplay').textContent = 'Файл не выбран';
-            loadDashboardStats();
-            completeProgressBar();
-            updateProgress(100, 'Импорт завершён!', result.inserted || 0, result.inserted ? (result.inserted + (result.skipped || 0)) : 0);
-            setTimeout(() => {
-                hideProgressBar();
-                showUploadResultModal('success', result.message, result);
-            }, 500);
-        }
-    } catch (e) {
-        // Не JSON
-    }
+    return formData;
 }
 
 function formatFileSize(bytes) {
