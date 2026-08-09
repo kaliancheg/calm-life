@@ -910,19 +910,69 @@ async function confirmClearByPeriod() {
         const result = await response.json();
         
         if (!response.ok) {
-            showToast(result.error || 'Ошибка очистки', 'error');
+            showUploadResultModal('error', result.error || 'Ошибка очистки');
             return;
         }
         
-        showToast(result.message, 'success');
         closeClearPeriodModal();
         
         // Перезагружаем статистику
         loadDashboardStats();
         
+        // Показываем модальное окно с результатом
+        showClearResultModal('success', result);
+        
     } catch (error) {
-        showToast('Ошибка: ' + error.message, 'error');
+        showUploadResultModal('error', 'Ошибка: ' + error.message);
     }
+}
+
+function showClearResultModal(type, result) {
+    const modal = document.getElementById('uploadResultModal');
+    const title = document.getElementById('uploadResultTitle');
+    const content = document.getElementById('uploadResultContent');
+    
+    if (type === 'success') {
+        title.textContent = '✅ Данные удалены';
+        title.style.color = 'var(--success)';
+        
+        let detailsHtml = `<p style="font-size:1.1em;margin-bottom:20px;">${result.message}</p>`;
+        
+        if (result.deleted_count !== undefined) {
+            detailsHtml += `
+                <div style="background:rgba(239,68,68,0.1);padding:20px;border-radius:12px;border:1px solid rgba(239,68,68,0.3);margin-bottom:15px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+                        <span style="color:var(--gray);">Удалено записей:</span>
+                        <strong style="color:var(--danger);font-size:1.3em;">${result.deleted_count}</strong>
+                    </div>
+                    ${result.from_date && result.to_date ? `
+                    <div style="display:flex;justify-content:space-between;">
+                        <span style="color:var(--gray);">Период:</span>
+                        <strong style="color:var(--light);font-size:1.1em;">${formatDateDisplay(result.from_date)} — ${formatDateDisplay(result.to_date)}</strong>
+                    </div>` : ''}
+                </div>
+            `;
+        }
+        
+        content.innerHTML = detailsHtml;
+    } else {
+        title.textContent = '❌ Ошибка удаления';
+        title.style.color = 'var(--danger)';
+        
+        content.innerHTML = `
+            <div style="background:rgba(239,68,68,0.1);padding:20px;border-radius:12px;border:1px solid rgba(239,68,68,0.3);">
+                <p style="color:var(--danger);font-size:1.1em;">${result.error || 'Произошла ошибка при удалении данных'}</p>
+            </div>
+        `;
+    }
+    
+    modal.classList.add('active');
+}
+
+function formatDateDisplay(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function editPermissions(userId) {

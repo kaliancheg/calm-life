@@ -2152,7 +2152,9 @@ def clear_records():
             
             return jsonify({
                 'success': True,
-                'message': f'Удалено {count} записей (все)'
+                'message': f'Удалено {count} записей (все)',
+                'deleted_count': count,
+                'period_type': 'all'
             })
         
         # Если указаны даты - очищаем только за период
@@ -2190,7 +2192,11 @@ def clear_records():
             
             return jsonify({
                 'success': True,
-                'message': f'Удалено {count} записей за период с {from_date} по {to_date}'
+                'message': f'Удалено {count} записей за период с {from_date} по {to_date}',
+                'deleted_count': count,
+                'period_type': 'range',
+                'from_date': from_date,
+                'to_date': to_date
             })
         
         # Если указана только одна дата - ошибка
