@@ -39,6 +39,48 @@ app.config['BLOCK_DURATION'] = timedelta(minutes=15)  # Блокировка н�
 # Хранилище job-ов для импорта Excel
 import_jobs = {}
 import_jobs_lock = threading.Lock()
+JOB_STORE_DIR = os.path.join(tempfile.gettempdir(), 'tourism_import_jobs')
+os.makedirs(JOB_STORE_DIR, exist_ok=True)
+
+
+def _get_job_file_path(job_id: str) -> str:
+    return os.path.join(JOB_STORE_DIR, f'{job_id}.json')
+
+
+def _save_import_job(job_id: str):
+    with import_jobs_lock:
+        job = import_jobs.get(job_id)
+        if not job:
+            return
+        job_copy = job.copy()
+        job_copy.pop('tmp_path', None)
+    try:
+        with open(_get_job_file_path(job_id), 'w', encoding='utf-8') as job_file:
+            json.dump(job_copy, job_file, ensure_ascii=False)
+    except Exception as e:
+        logger.error(f'Unable to save import job {job_id} to disk: {e}')
+
+
+def _load_import_job(job_id: str) -> Optional[Dict[str, Any]]:
+    with import_jobs_lock:
+        job = import_jobs.get(job_id)
+        if job:
+            return job
+
+    job_file = _get_job_file_path(job_id)
+    if not os.path.exists(job_file):
+        return None
+
+    try:
+        with open(job_file, 'r', encoding='utf-8') as f:
+            job = json.load(f)
+            with import_jobs_lock:
+                import_jobs[job_id] = job
+            return job
+    except Exception as e:
+        logger.error(f'Unable to load import job {job_id} from disk: {e}')
+        return None
+
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -1835,6 +1877,7 @@ def import_excel_stream():
                 'tmp_path': tmp_path,
                 'sheet_name': sheet_name
             }
+        _save_import_job(job_id)
         
         # Запускаем фоновую задачу для импорта
         thread = threading.Thread(
@@ -1866,9 +1909,7 @@ def import_progress(job_id):
     if current_user.role != 'admin':
         return jsonify({'error': 'Доступ запрещён'}), 403
     
-    with import_jobs_lock:
-        job = import_jobs.get(job_id)
-    
+    job = _load_import_job(job_id)
     if not job:
         return jsonify({'error': 'Job не найден'}), 404
     
@@ -1903,6 +1944,7 @@ def _run_import_job(job_id, tmp_path, file, sheet_name):
             import_jobs[job_id]['status'] = 'processing'
             import_jobs[job_id]['percent'] = 10
             import_jobs[job_id]['status_text'] = 'Чтение файла...'
+        _save_import_job(job_id)
         
         # Читаем Excel файл
         if sheet_name == 'Штатное_расписание':
@@ -1922,14 +1964,17 @@ def _run_import_job(job_id, tmp_path, file, sheet_name):
             import_jobs[job_id]['inserted'] = result['inserted']
             import_jobs[job_id]['skipped'] = result.get('skipped', 0)
             import_jobs[job_id]['message'] = result['message']
+        _save_import_job(job_id)
         
         logger.info(f'Import job {job_id} completed: {result}')
         
     except Exception as e:
         logger.error(f'Import job {job_id} failed: {e}')
         with import_jobs_lock:
-            import_jobs[job_id]['status'] = 'failed'
-            import_jobs[job_id]['error'] = str(e)
+            if job_id in import_jobs:
+                import_jobs[job_id]['status'] = 'failed'
+                import_jobs[job_id]['error'] = str(e)
+        _save_import_job(job_id)
     
     finally:
         # Удаляем временный файл
@@ -2051,6 +2096,7 @@ def _import_records_threaded(job_id, df, file, sheet_name):
                         import_jobs[job_id]['percent'] = progress
                         import_jobs[job_id]['processed'] = inserted
                         import_jobs[job_id]['status_text'] = f'Обработано {inserted} из {total_rows}'
+                _save_import_job(job_id)
         
         except Exception:
             skipped += 1
@@ -2089,6 +2135,7 @@ def _import_records_threaded(job_id, df, file, sheet_name):
         if job_id in import_jobs:
             import_jobs[job_id]['percent'] = 95
             import_jobs[job_id]['status_text'] = 'Сохранение данных...'
+    _save_import_job(job_id)
     
     return {
         'success': True,
@@ -2172,6 +2219,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name):
                             import_jobs[job_id]['percent'] = progress
                             import_jobs[job_id]['processed'] = inserted
                             import_jobs[job_id]['status_text'] = f'Обработано {inserted} из {total_rows}'
+                    _save_import_job(job_id)
                 
             except Exception:
                 skipped += 1
@@ -2191,6 +2239,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name):
             if job_id in import_jobs:
                 import_jobs[job_id]['percent'] = 95
                 import_jobs[job_id]['status_text'] = 'Сохранение...'
+        _save_import_job(job_id)
         
         return {
             'success': True,
