@@ -359,7 +359,6 @@ select.form-control:focus {
 .file-upload-wrapper .btn:hover {
     background: rgba(99, 102, 241, 0.2);
     border-color: var(--primary);
-    color: var(--primary);
 }
 
 /* =========================================
