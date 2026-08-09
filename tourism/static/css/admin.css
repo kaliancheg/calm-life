@@ -362,6 +362,97 @@ select.form-control:focus {
 }
 
 /* =========================================
+    Прогресс-бар импорта Excel
+    ========================================= */
+.progress-container {
+    margin: 20px 0;
+    padding: 20px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.progress-header span:first-child {
+    color: var(--secondary);
+    font-weight: 600;
+    font-size: 1.05em;
+}
+
+#progressPercent {
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 1.2em;
+    min-width: 50px;
+    text-align: right;
+}
+
+.progress-bar-wrapper {
+    width: 100%;
+    height: 12px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    border-radius: 10px;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,0.2),
+        transparent
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-details {
+    color: var(--gray);
+    font-size: 0.9em;
+}
+
+.progress-details strong {
+    color: var(--light);
+}
+
+/* Progress bar animation for completing */
+.progress-bar.complete {
+    background: linear-gradient(90deg, var(--success), #059669);
+}
+
+/* Upload button disabled state */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* =========================================
     Модальное окно результата загрузки
     ========================================= */
 .modal-overlay#uploadResultModal .modal {
