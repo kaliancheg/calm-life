@@ -1214,8 +1214,8 @@ body {
 .lfl-date-inputs input.form-control.input {
     width: 150px;
     max-width: 150px;
-    height: 25px;
-    line-height: 25px;
+    height: 40px;
+    line-height: 40px;
     padding: 2px 5px;
     border: 1px solid rgba(0, 255, 255, 0.4);
     border-radius: 8px;
