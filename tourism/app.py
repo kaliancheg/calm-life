@@ -1879,10 +1879,11 @@ def import_excel_stream():
             }
         _save_import_job(job_id)
         
+        user_id = current_user.id
         # Запускаем фоновую задачу для импорта
         thread = threading.Thread(
             target=_run_import_job,
-            args=(job_id, tmp_path, file, sheet_name)
+            args=(job_id, tmp_path, file, sheet_name, user_id)
         )
         thread.daemon = True
         thread.start()
@@ -1937,7 +1938,7 @@ def import_progress(job_id):
         }), 503  # 503 означает, что задача ещё выполняется
 
 
-def _run_import_job(job_id, tmp_path, file, sheet_name):
+def _run_import_job(job_id, tmp_path, file, sheet_name, user_id):
     """Фоновая задача импорта с обновлением прогресса"""
     try:
         with import_jobs_lock:
@@ -1948,13 +1949,13 @@ def _run_import_job(job_id, tmp_path, file, sheet_name):
         
         # Читаем Excel файл
         if sheet_name == 'Штатное_расписание':
-            result = _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name)
+            result = _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id)
         elif sheet_name == 'Реестр':
             df = pd.read_excel(tmp_path, sheet_name=sheet_name, header=1)
-            result = _import_records_threaded(job_id, df, file, sheet_name)
+            result = _import_records_threaded(job_id, df, file, sheet_name, user_id)
         else:
             df = pd.read_excel(tmp_path, sheet_name=sheet_name)
-            result = _import_records_threaded(job_id, df, file, sheet_name)
+            result = _import_records_threaded(job_id, df, file, sheet_name, user_id)
         
         # Завершаем job
         with import_jobs_lock:
@@ -1985,7 +1986,7 @@ def _run_import_job(job_id, tmp_path, file, sheet_name):
                 pass
 
 
-def _import_records_threaded(job_id, df, file, sheet_name):
+def _import_records_threaded(job_id, df, file, sheet_name, user_id):
     """Потоковая версия импорта записей с обновлением прогресса через job"""
     if df.empty:
         return {'error': 'Файл пустой'}, 400
@@ -2124,7 +2125,7 @@ def _import_records_threaded(job_id, df, file, sheet_name):
     cursor.close()
     conn.close()
     
-    log_action(current_user.id, 'import', 'excel', {
+    log_action(user_id, 'import', 'excel', {
         'filename': file.filename,
         'sheet': sheet_name,
         'inserted': inserted,
@@ -2145,7 +2146,7 @@ def _import_records_threaded(job_id, df, file, sheet_name):
     }
 
 
-def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name):
+def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id):
     """Потоковая версия импорта штатного расписания с обновлением прогресса"""
     try:
         df = pd.read_excel(tmp_path, sheet_name=sheet_name)
@@ -2229,7 +2230,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name):
         cursor.close()
         conn.close()
         
-        log_action(current_user.id, 'import', 'headcount_limits', {
+        log_action(user_id, 'import', 'headcount_limits', {
             'filename': file.filename,
             'inserted': inserted,
             'skipped': skipped
