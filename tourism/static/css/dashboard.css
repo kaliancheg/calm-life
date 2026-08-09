@@ -1199,7 +1199,8 @@ body {
 .lfl-date-inputs {
     display: flex; 
     gap: 8px;
-    align-items: center; 
+    align-items: center;
+    justify-content: center;
 }
 
 .lfl-date-separator {
@@ -1210,7 +1211,9 @@ body {
 
 .lfl-date-inputs input[type="date"],
 .lfl-date-inputs input.flatpickr-input {
-    padding: 3px 5px;
+    height: 24px;
+    line-height: 24px;
+    padding: 2px 5px;
     border: 1px solid rgba(0, 255, 255, 0.4);
     border-radius: 8px;
     background: rgba(18, 20, 45, 0.85);
@@ -1219,6 +1222,7 @@ body {
     font-size: 8.5px;
     width: 70px;
     text-align: center;
+    text-align-last: center;
     box-sizing: border-box;
     cursor: pointer;
 }
@@ -2018,6 +2022,11 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     .lfl-date-inputs input[type="date"] {
         width: 100%;
         max-width: 150px;
+        height: 24px;
+        line-height: 24px;
+        padding: 2px 5px;
+        text-align: center;
+        text-align-last: center;
     }
     
     .lfl-date-separator {
