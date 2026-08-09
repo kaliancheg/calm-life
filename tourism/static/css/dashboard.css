@@ -5,8 +5,6 @@
 
 body {
     padding: 20px 10px 20px 0;
-    /* Резервируем место под скроллбар, чтобы контент не скакал при overflow: hidden */
-    scrollbar-gutter: stable;
 }
 
 /* Container для dashboard — заполняет всю ширину, без max-width из base.css */
