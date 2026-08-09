@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Админ-панель - Управление доступом</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ru.js"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
@@ -253,9 +256,9 @@
                     <option value="Штатное_расписание">📋 Штатное расписание</option>
                 </select>
             </div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
+<div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="btn btn-primary" onclick="uploadExcel()">📤 Загрузить и импортировать</button>
-                <button class="btn btn-danger" onclick="clearRecords()">🗑️ Очистить все записи</button>
+                <button class="btn btn-danger" onclick="openClearPeriodModal()">🗑️ Очистка данных за период</button>
             </div>
             <div id="importResult" style="margin-top:20px; display:none;"></div>
         </div>
@@ -305,6 +308,28 @@
                 <button type="button" class="btn btn-secondary" onclick="closeModal('userModal')">Отмена</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Clear Period Modal -->
+<div class="modal-overlay" id="clearPeriodModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title">🗑️ Очистка данных за период</h2>
+            <button class="modal-close-btn" onclick="closeClearPeriodModal()">&times;</button>
+        </div>
+        <div class="form-group">
+            <label>Дата начала:</label>
+            <input type="text" id="clearDateFrom" class="form-control" placeholder="Выберите дату начала">
+        </div>
+        <div class="form-group">
+            <label>Дата окончания:</label>
+            <input type="text" id="clearDateTo" class="form-control" placeholder="Выберите дату окончания">
+        </div>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn btn-danger" onclick="confirmClearByPeriod()">🗑️ Очистить данные</button>
+            <button class="btn btn-secondary" onclick="closeClearPeriodModal()">Отмена</button>
+        </div>
     </div>
 </div>
 
@@ -724,14 +749,91 @@ async function uploadExcel() {
     }
 }
     
-async function clearRecords() {
-    if (!confirm('Вы уверены, что хотите УДАЛИТЬ ВСЕ записи из таблицы? Это действие нельзя отменить!')) {
+// ==================== CLEAR RECORDS BY PERIOD ====================
+let clearFromPicker = null;
+let clearToPicker = null;
+
+function openClearPeriodModal() {
+    document.getElementById('clearDateFrom').value = '';
+    document.getElementById('clearDateTo').value = '';
+    document.getElementById('clearPeriodModal').classList.add('active');
+    
+    // Инициализируем Flatpickr если ещё не создан
+    if (!clearFromPicker) {
+        clearFromPicker = flatpickr('#clearDateFrom', {
+            locale: 'ru',
+            dateFormat: 'Y-m-d',
+            maxDate: 'today',
+            onChange: function(selectedDates, dateStr, instance) {
+                if (clearToPicker && dateStr) {
+                    clearToPicker.set('minDate', dateStr);
+                }
+            }
+        });
+    }
+    
+    if (!clearToPicker) {
+        clearToPicker = flatpickr('#clearDateTo', {
+            locale: 'ru',
+            dateFormat: 'Y-m-d',
+            maxDate: 'today',
+            onChange: function(selectedDates, dateStr, instance) {
+                if (clearFromPicker && dateStr) {
+                    clearToPicker.set('minDate', clearFromPicker.selectedDates[0] || 'minDate');
+                }
+            }
+        });
+    }
+}
+
+function closeClearPeriodModal() {
+    document.getElementById('clearPeriodModal').classList.remove('active');
+}
+
+async function confirmClearByPeriod() {
+    const fromInput = document.getElementById('clearDateFrom').value;
+    const toInput = document.getElementById('clearDateTo').value;
+    
+    // Валидация
+    if (!fromInput) {
+        showToast('Укажите дату начала периода', 'warning');
+        return;
+    }
+    if (!toInput) {
+        showToast('Укажите дату окончания периода', 'warning');
+        return;
+    }
+    
+    // Проверка что дата начала <= даты окончания
+    const fromDate = new Date(fromInput);
+    const toDate = new Date(toInput);
+    if (fromDate > toDate) {
+        showToast('Дата начала не может быть позже даты окончания', 'error');
+        return;
+    }
+    
+    // Форматируем даты для отображения
+    const formatDateDisplay = (dateStr) => {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+    
+    const fromDisplay = formatDateDisplay(fromInput);
+    const toDisplay = formatDateDisplay(toInput);
+    
+    // Подтверждение
+    if (!confirm(`Вы уверены, что хотите УДАЛИТЬ все записи за период с ${fromDisplay} по ${toDisplay}?\n\nЭто действие нельзя отменить!`)) {
         return;
     }
     
     try {
         const response = await fetch('/admin/clear-records', {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from_date: fromInput,
+                to_date: toInput
+            })
         });
         
         const result = await response.json();
@@ -742,6 +844,7 @@ async function clearRecords() {
         }
         
         showToast(result.message, 'success');
+        closeClearPeriodModal();
         
         // Перезагружаем статистику
         loadDashboardStats();

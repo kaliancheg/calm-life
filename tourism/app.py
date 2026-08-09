@@ -2120,33 +2120,81 @@ def api_headcount_limits():
 @app.route('/admin/clear-records', methods=['POST'])
 @login_required
 def clear_records():
-    """Очистка всех записей из таблицы records (только администраторы)"""
+    """Очистка записей из таблицы records по периоду (только администраторы)"""
     # Проверяем, что пользователь администратор
     if current_user.role != 'admin':
         logger.warning(f'User {current_user.username} tried to clear records without admin role')
         return jsonify({'error': 'Доступ запрещён. Требуется роль администратора'}), 403
     
     try:
-        logger.info(f'User {current_user.username} clearing records')
+        # Получаем параметры дат из JSON
+        data = request.get_json()
+        from_date = data.get('from_date')
+        to_date = data.get('to_date')
         
-        conn = mysql.connector.connect(**MYSQL_CONFIG)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute('SELECT COUNT(*) as count FROM records')
-        count = cursor.fetchone()['count']
-        cursor.close()
+        # Если даты не указаны - очищаем все записи (для обратной совместимости)
+        if not from_date and not to_date:
+            logger.info(f'User {current_user.username} clearing ALL records')
+            
+            conn = mysql.connector.connect(**MYSQL_CONFIG)
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute('SELECT COUNT(*) as count FROM records')
+            count = cursor.fetchone()['count']
+            cursor.close()
+            
+            cursor = conn.cursor()
+            cursor.execute('TRUNCATE TABLE records')
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            log_action(current_user.id, 'clear', 'records', {'deleted_count': count, 'period': 'all'})
+            
+            return jsonify({
+                'success': True,
+                'message': f'Удалено {count} записей (все)'
+            })
         
-        cursor = conn.cursor()
-        cursor.execute('TRUNCATE TABLE records')
-        conn.commit()
-        cursor.close()
-        conn.close()
+        # Если указаны даты - очищаем только за период
+        if from_date and to_date:
+            # Валидация формата дат
+            try:
+                datetime.strptime(from_date, '%Y-%m-%d')
+                datetime.strptime(to_date, '%Y-%m-%d')
+            except ValueError:
+                return jsonify({'error': 'Неверный формат даты. Используйте YYYY-MM-DD'}), 400
+            
+            logger.info(f'User {current_user.username} clearing records from {from_date} to {to_date}')
+            
+            conn = mysql.connector.connect(**MYSQL_CONFIG)
+            cursor = conn.cursor(dictionary=True)
+            
+            # Считаем количество записей для удаления
+            cursor.execute('SELECT COUNT(*) as count FROM records WHERE data BETWEEN %s AND %s', 
+                         (from_date, to_date))
+            count = cursor.fetchone()['count']
+            cursor.close()
+            
+            # Удаляем записи за период
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM records WHERE data BETWEEN %s AND %s', 
+                         (from_date, to_date))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            log_action(current_user.id, 'clear', 'records', {
+                'deleted_count': count, 
+                'period': f'{from_date} to {to_date}'
+            })
+            
+            return jsonify({
+                'success': True,
+                'message': f'Удалено {count} записей за период с {from_date} по {to_date}'
+            })
         
-        log_action(current_user.id, 'clear', 'records', {'deleted_count': count})
-        
-        return jsonify({
-            'success': True,
-            'message': f'Удалено {count} записей'
-        })
+        # Если указана только одна дата - ошибка
+        return jsonify({'error': 'Укажите обе даты: с и по'}), 400
     
     except Exception as e:
         logger.error(f'Error clearing records: {e}')
