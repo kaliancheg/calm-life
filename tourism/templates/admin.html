@@ -348,9 +348,22 @@
 <div class="modal-overlay" id="clearPeriodModal">
     <div class="modal">
         <div class="modal-header">
-            <h2 class="modal-title">🗑️ Очистка данных за период</h2>
+            <h2 class="modal-title">🗑️ Очистка данных</h2>
             <button class="modal-close-btn" onclick="closeClearPeriodModal()">&times;</button>
         </div>
+        
+        <!-- Быстрые кнопки -->
+        <div class="clear-quick-buttons" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+            <button class="btn btn-warning" onclick="clearCurrentMonth()" style="flex:1; min-width:150px;">
+                📅 Текущий месяц
+            </button>
+            <button class="btn btn-danger" onclick="clearAllData()" style="flex:1; min-width:150px;">
+                💀 Удалить все данные
+            </button>
+        </div>
+        
+        <div style="text-align:center; color:var(--gray); font-size:0.9em; margin-bottom:15px;">— или выберите свой период —</div>
+        
         <div class="form-group">
             <label>Дата начала:</label>
             <input type="text" id="clearDateFrom" class="form-control" placeholder="Выберите дату начала">
@@ -360,7 +373,7 @@
             <input type="text" id="clearDateTo" class="form-control" placeholder="Выберите дату окончания">
         </div>
         <div style="display:flex; gap:10px; margin-top:20px;">
-            <button class="btn btn-danger" onclick="confirmClearByPeriod()">🗑️ Очистить данные</button>
+            <button class="btn btn-danger" onclick="confirmClearByPeriod()">🗑️ Очистить выбранный период</button>
             <button class="btn btn-secondary" onclick="closeClearPeriodModal()">Отмена</button>
         </div>
     </div>
@@ -1016,10 +1029,10 @@ function openClearPeriodModal() {
         clearFromPicker = flatpickr('#clearDateFrom', {
             locale: 'ru',
             dateFormat: 'Y-m-d',
-            maxDate: 'today',
             onChange: function(selectedDates, dateStr, instance) {
                 if (clearToPicker && dateStr) {
                     clearToPicker.set('minDate', dateStr);
+                    clearToPicker.set('defaultDate', dateStr);
                 }
             }
         });
@@ -1029,10 +1042,9 @@ function openClearPeriodModal() {
         clearToPicker = flatpickr('#clearDateTo', {
             locale: 'ru',
             dateFormat: 'Y-m-d',
-            maxDate: 'today',
             onChange: function(selectedDates, dateStr, instance) {
                 if (clearFromPicker && dateStr) {
-                    clearToPicker.set('minDate', clearFromPicker.selectedDates[0] || 'minDate');
+                    clearFromPicker.set('maxDate', dateStr);
                 }
             }
         });
@@ -1155,6 +1167,71 @@ function formatDateDisplay(dateStr) {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// ==================== CLEAR: CURRENT MONTH ====================
+function clearCurrentMonth() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth(); // 0-indexed
+    
+    // Первый день текущего месяца
+    const from = new Date(year, month, 1);
+    // Последний день текущего месяца
+    const to = new Date(year, month + 1, 0);
+    
+    const fromStr = from.toISOString().split('T')[0];
+    const toStr = to.toISOString().split('T')[0];
+    
+    const fromDisplay = formatDateDisplay(fromStr);
+    const toDisplay = formatDateDisplay(toStr);
+    
+    if (!confirm(`Вы уверены, что хотите УДАЛИТЬ все записи за ${fromDisplay} — ${toDisplay}?\n\nЭто действие нельзя отменить!`)) {
+        return;
+    }
+    
+    performClear(fromStr, toStr, `за ${fromDisplay} — ${toDisplay}`);
+}
+
+// ==================== CLEAR: ALL DATA ====================
+function clearAllData() {
+    if (!confirm('Вы уверены, что хотите УДАЛИТЬ ВСЕ ДАННЫЕ?\n\nБудут удалены абсолютно все записи из системы!\n\nЭто действие нельзя отменить!')) {
+        return;
+    }
+    
+    performClear(null, null, 'все данные');
+}
+
+// ==================== CLEAR: COMMON FUNCTION ====================
+async function performClear(fromDate, toDate, description) {
+    try {
+        const response = await fetch('/admin/clear-records', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from_date: fromDate,
+                to_date: toDate
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            showUploadResultModal('error', result.error || 'Ошибка удаления');
+            return;
+        }
+        
+        closeClearPeriodModal();
+        
+        // Перезагружаем статистику
+        loadDashboardStats();
+        
+        // Показываем модальное окно с результатом
+        showClearResultModal('success', result);
+        
+    } catch (error) {
+        showUploadResultModal('error', 'Ошибка: ' + error.message);
+    }
 }
 
 function editPermissions(userId) {

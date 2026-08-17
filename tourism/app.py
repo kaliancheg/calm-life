@@ -2528,6 +2528,9 @@ def api_headcount_violations():
         # Применяем ограничения прав пользователя
         conditions, params = _apply_permission_filters(conditions, params)
         
+        # Исключаем должность "Подработчики" из проверки нарушений
+        conditions.append("dolzhnost != 'Подработчики'")
+        
         where_clause = 'WHERE ' + ' AND '.join(conditions)
         
         fact_q = f"""

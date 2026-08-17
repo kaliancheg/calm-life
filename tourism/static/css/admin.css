@@ -86,6 +86,8 @@ body {
 .btn-danger:hover { background: rgba(239, 68, 68, 0.3); }
 .btn-success { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); }
 .btn-success:hover { background: rgba(16, 185, 129, 0.3); }
+.btn-warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid var(--warning); }
+.btn-warning:hover { background: rgba(245, 158, 11, 0.3); }
 
 /* Navigation */
 .nav-tabs {
