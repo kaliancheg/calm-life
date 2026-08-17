@@ -2552,9 +2552,18 @@ def api_headcount_violations():
             return jsonify({'violations': [], 'total_violations': 0, 'total_excess': 0})
         
         # 2. Группируем нарушения — всегда по (podrazdelenie, dolzhnost)
+        # Для "Волна": объединяем "Официант" + "Официант (улица)" с суммарным лимитом 30
+        WAITER_POD = "Волна"
+        WAITER_DOLS = {"Официант", "Официант (улица)"}
+        WAITER_COMBINED_DOL = "Официант"
+        WAITER_COMBINED_LIMIT = 30
+        
         violations_map = {}
         total_excess = 0
         total_excess_cost = 0
+        
+        # Агрегация официантов по дням (Волна)
+        waiter_days = {}  # date_str -> {fact_count, total_nachisleno, shift_count, otdels}
         
         for _, row in df_fact.iterrows():
             pod_val = row['podrazdelenie']
@@ -2567,8 +2576,26 @@ def api_headcount_violations():
             
             year = fact_date.year
             month = fact_date.month
+            date_str = str(fact_date)
             
-            # Ищем лимит по должности (без учёта отдела)
+            # --- Комбинированные официанты (Волна) ---
+            if pod_val == WAITER_POD and dolzhnost in WAITER_DOLS:
+                if date_str not in waiter_days:
+                    waiter_days[date_str] = {
+                        'fact_count': 0,
+                        'total_nachisleno': 0,
+                        'shift_count': 0,
+                        'otdels': set()
+                    }
+                wd = waiter_days[date_str]
+                wd['fact_count'] += fact_count
+                wd['total_nachisleno'] += total_nachisleno
+                wd['shift_count'] += shift_count
+                if otdel_val != '—':
+                    wd['otdels'].add(otdel_val)
+                continue
+            
+            # --- Обычные должности ---
             cursor.execute(
                 'SELECT max_count FROM headcount_limits WHERE podrazdelenie = %s AND dolzhnost = %s AND year = %s AND month = %s',
                 (pod_val, dolzhnost, year, month)
@@ -2584,15 +2611,11 @@ def api_headcount_violations():
                 excess = fact_count - limit_count
                 total_excess += excess
                 
-                # Средняя стоимость одной смены в этот день
                 avg_shift_cost = (total_nachisleno / shift_count) if shift_count > 0 else 0
-                # Стоимость превышения = средняя_смена × кол-во_лишних_сотрудников
                 excess_cost = avg_shift_cost * excess
                 total_excess_cost += excess_cost
                 
-                # Ключ ВСЕГДА по (podrazdelenie, dolzhnost) — без отдела!
                 key = (pod_val, dolzhnost)
-                date_str = str(fact_date)
                 
                 if key not in violations_map:
                     violations_map[key] = {
@@ -2612,7 +2635,6 @@ def api_headcount_violations():
                 if fact_count > v['max_fact']:
                     v['max_fact'] = fact_count
                 
-                # Сохраняем детальную информацию по дню
                 v['daily'][date_str] = {
                     'date': date_str,
                     'limit': limit_count,
@@ -2620,6 +2642,49 @@ def api_headcount_violations():
                     'excess': excess,
                     'excess_cost': round(excess_cost)
                 }
+        
+        # --- Обработка комбинированных официантов ---
+        if waiter_days:
+            for date_str, wd in waiter_days.items():
+                fact_count = wd['fact_count']
+                limit_count = WAITER_COMBINED_LIMIT
+                
+                if fact_count > limit_count:
+                    excess = fact_count - limit_count
+                    total_excess += excess
+                    
+                    avg_shift_cost = (wd['total_nachisleno'] / wd['shift_count']) if wd['shift_count'] > 0 else 0
+                    excess_cost = avg_shift_cost * excess
+                    total_excess_cost += excess_cost
+                    
+                    key = (WAITER_POD, WAITER_COMBINED_DOL)
+                    otdels_str = ', '.join(sorted(wd['otdels'])) if wd['otdels'] else '—'
+                    
+                    if key not in violations_map:
+                        violations_map[key] = {
+                            'podrazdelenie': WAITER_POD,
+                            'dolzhnost': WAITER_COMBINED_DOL,
+                            'otdels': otdels_str,
+                            'limit': limit_count,
+                            'max_fact': fact_count,
+                            'total_excess': 0,
+                            'total_excess_cost': 0,
+                            'daily': {}
+                        }
+                    
+                    v = violations_map[key]
+                    v['total_excess'] += excess
+                    v['total_excess_cost'] += excess_cost
+                    if fact_count > v['max_fact']:
+                        v['max_fact'] = fact_count
+                    
+                    v['daily'][date_str] = {
+                        'date': date_str,
+                        'limit': limit_count,
+                        'fact': fact_count,
+                        'excess': excess,
+                        'excess_cost': round(excess_cost)
+                    }
         
         # Преобразуем в список
         violations = []
