@@ -2938,9 +2938,9 @@ def api_headcount_violations():
             is_chef_wave = is_combined_chef_wave(pod_val, dolzhnost)
             is_chef_art = is_combined_chef_art(pod_val, dolzhnost)
             
-            # Отладка группировки: показываем, что определяется для каждой группы
-            if is_waiter or is_chef_wave or is_chef_art:
-                logger.info(f'HC GROUP CHECK: pod={pod_val!r} dol={dolzhnost!r} waiter={is_waiter} chef_wave={is_chef_wave} chef_art={is_chef_art}')
+            # Отладка группировки: показываем проверку для ВСЕХ групповых должностей
+            if normalize_dol(dolzhnost) in group_all_norm:
+                logger.info(f'HC GROUP DETAIL: pod={pod_val!r} dol={dolzhnost!r} norm={normalize_dol(dolzhnost)!r} waiter={is_waiter} chef_wave={is_chef_wave} chef_art={is_chef_art} waiter_norms={WAITER_DOLS_NORM}')
             
             # --- Агрегируем комбинированные должности по дням ---
             if is_waiter:
