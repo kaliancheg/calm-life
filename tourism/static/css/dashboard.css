@@ -2383,6 +2383,12 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     border: 1px solid rgba(184, 184, 255, 0.2);
 }
 
+.hc-badge-occupancy {
+    background: rgba(0, 200, 255, 0.12);
+    color: #66d9ff;
+    border: 1px solid rgba(0, 200, 255, 0.35);
+}
+
 /* Контейнер дочерних элементов (для режима otdel) */
 .hc-children {
     padding-left: 24px;
@@ -2469,6 +2475,12 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 
 .hc-table .cost-col {
     color: #ffc107;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.hc-table .occupancy-col {
+    color: #66d9ff;
     font-weight: 600;
     white-space: nowrap;
 }

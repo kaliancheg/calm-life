@@ -1686,35 +1686,29 @@ def _import_records(df, file, sheet_name):
 
 
 def _import_headcount_limits(tmp_path, file, sheet_name):
-    """Импорт штатного расписания (лимиты по должности)"""
+    """Импорт штатного расписания (динамические лимиты по загрузке отеля)"""
     try:
         df = pd.read_excel(tmp_path, sheet_name=sheet_name)
         
         if df.empty:
             return jsonify({'error': 'Лист "Штатное_расписание" пустой'}), 400
         
-        # Ожидаемые колонки: Подразделение | Отдел | Должность | Месяц | Год | Лимит | (опц. Загрузка)
-        # Пробуем найти колонки по нескольким вариантам названий
+        # Ожидаемые колонки: Подразделение | Должность | Лимит_1 (≥85%) | Лимит_2 (70–85%) | Лимит_3 (<70%)
         col_map = {}
         for col in df.columns:
             col_lower = str(col).lower().strip()
             if 'подраз' in col_lower:
                 col_map['podrazdelenie'] = col
-            elif 'отдел' in col_lower and 'служба' not in col_lower:
-                # пропускаем отдел — он не нужен
-                pass
             elif 'должность' in col_lower:
                 col_map['dolzhnost'] = col
-            elif col_lower in ('месяц', 'мес', 'month'):
-                col_map['month'] = col
-            elif col_lower in ('год', 'year'):
-                col_map['year'] = col
-            elif col_lower in ('лимит', 'макс', 'max_count', 'кол-во'):
-                col_map['max_count'] = col
-            elif 'загр' in col_lower:
-                col_map['occupancy'] = col
+            elif col_lower in ('лимит_1', 'лимит 1', 'лимит1', '≥85%', '85 и более', 'лимит_85'):
+                col_map['limit_1'] = col
+            elif col_lower in ('лимит_2', 'лимит 2', 'лимит2', '70–85', '70-85', 'лимит_70_85'):
+                col_map['limit_2'] = col
+            elif col_lower in ('лимит_3', 'лимит 3', 'лимит3', '<70', 'менее 70', 'лимит_<70'):
+                col_map['limit_3'] = col
         
-        required = ['podrazdelenie', 'dolzhnost', 'month', 'year', 'max_count']
+        required = ['podrazdelenie', 'dolzhnost', 'limit_1', 'limit_2', 'limit_3']
         missing = [r for r in required if r not in col_map]
         if missing:
             return jsonify({'error': f'Не найдены колонки: {", ".join(missing)}'}), 400
@@ -1736,16 +1730,18 @@ def _import_headcount_limits(tmp_path, file, sheet_name):
                     skipped += 1
                     continue
                 
-                month = int(float(row[col_map['month']]))
-                year = int(float(row[col_map['year']]))
-                max_count = int(float(row[col_map['max_count']]))
-                occupancy = str(row[col_map.get('occupancy', '')]).strip() if col_map.get('occupancy') and pd.notna(row.get(col_map['occupancy'])) else None
+                limit_1 = int(float(row[col_map['limit_1']]))
+                limit_2 = int(float(row[col_map['limit_2']]))
+                limit_3 = int(float(row[col_map['limit_3']]))
                 
                 cursor.execute('''
-                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, year, month, max_count, occupancy_hint)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE max_count=VALUES(max_count), occupancy_hint=VALUES(occupancy_hint)
-                ''', (podrazdelenie, dolzhnost, year, month, max_count, occupancy))
+                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE 
+                        limit_1=VALUES(limit_1), 
+                        limit_2=VALUES(limit_2), 
+                        limit_3=VALUES(limit_3)
+                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3))
                 inserted += 1
                 
             except Exception:
@@ -1771,6 +1767,86 @@ def _import_headcount_limits(tmp_path, file, sheet_name):
     
     except Exception as e:
         logger.error(f'Error importing headcount_limits: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+def _import_hotel_occupancy(tmp_path, file, sheet_name):
+    """Импорт загрузки отеля по дням"""
+    try:
+        df = pd.read_excel(tmp_path, sheet_name=sheet_name)
+        
+        if df.empty:
+            return jsonify({'error': f'Лист "{sheet_name}" пустой'}), 400
+        
+        # Ожидаемые колонки: Дата | Волна | Арт_Лайф (или другие подразделения)
+        col_map = {}
+        for col in df.columns:
+            col_lower = str(col).lower().strip()
+            if 'дата' in col_lower or 'date' in col_lower:
+                col_map['date'] = col
+            elif 'волна' in col_lower:
+                col_map['Волна'] = col
+            elif 'арт' in col_lower or 'art' in col_lower:
+                col_map['Арт_Лайф'] = col
+        
+        required = ['date']
+        missing = [r for r in required if r not in col_map]
+        if missing:
+            return jsonify({'error': f'Не найдены колонки: {", ".join(missing)}'}), 400
+        
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM hotel_occupancy')
+        
+        inserted = 0
+        skipped = 0
+        
+        for idx, row in df.iterrows():
+            try:
+                date_val = pd.to_datetime(row[col_map['date']]).date()
+                
+                for podrazdelenie, col_key in col_map.items():
+                    if col_key == 'date':
+                        continue
+                    if podrazdelenie not in ('Волна', 'Арт_Лайф'):
+                        continue
+                    
+                    occupancy_val = row[col_key]
+                    if pd.isna(occupancy_val):
+                        continue
+                    
+                    occupancy = float(occupancy_val)
+                    
+                    cursor.execute('''
+                        INSERT INTO hotel_occupancy (date, podrazdelenie, occupancy_percent)
+                        VALUES (%s, %s, %s)
+                        ON DUPLICATE KEY UPDATE occupancy_percent=VALUES(occupancy_percent)
+                    ''', (date_val, podrazdelenie, occupancy))
+                    inserted += 1
+                    
+            except Exception:
+                skipped += 1
+                continue
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        log_action(current_user.id, 'import', 'hotel_occupancy', {
+            'filename': file.filename,
+            'inserted': inserted,
+            'skipped': skipped
+        })
+        
+        return jsonify({
+            'success': True,
+            'inserted': inserted,
+            'skipped': skipped,
+            'message': f'Загрузка отеля: загружено {inserted} записей, пропущено {skipped}'
+        })
+    
+    except Exception as e:
+        logger.error(f'Error importing hotel_occupancy: {e}')
         return jsonify({'error': str(e)}), 500
 
 
@@ -1806,8 +1882,11 @@ def import_excel():
         try:
             # Читаем Excel файл
             if sheet_name == 'Штатное_расписание':
-                # Импорт штатного расписания — отдельная логика
+                # Импорт штатного расписания — динамические лимиты
                 result = _import_headcount_limits(tmp_path, file, sheet_name)
+            elif sheet_name == 'Загрузка':
+                # Импорт загрузки отеля по дням
+                result = _import_hotel_occupancy(tmp_path, file, sheet_name)
             elif sheet_name == 'Реестр':
                 df = pd.read_excel(tmp_path, sheet_name=sheet_name, header=1)
                 result = _import_records(df, file, sheet_name)
@@ -1950,6 +2029,8 @@ def _run_import_job(job_id, tmp_path, file, sheet_name, user_id):
         # Читаем Excel файл
         if sheet_name == 'Штатное_расписание':
             result = _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id)
+        elif sheet_name == 'Загрузка':
+            result = _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id)
         elif sheet_name == 'Реестр':
             df = pd.read_excel(tmp_path, sheet_name=sheet_name, header=1)
             result = _import_records_threaded(job_id, df, file, sheet_name, user_id)
@@ -2154,7 +2235,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
         if df.empty:
             return {'error': 'Лист "Штатное_расписание" пустой'}, 400
         
-        # Маппинг колонок
+        # Маппинг колонок (динамические лимиты)
         col_map = {}
         for col in df.columns:
             col_lower = str(col).lower().strip()
@@ -2162,16 +2243,14 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
                 col_map['podrazdelenie'] = col
             elif 'должность' in col_lower:
                 col_map['dolzhnost'] = col
-            elif col_lower in ('месяц', 'мес', 'month'):
-                col_map['month'] = col
-            elif col_lower in ('год', 'year'):
-                col_map['year'] = col
-            elif col_lower in ('лимит', 'макс', 'max_count', 'кол-во'):
-                col_map['max_count'] = col
-            elif 'загр' in col_lower:
-                col_map['occupancy'] = col
+            elif col_lower in ('лимит_1', 'лимит 1', 'лимит1', '≥85%', '85 и более', 'лимит_85'):
+                col_map['limit_1'] = col
+            elif col_lower in ('лимит_2', 'лимит 2', 'лимит2', '70–85', '70-85', 'лимит_70_85'):
+                col_map['limit_2'] = col
+            elif col_lower in ('лимит_3', 'лимит 3', 'лимит3', '<70', 'менее 70', 'лимит_<70'):
+                col_map['limit_3'] = col
         
-        required = ['podrazdelenie', 'dolzhnost', 'month', 'year', 'max_count']
+        required = ['podrazdelenie', 'dolzhnost', 'limit_1', 'limit_2', 'limit_3']
         missing = [r for r in required if r not in col_map]
         if missing:
             return {'error': f'Не найдены колонки: {", ".join(missing)}'}, 400
@@ -2200,16 +2279,18 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
                     skipped += 1
                     continue
                 
-                month = int(float(row[col_map['month']]))
-                year = int(float(row[col_map['year']]))
-                max_count = int(float(row[col_map['max_count']]))
-                occupancy = str(row[col_map.get('occupancy', '')]).strip() if col_map.get('occupancy') and pd.notna(row.get(col_map['occupancy'])) else None
+                limit_1 = int(float(row[col_map['limit_1']]))
+                limit_2 = int(float(row[col_map['limit_2']]))
+                limit_3 = int(float(row[col_map['limit_3']]))
                 
                 cursor.execute('''
-                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, year, month, max_count, occupancy_hint)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE max_count=VALUES(max_count), occupancy_hint=VALUES(occupancy_hint)
-                ''', (podrazdelenie, dolzhnost, year, month, max_count, occupancy))
+                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE 
+                        limit_1=VALUES(limit_1), 
+                        limit_2=VALUES(limit_2), 
+                        limit_3=VALUES(limit_3)
+                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3))
                 inserted += 1
                 
                 # Обновляем прогресс каждые 50 записей
@@ -2251,6 +2332,105 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
     
     except Exception as e:
         logger.error(f'Error importing headcount_limits: {e}')
+        return {'error': str(e)}, 500
+
+
+def _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id):
+    """Потоковая версия импорта загрузки отеля с обновлением прогресса"""
+    try:
+        df = pd.read_excel(tmp_path, sheet_name=sheet_name)
+        
+        if df.empty:
+            return {'error': f'Лист "{sheet_name}" пустой'}, 400
+        
+        # Маппинг колонок
+        col_map = {}
+        for col in df.columns:
+            col_lower = str(col).lower().strip()
+            if 'дата' in col_lower or 'date' in col_lower:
+                col_map['date'] = col
+            elif 'волна' in col_lower:
+                col_map['Волна'] = col
+            elif 'арт' in col_lower or 'art' in col_lower:
+                col_map['Арт_Лайф'] = col
+        
+        total_rows = len(df) * 2  # ~2 подразделения на строку
+        
+        with import_jobs_lock:
+            if job_id in import_jobs:
+                import_jobs[job_id]['percent'] = 20
+                import_jobs[job_id]['status_text'] = 'Импорт загрузки отеля...'
+                import_jobs[job_id]['total'] = total_rows
+        
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM hotel_occupancy')
+        
+        inserted = 0
+        skipped = 0
+        
+        for idx, row in df.iterrows():
+            try:
+                date_val = pd.to_datetime(row[col_map['date']]).date()
+                
+                for podrazdelenie, col_key in col_map.items():
+                    if col_key == 'date':
+                        continue
+                    if podrazdelenie not in ('Волна', 'Арт_Лайф'):
+                        continue
+                    
+                    occupancy_val = row[col_key]
+                    if pd.isna(occupancy_val):
+                        continue
+                    
+                    occupancy = float(occupancy_val)
+                    
+                    cursor.execute('''
+                        INSERT INTO hotel_occupancy (date, podrazdelenie, occupancy_percent)
+                        VALUES (%s, %s, %s)
+                        ON DUPLICATE KEY UPDATE occupancy_percent=VALUES(occupancy_percent)
+                    ''', (date_val, podrazdelenie, occupancy))
+                    inserted += 1
+                
+                # Обновляем прогресс каждые 50 строк
+                if (idx + 1) % 50 == 0:
+                    progress = 20 + int(((idx + 1) / total_rows) * 70)
+                    with import_jobs_lock:
+                        if job_id in import_jobs:
+                            import_jobs[job_id]['percent'] = progress
+                            import_jobs[job_id]['processed'] = inserted
+                            import_jobs[job_id]['status_text'] = f'Обработано {inserted} из {total_rows}'
+                    _save_import_job(job_id)
+                    
+            except Exception:
+                skipped += 1
+                continue
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        log_action(user_id, 'import', 'hotel_occupancy', {
+            'filename': file.filename,
+            'inserted': inserted,
+            'skipped': skipped
+        })
+        
+        with import_jobs_lock:
+            if job_id in import_jobs:
+                import_jobs[job_id]['percent'] = 95
+                import_jobs[job_id]['status_text'] = 'Сохранение...'
+        _save_import_job(job_id)
+        
+        return {
+            'success': True,
+            'inserted': inserted,
+            'skipped': skipped,
+            'message': f'Загрузка отеля: загружено {inserted} записей, пропущено {skipped}'
+        }
+    
+    except Exception as e:
+        logger.error(f'Error importing hotel_occupancy: {e}')
         return {'error': str(e)}, 500
 
 
@@ -2408,7 +2588,7 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
         if df.empty:
             return jsonify({'error': 'Лист "Штатное_расписание" пустой'}), 400
         
-        # Маппинг колонок
+        # Маппинг колонок (динамические лимиты)
         col_map = {}
         for col in df.columns:
             col_lower = str(col).lower().strip()
@@ -2416,16 +2596,14 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
                 col_map['podrazdelenie'] = col
             elif 'должность' in col_lower:
                 col_map['dolzhnost'] = col
-            elif col_lower in ('месяц', 'мес', 'month'):
-                col_map['month'] = col
-            elif col_lower in ('год', 'year'):
-                col_map['year'] = col
-            elif col_lower in ('лимит', 'макс', 'max_count', 'кол-во'):
-                col_map['max_count'] = col
-            elif 'загр' in col_lower:
-                col_map['occupancy'] = col
+            elif col_lower in ('лимит_1', 'лимит 1', 'лимит1', '≥85%', '85 и более', 'лимит_85'):
+                col_map['limit_1'] = col
+            elif col_lower in ('лимит_2', 'лимит 2', 'лимит2', '70–85', '70-85', 'лимит_70_85'):
+                col_map['limit_2'] = col
+            elif col_lower in ('лимит_3', 'лимит 3', 'лимит3', '<70', 'менее 70', 'лимит_<70'):
+                col_map['limit_3'] = col
         
-        required = ['podrazdelenie', 'dolzhnost', 'month', 'year', 'max_count']
+        required = ['podrazdelenie', 'dolzhnost', 'limit_1', 'limit_2', 'limit_3']
         missing = [r for r in required if r not in col_map]
         if missing:
             return jsonify({'error': f'Не найдены колонки: {", ".join(missing)}'}), 400
@@ -2449,16 +2627,18 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
                     skipped += 1
                     continue
                 
-                month = int(float(row[col_map['month']]))
-                year = int(float(row[col_map['year']]))
-                max_count = int(float(row[col_map['max_count']]))
-                occupancy = str(row[col_map.get('occupancy', '')]).strip() if col_map.get('occupancy') and pd.notna(row.get(col_map['occupancy'])) else None
+                limit_1 = int(float(row[col_map['limit_1']]))
+                limit_2 = int(float(row[col_map['limit_2']]))
+                limit_3 = int(float(row[col_map['limit_3']]))
                 
                 cursor.execute('''
-                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, year, month, max_count, occupancy_hint)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE max_count=VALUES(max_count), occupancy_hint=VALUES(occupancy_hint)
-                ''', (podrazdelenie, dolzhnost, year, month, max_count, occupancy))
+                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE 
+                        limit_1=VALUES(limit_1), 
+                        limit_2=VALUES(limit_2), 
+                        limit_3=VALUES(limit_3)
+                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3))
                 inserted += 1
                 
                 # Отправляем прогресс каждые 50 записей
@@ -2498,7 +2678,7 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
 @app.route('/api/headcount/violations')
 @login_required
 def api_headcount_violations():
-    """Возвращает нарушения штатного расписания за период."""
+    """Возвращает нарушения штатного расписания за период с динамическими лимитами."""
     if not current_user.has_permission('data', 'view'):
         return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
     
@@ -2551,19 +2731,107 @@ def api_headcount_violations():
             conn.close()
             return jsonify({'violations': [], 'total_violations': 0, 'total_excess': 0})
         
-        # 2. Группируем нарушения — всегда по (podrazdelenie, dolzhnost)
-        # Для "Волна": объединяем "Официант" + "Официант (улица)" с суммарным лимитом 30
+        # 2. Загружаем occupancy из БД для всех дат в периоде
+        all_dates = sorted(df_fact['fact_date'].unique())
+        occupancy_cache = {}  # (podrazdelenie, date_str) -> occupancy_percent
+        
+        for date_val in all_dates:
+            date_str = str(date_val)
+            for p in ['Волна', 'Арт_Лайф']:
+                if pod and p != pod:
+                    continue
+                cache_key = (p, date_str)
+                if cache_key not in occupancy_cache:
+                    cursor.execute(
+                        'SELECT occupancy_percent FROM hotel_occupancy WHERE date = %s AND podrazdelenie = %s',
+                        (date_val, p)
+                    )
+                    row = cursor.fetchone()
+                    occupancy_cache[cache_key] = row['occupancy_percent'] if row else None
+        
+        # 3. Загружаем лимиты из БД
+        cursor.execute('SELECT podrazdelenie, dolzhnost, limit_1, limit_2, limit_3 FROM headcount_limits')
+        limits_rows = cursor.fetchall()
+        limits_db = {}  # (podrazdelenie, dolzhnost) -> {limit_1, limit_2, limit_3}
+        for lr in limits_rows:
+            key = (lr['podrazdelenie'], lr['dolzhnost'])
+            limits_db[key] = {
+                'limit_1': int(lr['limit_1']),
+                'limit_2': int(lr['limit_2']),
+                'limit_3': int(lr['limit_3'])
+            }
+        
+        # 4. Определяем группировки должностей
+        # --- Официанты (Волна) ---
         WAITER_POD = "Волна"
         WAITER_DOLS = {"Официант", "Официант (улица)"}
         WAITER_COMBINED_DOL = "Официант"
-        WAITER_COMBINED_LIMIT = 30
+        
+        # --- Повара (Волна) ---
+        CHEF_POD_WAVE = "Волна"
+        CHEF_DOLS_WAVE = {
+            "Повар холодных цех", "Повар горячий цех", "Повар шоу кухни",
+            "Повар а-ля карт", "Повар заготовочного цеха"
+        }
+        CHEF_COMBINED_DOL_WAVE = "Повар"
+        
+        # --- Повара (Арт_Лайф) ---
+        CHEF_POD_ART = "Арт_Лайф"
+        CHEF_DOLS_ART = {"Повар холодный цех", "Повар горячий цех"}
+        CHEF_COMBINED_DOL_ART = "Повар"
+        
+        def get_limit(pod_val, dolzhnost, date_str):
+            """Получаем динамический лимит для должности и даты."""
+            # Сначала проверяем комбинированные должности
+            if pod_val == WAITER_POD and dolzhnost in WAITER_DOLS:
+                pod_val = WAITER_POD
+                dolzhnost = WAITER_COMBINED_DOL
+            elif pod_val == CHEF_POD_WAVE and dolzhnost in CHEF_DOLS_WAVE:
+                pod_val = CHEF_POD_WAVE
+                dolzhnost = CHEF_COMBINED_DOL_WAVE
+            elif pod_val == CHEF_POD_ART and dolzhnost in CHEF_DOLS_ART:
+                pod_val = CHEF_POD_ART
+                dolzhnost = CHEF_COMBINED_DOL_ART
+            
+            key = (pod_val, dolzhnost)
+            if key not in limits_db:
+                return None
+            
+            # Определяем уровень загрузки
+            occ_key = (pod_val, date_str)
+            occupancy = occupancy_cache.get(occ_key)
+            
+            if occupancy is None:
+                # Если нет данных по загрузке — берём средний лимит (limit_2)
+                return limits_db[key]['limit_2']
+            elif occupancy >= 85:
+                return limits_db[key]['limit_1']
+            elif occupancy >= 70:
+                return limits_db[key]['limit_2']
+            else:
+                return limits_db[key]['limit_3']
+        
+        def get_limit_level(pod_val, dolzhnost, date_str):
+            """Возвращает строку уровня загрузки для отображения."""
+            occ_key = (pod_val, date_str)
+            occupancy = occupancy_cache.get(occ_key)
+            if occupancy is None:
+                return 'нет данных'
+            elif occupancy >= 85:
+                return '≥85%'
+            elif occupancy >= 70:
+                return '70-85%'
+            else:
+                return '<70%'
+        
+        # 5. Агрегация по дням для комбинированных должностей
+        waiter_days = {}   # date_str -> {fact_count, total_nachisleno, shift_count, otdels}
+        chef_wave_days = {} # date_str -> {...}
+        chef_art_days = {}  # date_str -> {...}
         
         violations_map = {}
         total_excess = 0
         total_excess_cost = 0
-        
-        # Агрегация официантов по дням (Волна)
-        waiter_days = {}  # date_str -> {fact_count, total_nachisleno, shift_count, otdels}
         
         for _, row in df_fact.iterrows():
             pod_val = row['podrazdelenie']
@@ -2573,19 +2841,19 @@ def api_headcount_violations():
             fact_count = row['fact_count']
             shift_count = row.get('shift_count', 0) or 0
             total_nachisleno = float(row.get('total_nachisleno', 0) or 0)
-            
-            year = fact_date.year
-            month = fact_date.month
             date_str = str(fact_date)
             
-            # --- Комбинированные официанты (Волна) ---
-            if pod_val == WAITER_POD and dolzhnost in WAITER_DOLS:
+            # Определяем, к какой группе относится должность
+            is_waiter = pod_val == WAITER_POD and dolzhnost in WAITER_DOLS
+            is_chef_wave = pod_val == CHEF_POD_WAVE and dolzhnost in CHEF_DOLS_WAVE
+            is_chef_art = pod_val == CHEF_POD_ART and dolzhnost in CHEF_DOLS_ART
+            
+            # --- Агрегируем комбинированные должности по дням ---
+            if is_waiter:
                 if date_str not in waiter_days:
                     waiter_days[date_str] = {
-                        'fact_count': 0,
-                        'total_nachisleno': 0,
-                        'shift_count': 0,
-                        'otdels': set()
+                        'fact_count': 0, 'total_nachisleno': 0,
+                        'shift_count': 0, 'otdels': set()
                     }
                 wd = waiter_days[date_str]
                 wd['fact_count'] += fact_count
@@ -2595,27 +2863,48 @@ def api_headcount_violations():
                     wd['otdels'].add(otdel_val)
                 continue
             
-            # --- Обычные должности ---
-            cursor.execute(
-                'SELECT max_count FROM headcount_limits WHERE podrazdelenie = %s AND dolzhnost = %s AND year = %s AND month = %s',
-                (pod_val, dolzhnost, year, month)
-            )
-            limit_row = cursor.fetchone()
-            
-            if not limit_row:
+            if is_chef_wave:
+                if date_str not in chef_wave_days:
+                    chef_wave_days[date_str] = {
+                        'fact_count': 0, 'total_nachisleno': 0,
+                        'shift_count': 0, 'otdels': set()
+                    }
+                cd = chef_wave_days[date_str]
+                cd['fact_count'] += fact_count
+                cd['total_nachisleno'] += total_nachisleno
+                cd['shift_count'] += shift_count
+                if otdel_val != '—':
+                    cd['otdels'].add(otdel_val)
                 continue
             
-            limit_count = limit_row['max_count']
+            if is_chef_art:
+                if date_str not in chef_art_days:
+                    chef_art_days[date_str] = {
+                        'fact_count': 0, 'total_nachisleno': 0,
+                        'shift_count': 0, 'otdels': set()
+                    }
+                cd = chef_art_days[date_str]
+                cd['fact_count'] += fact_count
+                cd['total_nachisleno'] += total_nachisleno
+                cd['shift_count'] += shift_count
+                if otdel_val != '—':
+                    cd['otdels'].add(otdel_val)
+                continue
+            
+            # --- Обычные должности: проверяем с динамическим лимитом ---
+            limit_count = get_limit(pod_val, dolzhnost, date_str)
+            if limit_count is None:
+                continue
             
             if fact_count > limit_count:
                 excess = fact_count - limit_count
                 total_excess += excess
-                
                 avg_shift_cost = (total_nachisleno / shift_count) if shift_count > 0 else 0
                 excess_cost = avg_shift_cost * excess
                 total_excess_cost += excess_cost
                 
                 key = (pod_val, dolzhnost)
+                limit_level = get_limit_level(pod_val, dolzhnost, date_str)
                 
                 if key not in violations_map:
                     violations_map[key] = {
@@ -2623,6 +2912,7 @@ def api_headcount_violations():
                         'dolzhnost': dolzhnost,
                         'otdels': otdel_val,
                         'limit': limit_count,
+                        'limit_level': limit_level,
                         'max_fact': fact_count,
                         'total_excess': 0,
                         'total_excess_cost': 0,
@@ -2638,6 +2928,7 @@ def api_headcount_violations():
                 v['daily'][date_str] = {
                     'date': date_str,
                     'limit': limit_count,
+                    'limit_level': limit_level,
                     'fact': fact_count,
                     'excess': excess,
                     'excess_cost': round(excess_cost)
@@ -2647,18 +2938,20 @@ def api_headcount_violations():
         if waiter_days:
             for date_str, wd in waiter_days.items():
                 fact_count = wd['fact_count']
-                limit_count = WAITER_COMBINED_LIMIT
+                limit_count = get_limit(WAITER_POD, WAITER_COMBINED_DOL, date_str)
+                if limit_count is None:
+                    continue
                 
                 if fact_count > limit_count:
                     excess = fact_count - limit_count
                     total_excess += excess
-                    
                     avg_shift_cost = (wd['total_nachisleno'] / wd['shift_count']) if wd['shift_count'] > 0 else 0
                     excess_cost = avg_shift_cost * excess
                     total_excess_cost += excess_cost
                     
                     key = (WAITER_POD, WAITER_COMBINED_DOL)
                     otdels_str = ', '.join(sorted(wd['otdels'])) if wd['otdels'] else '—'
+                    limit_level = get_limit_level(WAITER_POD, WAITER_COMBINED_DOL, date_str)
                     
                     if key not in violations_map:
                         violations_map[key] = {
@@ -2666,6 +2959,7 @@ def api_headcount_violations():
                             'dolzhnost': WAITER_COMBINED_DOL,
                             'otdels': otdels_str,
                             'limit': limit_count,
+                            'limit_level': limit_level,
                             'max_fact': fact_count,
                             'total_excess': 0,
                             'total_excess_cost': 0,
@@ -2681,6 +2975,101 @@ def api_headcount_violations():
                     v['daily'][date_str] = {
                         'date': date_str,
                         'limit': limit_count,
+                        'limit_level': limit_level,
+                        'fact': fact_count,
+                        'excess': excess,
+                        'excess_cost': round(excess_cost)
+                    }
+        
+        # --- Обработка комбинированных поваров (Волна) ---
+        if chef_wave_days:
+            for date_str, cd in chef_wave_days.items():
+                fact_count = cd['fact_count']
+                limit_count = get_limit(CHEF_POD_WAVE, CHEF_COMBINED_DOL_WAVE, date_str)
+                if limit_count is None:
+                    continue
+                
+                if fact_count > limit_count:
+                    excess = fact_count - limit_count
+                    total_excess += excess
+                    avg_shift_cost = (cd['total_nachisleno'] / cd['shift_count']) if cd['shift_count'] > 0 else 0
+                    excess_cost = avg_shift_cost * excess
+                    total_excess_cost += excess_cost
+                    
+                    key = (CHEF_POD_WAVE, CHEF_COMBINED_DOL_WAVE)
+                    otdels_str = ', '.join(sorted(cd['otdels'])) if cd['otdels'] else '—'
+                    limit_level = get_limit_level(CHEF_POD_WAVE, CHEF_COMBINED_DOL_WAVE, date_str)
+                    
+                    if key not in violations_map:
+                        violations_map[key] = {
+                            'podrazdelenie': CHEF_POD_WAVE,
+                            'dolzhnost': CHEF_COMBINED_DOL_WAVE,
+                            'otdels': otdels_str,
+                            'limit': limit_count,
+                            'limit_level': limit_level,
+                            'max_fact': fact_count,
+                            'total_excess': 0,
+                            'total_excess_cost': 0,
+                            'daily': {}
+                        }
+                    
+                    v = violations_map[key]
+                    v['total_excess'] += excess
+                    v['total_excess_cost'] += excess_cost
+                    if fact_count > v['max_fact']:
+                        v['max_fact'] = fact_count
+                    
+                    v['daily'][date_str] = {
+                        'date': date_str,
+                        'limit': limit_count,
+                        'limit_level': limit_level,
+                        'fact': fact_count,
+                        'excess': excess,
+                        'excess_cost': round(excess_cost)
+                    }
+        
+        # --- Обработка комбинированных поваров (Арт_Лайф) ---
+        if chef_art_days:
+            for date_str, cd in chef_art_days.items():
+                fact_count = cd['fact_count']
+                limit_count = get_limit(CHEF_POD_ART, CHEF_COMBINED_DOL_ART, date_str)
+                if limit_count is None:
+                    continue
+                
+                if fact_count > limit_count:
+                    excess = fact_count - limit_count
+                    total_excess += excess
+                    avg_shift_cost = (cd['total_nachisleno'] / cd['shift_count']) if cd['shift_count'] > 0 else 0
+                    excess_cost = avg_shift_cost * excess
+                    total_excess_cost += excess_cost
+                    
+                    key = (CHEF_POD_ART, CHEF_COMBINED_DOL_ART)
+                    otdels_str = ', '.join(sorted(cd['otdels'])) if cd['otdels'] else '—'
+                    limit_level = get_limit_level(CHEF_POD_ART, CHEF_COMBINED_DOL_ART, date_str)
+                    
+                    if key not in violations_map:
+                        violations_map[key] = {
+                            'podrazdelenie': CHEF_POD_ART,
+                            'dolzhnost': CHEF_COMBINED_DOL_ART,
+                            'otdels': otdels_str,
+                            'limit': limit_count,
+                            'limit_level': limit_level,
+                            'max_fact': fact_count,
+                            'total_excess': 0,
+                            'total_excess_cost': 0,
+                            'daily': {}
+                        }
+                    
+                    v = violations_map[key]
+                    v['total_excess'] += excess
+                    v['total_excess_cost'] += excess_cost
+                    if fact_count > v['max_fact']:
+                        v['max_fact'] = fact_count
+                    
+                    v['daily'][date_str] = {
+                        'date': date_str,
+                        'limit': limit_count,
+                        'limit_level': limit_level,
                         'fact': fact_count,
                         'excess': excess,
                         'excess_cost': round(excess_cost)
@@ -2695,6 +3084,7 @@ def api_headcount_violations():
                 'otdels': v['otdels'],
                 'dolzhnost': v['dolzhnost'],
                 'limit': v['limit'],
+                'limit_level': v.get('limit_level', ''),
                 'max_fact': v['max_fact'],
                 'excess': v['total_excess'],
                 'excess_cost': round(v['total_excess_cost']),
@@ -2709,7 +3099,6 @@ def api_headcount_violations():
         if group_by == 'otdel':
             grouped = {}
             for v in violations:
-                # otdels может быть "Смена_1, Смена_2" — разбиваем
                 otdel_list = [o.strip() for o in v['otdels'].split(',') if o.strip()]
                 if not otdel_list:
                     otdel_list = ['—']
@@ -2736,7 +3125,6 @@ def api_headcount_violations():
                         grouped[otdel_key]['excess_cost'] += v['excess_cost']
                         grouped[otdel_key]['date_count'] += v['date_count']
             
-            # Сортируем дочерние элементы
             for otdel_key in grouped:
                 grouped[otdel_key]['children'].sort(key=lambda x: x['date_count'], reverse=True)
             
@@ -2745,18 +3133,17 @@ def api_headcount_violations():
         # Записываем нарушения в историю
         if violations:
             for v in violations:
-                # Для двухуровневой структуры (otdel) — пишем историю по детям
                 items = v.get('children', [v]) if not v['daily'] else [v]
                 for item in items:
                     for d in item['daily']:
+                        dt = datetime.strptime(d['date'], '%Y-%m-%d')
                         cursor.execute('''
                             INSERT IGNORE INTO violation_history 
-                            (podrazdelenie, dolzhnost, date, year, month, limit_count, fact_count, excess)
-                            SELECT %s, %s, %s, %s, %s, %s, %s, %s
+                            (podrazdelenie, dolzhnost, date, limit_level, limit_count, fact_count, excess)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
                         ''', (
                             item['podrazdelenie'], item['dolzhnost'], d['date'],
-                            datetime.strptime(d['date'], '%Y-%m-%d').year,
-                            datetime.strptime(d['date'], '%Y-%m-%d').month,
+                            d.get('limit_level', ''),
                             item['limit'], d['fact'], d['excess']
                         ))
             conn.commit()
@@ -2779,23 +3166,23 @@ def api_headcount_violations():
 @app.route('/api/headcount/history')
 @login_required
 def api_headcount_history():
-    """Возвращает историю нарушений за месяц."""
+    """Возвращает историю нарушений за период."""
     if not current_user.has_permission('data', 'view'):
         return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
     
-    year = request.args.get('year', type=int)
-    month = request.args.get('month', type=int)
+    date_from = request.args.get('from')
+    date_to = request.args.get('to')
     pod = request.args.get('pod')
     
-    if not year or not month:
-        return jsonify({'error': 'Укажите год и месяц'}), 400
+    if not date_from or not date_to:
+        return jsonify({'error': 'Укажите from и to (даты)'}), 400
     
     try:
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor(dictionary=True)
         
-        conditions = ["year = %s", "month = %s"]
-        params = [year, month]
+        conditions = ["date >= %s", "date <= %s"]
+        params = [date_from, date_to]
         
         if pod:
             conditions.append("podrazdelenie = %s")
@@ -2816,6 +3203,15 @@ def api_headcount_history():
         
         for h in history:
             h['date'] = str(h['date_formatted'])
+        
+        # Определяем год/месяц из первого элемента
+        if history:
+            first_date = datetime.strptime(history[0]['date'], '%Y-%m-%d')
+            year = first_date.year
+            month = first_date.month
+        else:
+            year = datetime.now().year
+            month = datetime.now().month
         
         return jsonify({
             'year': year,
@@ -2882,7 +3278,7 @@ def api_headcount_limits():
     try:
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor(dictionary=True)
-        cursor.execute('SELECT * FROM headcount_limits ORDER BY year DESC, month DESC, podrazdelenie, dolzhnost')
+        cursor.execute('SELECT * FROM headcount_limits ORDER BY podrazdelenie, dolzhnost')
         limits = cursor.fetchall()
         cursor.close()
         conn.close()
