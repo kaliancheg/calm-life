@@ -2796,36 +2796,51 @@ def api_headcount_violations():
         CHEF_DOLS_WAVE_RAW = ["Повар холодных цех", "Повар горячий цех", "Повар шоу кухни", "Повар а-ля карт", "Повар заготовочного цеха"]
         CHEF_COMBINED_DOL_WAVE = "Повар"
         
-        # --- Повара (Арт_Лайф) ---
+# --- Повара (Арт_Лайф) ---
         CHEF_POD_ART = "Арт_Лайф"
         CHEF_DOLS_ART_RAW = ["Повар холодный цех", "Повар горячий цех"]
         CHEF_COMBINED_DOL_ART = "Повар"
         
         def normalize_dol(dol):
-            """Нормализует название должности: strip + lower для сравнения."""
+            """Нормализует название должности: strip + lower + сжатие пробелов."""
             if dol is None:
                 return ''
-            return dol.strip().lower()
+            return ' '.join(dol.strip().lower().split())
+        
+        def normalize_pod(pod_val):
+            """Нормализует подразделение: strip + lower + сжатие пробелов."""
+            if pod_val is None:
+                return ''
+            return ' '.join(pod_val.strip().lower().split())
+        
+        # Нормализованные ключи для groups
+        WAITER_DOLS_NORM = {normalize_dol(d) for d in WAITER_DOLS_RAW}
+        CHEF_WAVE_DOLS_NORM = {normalize_dol(d) for d in CHEF_DOLS_WAVE_RAW}
+        CHEF_ART_DOLS_NORM = {normalize_dol(d) for d in CHEF_DOLS_ART_RAW}
         
         def is_combined_waiter(pod_val, dolzhnost):
-            return pod_val == WAITER_POD and normalize_dol(dolzhnost) in [normalize_dol(d) for d in WAITER_DOLS_RAW]
+            return normalize_pod(pod_val) == normalize_pod(WAITER_POD) and normalize_dol(dolzhnost) in WAITER_DOLS_NORM
         
         def is_combined_chef_wave(pod_val, dolzhnost):
-            return pod_val == CHEF_POD_WAVE and normalize_dol(dolzhnost) in [normalize_dol(d) for d in CHEF_DOLS_WAVE_RAW]
+            return normalize_pod(pod_val) == normalize_pod(CHEF_POD_WAVE) and normalize_dol(dolzhnost) in CHEF_WAVE_DOLS_NORM
         
         def is_combined_chef_art(pod_val, dolzhnost):
-            return pod_val == CHEF_POD_ART and normalize_dol(dolzhnost) in [normalize_dol(d) for d in CHEF_DOLS_ART_RAW]
+            return normalize_pod(pod_val) == normalize_pod(CHEF_POD_ART) and normalize_dol(dolzhnost) in CHEF_ART_DOLS_NORM
         
         def get_combined_group_limits(limits_db, group_dols, pod_val):
-            """Суммирует лимиты для группы должностей (официанты, повара)."""
+            """Суммирует лимиты для группы должностей (официанты, повара).
+            Поиск в limits_db с нормализацией названий (strip + lower + сжатие пробелов)."""
             result = {'limit_1': 0, 'limit_2': 0, 'limit_3': 0}
             found = False
-            for d in group_dols:
-                key = (pod_val, d)
-                if key in limits_db:
-                    result['limit_1'] += limits_db[key]['limit_1']
-                    result['limit_2'] += limits_db[key]['limit_2']
-                    result['limit_3'] += limits_db[key]['limit_3']
+            pod_norm = normalize_pod(pod_val)
+            # Проходим по всем ключам limits_db и находим совпадения по нормализованным названиям
+            for (db_pod, db_dol), limits in limits_db.items():
+                if normalize_pod(db_pod) != pod_norm:
+                    continue
+                if normalize_dol(db_dol) in {normalize_dol(d) for d in group_dols}:
+                    result['limit_1'] += limits['limit_1']
+                    result['limit_2'] += limits['limit_2']
+                    result['limit_3'] += limits['limit_3']
                     found = True
             return result if found else None
         
@@ -2877,7 +2892,7 @@ def api_headcount_violations():
             else:
                 return (limits['limit_3'], occupancy, '<70%')
         
-        # 5. Агрегация по дням для комбинированных должностей
+# 5. Агрегация по дням для комбинированных должностей
         waiter_days = {}   # date_str -> {fact_count, total_nachisleno, shift_count, otdels}
         chef_wave_days = {} # date_str -> {...}
         chef_art_days = {}  # date_str -> {...}
@@ -2885,6 +2900,10 @@ def api_headcount_violations():
         violations_map = {}
         total_excess = 0
         total_excess_cost = 0
+        
+        # Отладочный лог: уникальные должности/подразделения из фактов и ключи лимитов
+        logger.info(f'HC DEBUG: unique fact pairs: {sorted(set(zip(df_fact["podrazdelenie"].astype(str).str.strip(), df_fact["dolzhnost"].astype(str).str.strip())))[:50]}')
+        logger.info(f'HC DEBUG: limits_db keys: {sorted(limits_db.keys())[:50], len(limits_db)}')
         
         for _, row in df_fact.iterrows():
             pod_val = row['podrazdelenie'].strip() if row['podrazdelenie'] else ''
