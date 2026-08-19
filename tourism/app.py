@@ -2802,16 +2802,20 @@ def api_headcount_violations():
         CHEF_COMBINED_DOL_ART = "Повар"
         
         def normalize_dol(dol):
-            """Нормализует название должности: strip + lower + сжатие пробелов."""
+            """Нормализует название должности: strip + lower + сжатие пробелов.
+            Заменяет неразрывные пробелы (NBSP) и другие спецсимволы на обычные."""
             if dol is None:
                 return ''
-            return ' '.join(dol.strip().lower().split())
+            # Заменяем неразрывные пробелы и прочие пробельные символы Unicode
+            s = str(dol).replace('\u00a0', ' ').replace('\u202f', ' ').replace('\u2009', ' ')
+            return ' '.join(s.strip().lower().split())
         
         def normalize_pod(pod_val):
             """Нормализует подразделение: strip + lower + сжатие пробелов."""
             if pod_val is None:
                 return ''
-            return ' '.join(pod_val.strip().lower().split())
+            s = str(pod_val).replace('\u00a0', ' ').replace('\u202f', ' ').replace('\u2009', ' ')
+            return ' '.join(s.strip().lower().split())
         
         # Нормализованные ключи для groups
         WAITER_DOLS_NORM = {normalize_dol(d) for d in WAITER_DOLS_RAW}
