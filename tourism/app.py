@@ -2764,65 +2764,67 @@ def api_headcount_violations():
         # 4. Определяем группировки должностей
         # --- Официанты (Волна) ---
         WAITER_POD = "Волна"
-        WAITER_DOLS = {"Официант", "Официант (улица)"}
+        WAITER_DOLS_RAW = ["Официант", "Официант (улица)"]
         WAITER_COMBINED_DOL = "Официант"
         
         # --- Повара (Волна) ---
         CHEF_POD_WAVE = "Волна"
-        CHEF_DOLS_WAVE = {
-            "Повар холодных цех", "Повар горячий цех", "Повар шоу кухни",
-            "Повар а-ля карт", "Повар заготовочного цеха"
-        }
+        CHEF_DOLS_WAVE_RAW = ["Повар холодных цех", "Повар горячий цех", "Повар шоу кухни", "Повар а-ля карт", "Повар заготовочного цеха"]
         CHEF_COMBINED_DOL_WAVE = "Повар"
         
         # --- Повара (Арт_Лайф) ---
         CHEF_POD_ART = "Арт_Лайф"
-        CHEF_DOLS_ART = {"Повар холодный цех", "Повар горячий цех"}
+        CHEF_DOLS_ART_RAW = ["Повар холодный цех", "Повар горячий цех"]
         CHEF_COMBINED_DOL_ART = "Повар"
         
-        def get_limit(pod_val, dolzhnost, date_str):
-            """Получаем динамический лимит для должности и даты."""
-            # Сначала проверяем комбинированные должности
-            if pod_val == WAITER_POD and dolzhnost in WAITER_DOLS:
-                pod_val = WAITER_POD
-                dolzhnost = WAITER_COMBINED_DOL
-            elif pod_val == CHEF_POD_WAVE and dolzhnost in CHEF_DOLS_WAVE:
-                pod_val = CHEF_POD_WAVE
-                dolzhnost = CHEF_COMBINED_DOL_WAVE
-            elif pod_val == CHEF_POD_ART and dolzhnost in CHEF_DOLS_ART:
-                pod_val = CHEF_POD_ART
-                dolzhnost = CHEF_COMBINED_DOL_ART
+        def normalize_dol(dol):
+            """Нормализует название должности: strip + lower для сравнения."""
+            if dol is None:
+                return ''
+            return dol.strip().lower()
+        
+        def is_combined_waiter(pod_val, dolzhnost):
+            return pod_val == WAITER_POD and normalize_dol(dolzhnost) in [normalize_dol(d) for d in WAITER_DOLS_RAW]
+        
+        def is_combined_chef_wave(pod_val, dolzhnost):
+            return pod_val == CHEF_POD_WAVE and normalize_dol(dolzhnost) in [normalize_dol(d) for d in CHEF_DOLS_WAVE_RAW]
+        
+        def is_combined_chef_art(pod_val, dolzhnost):
+            return pod_val == CHEF_POD_ART and normalize_dol(dolzhnost) in [normalize_dol(d) for d in CHEF_DOLS_ART_RAW]
+        
+        def get_limit_and_occupancy(pod_val, dolzhnost, date_str):
+            """Возвращает (limit_count, occupancy_value, limit_level) или None если нет лимита."""
+            combined_pod = pod_val
+            combined_dol = dolzhnost
             
-            key = (pod_val, dolzhnost)
+            # Сначала проверяем комбинированные должности
+            if is_combined_waiter(pod_val, dolzhnost):
+                combined_pod = WAITER_POD
+                combined_dol = WAITER_COMBINED_DOL
+            elif is_combined_chef_wave(pod_val, dolzhnost):
+                combined_pod = CHEF_POD_WAVE
+                combined_dol = CHEF_COMBINED_DOL_WAVE
+            elif is_combined_chef_art(pod_val, dolzhnost):
+                combined_pod = CHEF_POD_ART
+                combined_dol = CHEF_COMBINED_DOL_ART
+            
+            key = (combined_pod, combined_dol)
             if key not in limits_db:
                 return None
             
             # Определяем уровень загрузки
-            occ_key = (pod_val, date_str)
+            occ_key = (combined_pod, date_str)
             occupancy = occupancy_cache.get(occ_key)
             
-            if occupancy is None:
+            if occupancy is None or occupancy == 0:
                 # Если нет данных по загрузке — берём средний лимит (limit_2)
-                return limits_db[key]['limit_2']
+                return (limits_db[key]['limit_2'], None, 'нет данных')
             elif occupancy >= 85:
-                return limits_db[key]['limit_1']
+                return (limits_db[key]['limit_1'], occupancy, '≥85%')
             elif occupancy >= 70:
-                return limits_db[key]['limit_2']
+                return (limits_db[key]['limit_2'], occupancy, '70-85%')
             else:
-                return limits_db[key]['limit_3']
-        
-        def get_limit_level(pod_val, dolzhnost, date_str):
-            """Возвращает строку уровня загрузки для отображения."""
-            occ_key = (pod_val, date_str)
-            occupancy = occupancy_cache.get(occ_key)
-            if occupancy is None:
-                return 'нет данных'
-            elif occupancy >= 85:
-                return '≥85%'
-            elif occupancy >= 70:
-                return '70-85%'
-            else:
-                return '<70%'
+                return (limits_db[key]['limit_3'], occupancy, '<70%')
         
         # 5. Агрегация по дням для комбинированных должностей
         waiter_days = {}   # date_str -> {fact_count, total_nachisleno, shift_count, otdels}
@@ -2834,8 +2836,8 @@ def api_headcount_violations():
         total_excess_cost = 0
         
         for _, row in df_fact.iterrows():
-            pod_val = row['podrazdelenie']
-            dolzhnost = row['dolzhnost']
+            pod_val = row['podrazdelenie'].strip() if row['podrazdelenie'] else ''
+            dolzhnost = row['dolzhnost'].strip() if row['dolzhnost'] else ''
             otdel_val = row.get('otdels', '') or '—'
             fact_date = row['fact_date']
             fact_count = row['fact_count']
@@ -2844,9 +2846,9 @@ def api_headcount_violations():
             date_str = str(fact_date)
             
             # Определяем, к какой группе относится должность
-            is_waiter = pod_val == WAITER_POD and dolzhnost in WAITER_DOLS
-            is_chef_wave = pod_val == CHEF_POD_WAVE and dolzhnost in CHEF_DOLS_WAVE
-            is_chef_art = pod_val == CHEF_POD_ART and dolzhnost in CHEF_DOLS_ART
+            is_waiter = is_combined_waiter(pod_val, dolzhnost)
+            is_chef_wave = is_combined_chef_wave(pod_val, dolzhnost)
+            is_chef_art = is_combined_chef_art(pod_val, dolzhnost)
             
             # --- Агрегируем комбинированные должности по дням ---
             if is_waiter:
@@ -2892,9 +2894,11 @@ def api_headcount_violations():
                 continue
             
             # --- Обычные должности: проверяем с динамическим лимитом ---
-            limit_count = get_limit(pod_val, dolzhnost, date_str)
-            if limit_count is None:
+            result = get_limit_and_occupancy(pod_val, dolzhnost, date_str)
+            if result is None:
                 continue
+            
+            limit_count, occupancy_value, limit_level = result
             
             if fact_count > limit_count:
                 excess = fact_count - limit_count
@@ -2904,7 +2908,6 @@ def api_headcount_violations():
                 total_excess_cost += excess_cost
                 
                 key = (pod_val, dolzhnost)
-                limit_level = get_limit_level(pod_val, dolzhnost, date_str)
                 
                 if key not in violations_map:
                     violations_map[key] = {
@@ -2929,6 +2932,7 @@ def api_headcount_violations():
                     'date': date_str,
                     'limit': limit_count,
                     'limit_level': limit_level,
+                    'occupancy': occupancy_value,
                     'fact': fact_count,
                     'excess': excess,
                     'excess_cost': round(excess_cost)
@@ -2938,9 +2942,11 @@ def api_headcount_violations():
         if waiter_days:
             for date_str, wd in waiter_days.items():
                 fact_count = wd['fact_count']
-                limit_count = get_limit(WAITER_POD, WAITER_COMBINED_DOL, date_str)
-                if limit_count is None:
+                result = get_limit_and_occupancy(WAITER_POD, WAITER_COMBINED_DOL, date_str)
+                if result is None:
                     continue
+                
+                limit_count, occupancy_value, limit_level = result
                 
                 if fact_count > limit_count:
                     excess = fact_count - limit_count
@@ -2951,7 +2957,6 @@ def api_headcount_violations():
                     
                     key = (WAITER_POD, WAITER_COMBINED_DOL)
                     otdels_str = ', '.join(sorted(wd['otdels'])) if wd['otdels'] else '—'
-                    limit_level = get_limit_level(WAITER_POD, WAITER_COMBINED_DOL, date_str)
                     
                     if key not in violations_map:
                         violations_map[key] = {
@@ -2976,6 +2981,7 @@ def api_headcount_violations():
                         'date': date_str,
                         'limit': limit_count,
                         'limit_level': limit_level,
+                        'occupancy': occupancy_value,
                         'fact': fact_count,
                         'excess': excess,
                         'excess_cost': round(excess_cost)
@@ -2985,9 +2991,11 @@ def api_headcount_violations():
         if chef_wave_days:
             for date_str, cd in chef_wave_days.items():
                 fact_count = cd['fact_count']
-                limit_count = get_limit(CHEF_POD_WAVE, CHEF_COMBINED_DOL_WAVE, date_str)
-                if limit_count is None:
+                result = get_limit_and_occupancy(CHEF_POD_WAVE, CHEF_COMBINED_DOL_WAVE, date_str)
+                if result is None:
                     continue
+                
+                limit_count, occupancy_value, limit_level = result
                 
                 if fact_count > limit_count:
                     excess = fact_count - limit_count
@@ -2998,7 +3006,6 @@ def api_headcount_violations():
                     
                     key = (CHEF_POD_WAVE, CHEF_COMBINED_DOL_WAVE)
                     otdels_str = ', '.join(sorted(cd['otdels'])) if cd['otdels'] else '—'
-                    limit_level = get_limit_level(CHEF_POD_WAVE, CHEF_COMBINED_DOL_WAVE, date_str)
                     
                     if key not in violations_map:
                         violations_map[key] = {
@@ -3023,6 +3030,7 @@ def api_headcount_violations():
                         'date': date_str,
                         'limit': limit_count,
                         'limit_level': limit_level,
+                        'occupancy': occupancy_value,
                         'fact': fact_count,
                         'excess': excess,
                         'excess_cost': round(excess_cost)
@@ -3032,9 +3040,11 @@ def api_headcount_violations():
         if chef_art_days:
             for date_str, cd in chef_art_days.items():
                 fact_count = cd['fact_count']
-                limit_count = get_limit(CHEF_POD_ART, CHEF_COMBINED_DOL_ART, date_str)
-                if limit_count is None:
+                result = get_limit_and_occupancy(CHEF_POD_ART, CHEF_COMBINED_DOL_ART, date_str)
+                if result is None:
                     continue
+                
+                limit_count, occupancy_value, limit_level = result
                 
                 if fact_count > limit_count:
                     excess = fact_count - limit_count
@@ -3045,7 +3055,6 @@ def api_headcount_violations():
                     
                     key = (CHEF_POD_ART, CHEF_COMBINED_DOL_ART)
                     otdels_str = ', '.join(sorted(cd['otdels'])) if cd['otdels'] else '—'
-                    limit_level = get_limit_level(CHEF_POD_ART, CHEF_COMBINED_DOL_ART, date_str)
                     
                     if key not in violations_map:
                         violations_map[key] = {
@@ -3070,6 +3079,7 @@ def api_headcount_violations():
                         'date': date_str,
                         'limit': limit_count,
                         'limit_level': limit_level,
+                        'occupancy': occupancy_value,
                         'fact': fact_count,
                         'excess': excess,
                         'excess_cost': round(excess_cost)

@@ -2336,7 +2336,7 @@ async function loadHeadcountViolations() {
                                 <span class="hc-toggle">▶</span>
                                 <span class="hc-title"><strong>${child.dolzhnost}</strong></span>
                                 <span class="hc-badge hc-badge-limit">Лимит: ${child.limit}</span>
-                                ${child.limit_level ? `<span class="hc-badge hc-badge-occupancy">📊 ${child.limit_level}</span>` : ''}
+                                ${child.limit_level && child.limit_level !== 'нет данных' ? `<span class="hc-badge hc-badge-occupancy">📊 ${child.limit_level}</span>` : ''}
                                 <span class="hc-badge hc-badge-excess">⚠ +${child.excess}</span>
                                 <span class="hc-badge hc-badge-cost">💰 ${formatMoney(child.excess_cost || 0)}</span>
                                 <span class="hc-badge hc-badge-days">📅 ${child.date_count} дн.</span>
@@ -2359,7 +2359,7 @@ async function loadHeadcountViolations() {
                                             ${child.daily.map(d => `
                                                 <tr class="hc-date-row" data-date="${d.date}" data-pod="${child.podrazdelenie}" data-dolzhnost="${child.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
                                                     <td>${formatDate(d.date)}</td>
-                                                    <td class="occupancy-col">${d.limit_level || '—'}</td>
+                                                    <td class="occupancy-col">${d.occupancy ? d.occupancy + '%' : '—'}</td>
                                                     <td class="limit-col">${d.limit}</td>
                                                     <td>${d.fact}</td>
                                                     <td class="excess-col">+${d.excess}</td>
@@ -2407,7 +2407,7 @@ async function loadHeadcountViolations() {
                         <span class="hc-toggle">▶</span>
                         <span class="hc-title"><strong>${displayName}</strong></span>
                         <span class="hc-badge hc-badge-limit">Лимит: ${v.limit}</span>
-                        ${v.limit_level ? `<span class="hc-badge hc-badge-occupancy">📊 ${v.limit_level}</span>` : ''}
+                        ${v.limit_level && v.limit_level !== 'нет данных' ? `<span class="hc-badge hc-badge-occupancy">📊 ${v.limit_level}</span>` : ''}
                         <span class="hc-badge hc-badge-excess">⚠ +${v.excess}</span>
                         <span class="hc-badge hc-badge-cost">💰 ${formatMoney(v.excess_cost || 0)}</span>
                         <span class="hc-badge hc-badge-days">📅 ${v.date_count} дн.</span>
@@ -2430,7 +2430,7 @@ async function loadHeadcountViolations() {
                                     ${v.daily.map(d => `
                                         <tr class="hc-date-row" data-date="${d.date}" data-pod="${v.podrazdelenie}" data-dolzhnost="${v.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
                                             <td>${formatDate(d.date)}</td>
-                                            <td class="occupancy-col">${d.limit_level || '—'}</td>
+                                            <td class="occupancy-col">${d.occupancy ? d.occupancy + '%' : '—'}</td>
                                             <td class="limit-col">${d.limit}</td>
                                             <td>${d.fact}</td>
                                             <td class="excess-col">+${d.excess}</td>
