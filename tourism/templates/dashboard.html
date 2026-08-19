@@ -2359,7 +2359,7 @@ async function loadHeadcountViolations() {
                                             ${child.daily.map(d => `
                                                 <tr class="hc-date-row" data-date="${d.date}" data-pod="${child.podrazdelenie}" data-dolzhnost="${child.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
                                                     <td>${formatDate(d.date)}</td>
-                                                    <td class="occupancy-col">${d.occupancy ? d.occupancy + '%' : '—'}</td>
+                                                    <td class="occupancy-col">${d.occupancy != null ? d.occupancy + '%' : '—'}</td>
                                                     <td class="limit-col">${d.limit}</td>
                                                     <td>${d.fact}</td>
                                                     <td class="excess-col">+${d.excess}</td>
@@ -2430,7 +2430,7 @@ async function loadHeadcountViolations() {
                                     ${v.daily.map(d => `
                                         <tr class="hc-date-row" data-date="${d.date}" data-pod="${v.podrazdelenie}" data-dolzhnost="${v.dolzhnost}" onclick="toggleHeadcountDateRow(this, event)">
                                             <td>${formatDate(d.date)}</td>
-                                            <td class="occupancy-col">${d.occupancy ? d.occupancy + '%' : '—'}</td>
+                                            <td class="occupancy-col">${d.occupancy != null ? d.occupancy + '%' : '—'}</td>
                                             <td class="limit-col">${d.limit}</td>
                                             <td>${d.fact}</td>
                                             <td class="excess-col">+${d.excess}</td>

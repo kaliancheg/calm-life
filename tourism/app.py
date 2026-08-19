@@ -2809,39 +2809,62 @@ def api_headcount_violations():
         def is_combined_chef_art(pod_val, dolzhnost):
             return pod_val == CHEF_POD_ART and normalize_dol(dolzhnost) in [normalize_dol(d) for d in CHEF_DOLS_ART_RAW]
         
+        def get_combined_group_limits(limits_db, group_dols, pod_val):
+            """Суммирует лимиты для группы должностей (официанты, повара)."""
+            result = {'limit_1': 0, 'limit_2': 0, 'limit_3': 0}
+            found = False
+            for d in group_dols:
+                key = (pod_val, d)
+                if key in limits_db:
+                    result['limit_1'] += limits_db[key]['limit_1']
+                    result['limit_2'] += limits_db[key]['limit_2']
+                    result['limit_3'] += limits_db[key]['limit_3']
+                    found = True
+            return result if found else None
+        
         def get_limit_and_occupancy(pod_val, dolzhnost, date_str):
             """Возвращает (limit_count, occupancy_value, limit_level) или None если нет лимита."""
             combined_pod = pod_val
             combined_dol = dolzhnost
+            group_dols = None
             
-            # Сначала проверяем комбинированные должности
+            # Определяем группу
             if is_combined_waiter(pod_val, dolzhnost):
                 combined_pod = WAITER_POD
                 combined_dol = WAITER_COMBINED_DOL
+                group_dols = WAITER_DOLS_RAW
             elif is_combined_chef_wave(pod_val, dolzhnost):
                 combined_pod = CHEF_POD_WAVE
                 combined_dol = CHEF_COMBINED_DOL_WAVE
+                group_dols = CHEF_DOLS_WAVE_RAW
             elif is_combined_chef_art(pod_val, dolzhnost):
                 combined_pod = CHEF_POD_ART
                 combined_dol = CHEF_COMBINED_DOL_ART
+                group_dols = CHEF_DOLS_ART_RAW
             
-            key = (combined_pod, combined_dol)
-            if key not in limits_db:
+            # Получаем лимиты: для группы суммируем, для обычных — берём напрямую
+            if group_dols:
+                limits = get_combined_group_limits(limits_db, group_dols, combined_pod)
+            else:
+                key = (combined_pod, combined_dol)
+                limits = limits_db.get(key)
+            
+            if limits is None:
                 return None
             
-            # Определяем уровень загрузки
+            # Определяем уровень загрузки (occupancy = 0 — это валидное значение!)
             occ_key = (combined_pod, date_str)
             occupancy = occupancy_cache.get(occ_key)
             
-            if occupancy is None or occupancy == 0:
+            if occupancy is None:
                 # Если нет данных по загрузке — берём средний лимит (limit_2)
-                return (limits_db[key]['limit_2'], None, 'нет данных')
+                return (limits['limit_2'], None, 'нет данных')
             elif occupancy >= 85:
-                return (limits_db[key]['limit_1'], occupancy, '≥85%')
+                return (limits['limit_1'], occupancy, '≥85%')
             elif occupancy >= 70:
-                return (limits_db[key]['limit_2'], occupancy, '70-85%')
+                return (limits['limit_2'], occupancy, '70-85%')
             else:
-                return (limits_db[key]['limit_3'], occupancy, '<70%')
+                return (limits['limit_3'], occupancy, '<70%')
         
         # 5. Агрегация по дням для комбинированных должностей
         waiter_days = {}   # date_str -> {fact_count, total_nachisleno, shift_count, otdels}
