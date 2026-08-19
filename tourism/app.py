@@ -2791,9 +2791,9 @@ def api_headcount_violations():
         WAITER_DOLS_RAW = ["Официант", "Официант (улица)"]
         WAITER_COMBINED_DOL = "Официант"
         
-        # --- Повара (Волна) ---
+# --- Повара (Волна) ---
         CHEF_POD_WAVE = "Волна"
-        CHEF_DOLS_WAVE_RAW = ["Повар холодных цех", "Повар горячий цех", "Повар шоу кухни", "Повар а-ля карт", "Повар заготовочного цеха"]
+        CHEF_DOLS_WAVE_RAW = ["Повар холодный цех", "Повар горячий цех", "Повар шоу кухни", "Повар а-ля карт", "Повар заготовочного цеха"]
         CHEF_COMBINED_DOL_WAVE = "Повар"
         
 # --- Повара (Арт_Лайф) ---
@@ -2933,10 +2933,14 @@ def api_headcount_violations():
                 fact_date = fact_date.date()
             date_str = str(fact_date)
             
-            # Определяем, к какой группе относится должность
+# Определяем, к какой группе относится должность
             is_waiter = is_combined_waiter(pod_val, dolzhnost)
             is_chef_wave = is_combined_chef_wave(pod_val, dolzhnost)
             is_chef_art = is_combined_chef_art(pod_val, dolzhnost)
+            
+            # Отладка группировки: показываем, что определяется для каждой группы
+            if is_waiter or is_chef_wave or is_chef_art:
+                logger.info(f'HC GROUP CHECK: pod={pod_val!r} dol={dolzhnost!r} waiter={is_waiter} chef_wave={is_chef_wave} chef_art={is_chef_art}')
             
             # --- Агрегируем комбинированные должности по дням ---
             if is_waiter:
