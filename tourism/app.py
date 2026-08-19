@@ -1771,7 +1771,7 @@ def _import_headcount_limits(tmp_path, file, sheet_name):
 
 
 def _import_hotel_occupancy(tmp_path, file, sheet_name):
-    """Импорт загрузки отеля по дням"""
+    """Импорт загрузки отеля по дням (инкрементальный: обновляет существующие, добавляет новые)"""
     try:
         df = pd.read_excel(tmp_path, sheet_name=sheet_name)
         
@@ -1796,9 +1796,11 @@ def _import_hotel_occupancy(tmp_path, file, sheet_name):
         
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM hotel_occupancy')
+        
+        # Больше НЕ удаляем старые данные — используем ON DUPLICATE KEY UPDATE
         
         inserted = 0
+        updated = 0
         skipped = 0
         
         for idx, row in df.iterrows():
@@ -1822,7 +1824,12 @@ def _import_hotel_occupancy(tmp_path, file, sheet_name):
                         VALUES (%s, %s, %s)
                         ON DUPLICATE KEY UPDATE occupancy_percent=VALUES(occupancy_percent)
                     ''', (date_val, podrazdelenie, occupancy))
-                    inserted += 1
+                    
+                    # Определяем: вставлено или обновлено
+                    if cursor.rowcount == 1:
+                        inserted += 1
+                    else:
+                        updated += 1
                     
             except Exception:
                 skipped += 1
@@ -1835,14 +1842,16 @@ def _import_hotel_occupancy(tmp_path, file, sheet_name):
         log_action(current_user.id, 'import', 'hotel_occupancy', {
             'filename': file.filename,
             'inserted': inserted,
+            'updated': updated,
             'skipped': skipped
         })
         
         return jsonify({
             'success': True,
             'inserted': inserted,
+            'updated': updated,
             'skipped': skipped,
-            'message': f'Загрузка отеля: загружено {inserted} записей, пропущено {skipped}'
+            'message': f'Загрузка отеля: добавлено {inserted}, обновлено {updated}, пропущено {skipped}'
         })
     
     except Exception as e:
@@ -2364,9 +2373,11 @@ def _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id
         
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM hotel_occupancy')
+        
+        # Больше НЕ удаляем старые данные — используем ON DUPLICATE KEY UPDATE
         
         inserted = 0
+        updated = 0
         skipped = 0
         
         for idx, row in df.iterrows():
@@ -2390,7 +2401,11 @@ def _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id
                         VALUES (%s, %s, %s)
                         ON DUPLICATE KEY UPDATE occupancy_percent=VALUES(occupancy_percent)
                     ''', (date_val, podrazdelenie, occupancy))
-                    inserted += 1
+                    
+                    if cursor.rowcount == 1:
+                        inserted += 1
+                    else:
+                        updated += 1
                 
                 # Обновляем прогресс каждые 50 строк
                 if (idx + 1) % 50 == 0:
@@ -2413,6 +2428,7 @@ def _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id
         log_action(user_id, 'import', 'hotel_occupancy', {
             'filename': file.filename,
             'inserted': inserted,
+            'updated': updated,
             'skipped': skipped
         })
         
@@ -2425,8 +2441,9 @@ def _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id
         return {
             'success': True,
             'inserted': inserted,
+            'updated': updated,
             'skipped': skipped,
-            'message': f'Загрузка отеля: загружено {inserted} записей, пропущено {skipped}'
+            'message': f'Загрузка отеля: добавлено {inserted}, обновлено {updated}, пропущено {skipped}'
         }
     
     except Exception as e:
