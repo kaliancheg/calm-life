@@ -2766,12 +2766,14 @@ def api_headcount_violations():
                     row = cursor.fetchone()
                     occupancy_cache[cache_key] = row['occupancy_percent'] if row else None
         
-        # 3. Загружаем лимиты из БД
+        # 3. Загружаем лимиты из БД (с .strip() для надёжности)
         cursor.execute('SELECT podrazdelenie, dolzhnost, limit_1, limit_2, limit_3 FROM headcount_limits')
         limits_rows = cursor.fetchall()
         limits_db = {}  # (podrazdelenie, dolzhnost) -> {limit_1, limit_2, limit_3}
         for lr in limits_rows:
-            key = (lr['podrazdelenie'], lr['dolzhnost'])
+            pod = lr['podrazdelenie'].strip() if lr['podrazdelenie'] else ''
+            dol = lr['dolzhnost'].strip() if lr['dolzhnost'] else ''
+            key = (pod, dol)
             limits_db[key] = {
                 'limit_1': int(lr['limit_1']),
                 'limit_2': int(lr['limit_2']),
@@ -2855,6 +2857,10 @@ def api_headcount_violations():
             # Определяем уровень загрузки (occupancy = 0 — это валидное значение!)
             occ_key = (combined_pod, date_str)
             occupancy = occupancy_cache.get(occ_key)
+            
+            # Отладочный лог
+            if occupancy is None:
+                logger.info(f'NO OCCUPANCY for {occ_key}, cache keys sample: {list(occupancy_cache.keys())[:5]}')
             
             if occupancy is None:
                 # Если нет данных по загрузке — берём средний лимит (limit_2)
