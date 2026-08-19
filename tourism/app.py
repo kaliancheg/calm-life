@@ -2901,9 +2901,24 @@ def api_headcount_violations():
         total_excess = 0
         total_excess_cost = 0
         
-        # Отладочный лог: уникальные должности/подразделения из фактов и ключи лимитов
+# Отладочный лог: уникальные должности/подразделения из фактов и ключи лимитов
         logger.info(f'HC DEBUG: unique fact pairs: {sorted(set(zip(df_fact["podrazdelenie"].astype(str).str.strip(), df_fact["dolzhnost"].astype(str).str.strip())))[:50]}')
         logger.info(f'HC DEBUG: limits_db keys: {sorted(limits_db.keys())[:50], len(limits_db)}')
+        
+        # Точный лог ТОЛЬКО по групповым должностям (официанты + повара)
+        group_all_norm = {normalize_dol(d) for d in (WAITER_DOLS_RAW + CHEF_DOLS_WAVE_RAW + CHEF_DOLS_ART_RAW)}
+        fact_pairs_group = sorted(set(
+            (str(r['podrazdelenie']).strip(), str(r['dolzhnost']).strip())
+            for _, r in df_fact.iterrows()
+            if normalize_dol(str(r['dolzhnost'])) in group_all_norm
+        ))
+        logger.info(f'HC DEBUG group fact pairs: {fact_pairs_group}')
+        
+        limit_keys_group = sorted(
+            k for k in limits_db.keys()
+            if normalize_dol(k[1]) in group_all_norm
+        )
+        logger.info(f'HC DEBUG group limits keys: {limit_keys_group}')
         
         for _, row in df_fact.iterrows():
             pod_val = row['podrazdelenie'].strip() if row['podrazdelenie'] else ''
