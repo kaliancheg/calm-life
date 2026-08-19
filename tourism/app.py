@@ -2753,7 +2753,12 @@ def api_headcount_violations():
         occupancy_cache = {}  # (podrazdelenie, date_str) -> occupancy_percent
         
         for date_val in all_dates:
-            date_str = str(date_val)
+            # pd.Timestamp нужно конвертировать в datetime.date для MySQL
+            if hasattr(date_val, 'date'):
+                date_obj = date_val.date()
+            else:
+                date_obj = date_val
+            date_str = str(date_obj)
             for p in ['Волна', 'Арт_Лайф']:
                 if pod and p != pod:
                     continue
@@ -2761,10 +2766,10 @@ def api_headcount_violations():
                 if cache_key not in occupancy_cache:
                     cursor.execute(
                         'SELECT occupancy_percent FROM hotel_occupancy WHERE date = %s AND podrazdelenie = %s',
-                        (date_val, p)
+                        (date_obj, p)
                     )
                     row = cursor.fetchone()
-                    occupancy_cache[cache_key] = row['occupancy_percent'] if row else None
+                    occupancy_cache[cache_key] = float(row['occupancy_percent']) if row else None
         
         # 3. Загружаем лимиты из БД (с .strip() для надёжности)
         cursor.execute('SELECT podrazdelenie, dolzhnost, limit_1, limit_2, limit_3 FROM headcount_limits')
@@ -2889,6 +2894,9 @@ def api_headcount_violations():
             fact_count = row['fact_count']
             shift_count = row.get('shift_count', 0) or 0
             total_nachisleno = float(row.get('total_nachisleno', 0) or 0)
+            # Конвертируем pd.Timestamp в datetime.date, чтобы str() давал '2026-07-01'
+            if hasattr(fact_date, 'date'):
+                fact_date = fact_date.date()
             date_str = str(fact_date)
             
             # Определяем, к какой группе относится должность
