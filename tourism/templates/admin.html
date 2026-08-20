@@ -977,68 +977,6 @@ function startProgressPolling() {
     // Запускаем первый запрос
     poll();
 }
-            
-            if (!response.ok) {
-                // Ошибка при получении прогресса
-                console.error('Progress request failed:', response.status, response.statusText);
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            console.log('Progress update:', data);
-            
-            if (data.status === 'completed') {
-                // Задача завершена
-                clearInterval(progressInterval);
-                progressInterval = null;
-                
-                // Очищаем форму
-                const fileInput = document.getElementById('excelFile');
-                fileInput.value = '';
-                document.getElementById('fileNameDisplay').textContent = 'Файл не выбран';
-                
-                // Перезагружаем статистику
-                loadDashboardStats();
-                
-                // Завершаем прогресс-бар
-                completeProgressBar();
-                updateProgress(100, 'Импорт завершён!', data.inserted, data.inserted + (data.skipped || 0));
-                
-                // Показываем модальное окно с результатом
-                setTimeout(() => {
-                    hideProgressBar();
-                    showUploadResultModal('success', data.message, {
-                        inserted: data.inserted,
-                        skipped: data.skipped || 0,
-                        message: data.message
-                    });
-                }, 500);
-                
-            } else if (data.status === 'failed') {
-                // Задача завершилась с ошибкой
-                clearInterval(progressInterval);
-                progressInterval = null;
-                hideProgressBar();
-                showToast(data.error || 'Ошибка импорта', 'error');
-            } else if (data.status === 'running' || data.status === 'processing') {
-                // Задача выполняется
-                updateProgress(
-                    data.percent || 30,
-                    data.status_text || 'Обработка данных...',
-                    data.processed,
-                    data.total
-                );
-            }
-            
-        } catch (error) {
-            console.error('Progress polling error:', error);
-            clearInterval(progressInterval);
-            progressInterval = null;
-            hideProgressBar();
-            showToast('Ошибка проверки прогресса: ' + error.message, 'error');
-        }
-    }, 1000);
-}
 
 function createFormData(file, sheetName) {
     const formData = new FormData();
