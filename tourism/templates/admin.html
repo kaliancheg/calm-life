@@ -874,9 +874,23 @@ async function uploadExcel() {
 }
 
 function startProgressPolling() {
-    // Опрос прогресса каждые 1000мс (1 секунда)
-    progressInterval = setInterval(async () => {
-        if (!currentJobId) return;
+    // Последовательный опрос прогресса: следующий запрос отправляется только после
+    // завершения предыдущего. Это исключает гонку, когда ответы с разными процентами
+    // приходят «вперемешку» и прогресс-бар откатывается назад.
+    // lastPercent = 30 — клиент уже показал «Файл принят» (30%), серверные значения
+    // меньше этого (например, 10% «Чтение файла») не должны откатывать бар.
+    let lastPercent = 30;
+    let stop = false;
+    
+    const applyProgress = (percent, text, processed, total) => {
+        // Никогда не уменьшаем прогресс — только вперёд
+        const safePercent = Math.max(Math.round(percent || 0), lastPercent);
+        lastPercent = safePercent;
+        updateProgress(safePercent, text, processed, total);
+    };
+    
+    const poll = async () => {
+        if (stop || !currentJobId) return;
         
         try {
             const response = await fetch(`/admin/import-progress/${currentJobId}`);
@@ -884,14 +898,85 @@ function startProgressPolling() {
             if (response.status === 503) {
                 // Задача ещё выполняется
                 const data = await response.json();
-                updateProgress(
-                    data.percent || 30,
+                applyProgress(
+                    data.percent,
                     data.status_text || 'Обработка данных...',
                     data.processed,
                     data.total
                 );
-                return;
+            } else if (!response.ok) {
+                // Ошибка при получении прогресса
+                console.error('Progress request failed:', response.status, response.statusText);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            } else {
+                const data = await response.json();
+                console.log('Progress update:', data);
+                
+                if (data.status === 'completed') {
+                    // Задача завершена
+                    stop = true;
+                    progressInterval = null;
+                    
+                    // Очищаем форму
+                    const fileInput = document.getElementById('excelFile');
+                    fileInput.value = '';
+                    document.getElementById('fileNameDisplay').textContent = 'Файл не выбран';
+                    
+                    // Перезагружаем статистику
+                    loadDashboardStats();
+                    
+                    // Завершаем прогресс-бар
+                    completeProgressBar();
+                    updateProgress(100, 'Импорт завершён!', data.inserted, data.inserted + (data.skipped || 0));
+                    
+                    // Показываем модальное окно с результатом
+                    setTimeout(() => {
+                        hideProgressBar();
+                        showUploadResultModal('success', data.message, {
+                            inserted: data.inserted,
+                            skipped: data.skipped || 0,
+                            message: data.message
+                        });
+                    }, 500);
+                    return;
+                }
+                
+                if (data.status === 'failed') {
+                    // Задача завершилась с ошибкой
+                    stop = true;
+                    progressInterval = null;
+                    hideProgressBar();
+                    showToast(data.error || 'Ошибка импорта', 'error');
+                    return;
+                }
+                
+                if (data.status === 'running' || data.status === 'processing') {
+                    // Задача выполняется
+                    applyProgress(
+                        data.percent,
+                        data.status_text || 'Обработка данных...',
+                        data.processed,
+                        data.total
+                    );
+                }
             }
+            
+        } catch (error) {
+            console.error('Progress polling error:', error);
+            stop = true;
+            progressInterval = null;
+            hideProgressBar();
+            showToast('Ошибка проверки прогресса: ' + error.message, 'error');
+            return;
+        }
+        
+        // Планируем следующий запрос через 1 секунду (после ответа предыдущего)
+        progressInterval = setTimeout(poll, 1000);
+    };
+    
+    // Запускаем первый запрос
+    poll();
+}
             
             if (!response.ok) {
                 // Ошибка при получении прогресса

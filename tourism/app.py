@@ -82,6 +82,24 @@ def _load_import_job(job_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def _set_job_progress(job_id: str, percent: int, status_text: str = None,
+                      processed: int = None, total: int = None):
+    """Монотонное обновление прогресса job: процент никогда не уменьшается.
+    Гарантирует последовательное заполнение прогресс-бара без «откатов» назад."""
+    with import_jobs_lock:
+        if job_id not in import_jobs:
+            return
+        old_percent = import_jobs[job_id].get('percent', 0) or 0
+        import_jobs[job_id]['percent'] = max(int(old_percent), int(percent))
+        if status_text is not None:
+            import_jobs[job_id]['status_text'] = status_text
+        if processed is not None:
+            import_jobs[job_id]['processed'] = processed
+        if total is not None:
+            import_jobs[job_id]['total'] = total
+    _save_import_job(job_id)
+
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.session_protection = 'strong'
@@ -2031,9 +2049,7 @@ def _run_import_job(job_id, tmp_path, file, sheet_name, user_id):
     try:
         with import_jobs_lock:
             import_jobs[job_id]['status'] = 'processing'
-            import_jobs[job_id]['percent'] = 10
-            import_jobs[job_id]['status_text'] = 'Чтение файла...'
-        _save_import_job(job_id)
+        _set_job_progress(job_id, 10, 'Чтение файла...')
         
         # Читаем Excel файл
         if sheet_name == 'Штатное_расписание':
@@ -2111,11 +2127,7 @@ def _import_records_threaded(job_id, df, file, sheet_name, user_id):
     
     total_rows = len(df_mapped)
     
-    with import_jobs_lock:
-        if job_id in import_jobs:
-            import_jobs[job_id]['percent'] = 20
-            import_jobs[job_id]['status_text'] = 'Импорт данных...'
-            import_jobs[job_id]['total'] = total_rows
+    _set_job_progress(job_id, 20, 'Импорт данных...', 0, total_rows)
     
     conn = mysql.connector.connect(**MYSQL_CONFIG)
     cursor = conn.cursor()
@@ -2182,12 +2194,7 @@ def _import_records_threaded(job_id, df, file, sheet_name, user_id):
                 
                 # Обновляем прогресс
                 progress = 20 + int(((inserted + skipped) / total_rows) * 70)
-                with import_jobs_lock:
-                    if job_id in import_jobs:
-                        import_jobs[job_id]['percent'] = progress
-                        import_jobs[job_id]['processed'] = inserted
-                        import_jobs[job_id]['status_text'] = f'Обработано {inserted} из {total_rows}'
-                _save_import_job(job_id)
+                _set_job_progress(job_id, progress, f'Обработано {inserted} из {total_rows}', inserted, total_rows)
         
         except Exception:
             skipped += 1
@@ -2222,11 +2229,7 @@ def _import_records_threaded(job_id, df, file, sheet_name, user_id):
         'skipped': skipped
     })
     
-    with import_jobs_lock:
-        if job_id in import_jobs:
-            import_jobs[job_id]['percent'] = 95
-            import_jobs[job_id]['status_text'] = 'Сохранение данных...'
-    _save_import_job(job_id)
+    _set_job_progress(job_id, 95, 'Сохранение данных...')
     
     return {
         'success': True,
@@ -2266,11 +2269,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
         
         total_rows = len(df)
         
-        with import_jobs_lock:
-            if job_id in import_jobs:
-                import_jobs[job_id]['percent'] = 20
-                import_jobs[job_id]['status_text'] = 'Импорт штатного расписания...'
-                import_jobs[job_id]['total'] = total_rows
+        _set_job_progress(job_id, 20, 'Импорт штатного расписания...', 0, total_rows)
         
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
@@ -2305,12 +2304,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
                 # Обновляем прогресс каждые 50 записей
                 if inserted % 50 == 0:
                     progress = 20 + int((inserted / total_rows) * 70)
-                    with import_jobs_lock:
-                        if job_id in import_jobs:
-                            import_jobs[job_id]['percent'] = progress
-                            import_jobs[job_id]['processed'] = inserted
-                            import_jobs[job_id]['status_text'] = f'Обработано {inserted} из {total_rows}'
-                    _save_import_job(job_id)
+                    _set_job_progress(job_id, progress, f'Обработано {inserted} из {total_rows}', inserted, total_rows)
                 
             except Exception:
                 skipped += 1
@@ -2326,11 +2320,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
             'skipped': skipped
         })
         
-        with import_jobs_lock:
-            if job_id in import_jobs:
-                import_jobs[job_id]['percent'] = 95
-                import_jobs[job_id]['status_text'] = 'Сохранение...'
-        _save_import_job(job_id)
+        _set_job_progress(job_id, 95, 'Сохранение...')
         
         return {
             'success': True,
@@ -2365,11 +2355,7 @@ def _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id
         
         total_rows = len(df) * 2  # ~2 подразделения на строку
         
-        with import_jobs_lock:
-            if job_id in import_jobs:
-                import_jobs[job_id]['percent'] = 20
-                import_jobs[job_id]['status_text'] = 'Импорт загрузки отеля...'
-                import_jobs[job_id]['total'] = total_rows
+        _set_job_progress(job_id, 20, 'Импорт загрузки отеля...', 0, total_rows)
         
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
@@ -2410,12 +2396,7 @@ def _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id
                 # Обновляем прогресс каждые 50 строк
                 if (idx + 1) % 50 == 0:
                     progress = 20 + int(((idx + 1) / total_rows) * 70)
-                    with import_jobs_lock:
-                        if job_id in import_jobs:
-                            import_jobs[job_id]['percent'] = progress
-                            import_jobs[job_id]['processed'] = inserted
-                            import_jobs[job_id]['status_text'] = f'Обработано {inserted} из {total_rows}'
-                    _save_import_job(job_id)
+                    _set_job_progress(job_id, progress, f'Обработано {inserted} из {total_rows}', inserted, total_rows)
                     
             except Exception:
                 skipped += 1
@@ -2432,11 +2413,7 @@ def _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id
             'skipped': skipped
         })
         
-        with import_jobs_lock:
-            if job_id in import_jobs:
-                import_jobs[job_id]['percent'] = 95
-                import_jobs[job_id]['status_text'] = 'Сохранение...'
-        _save_import_job(job_id)
+        _set_job_progress(job_id, 95, 'Сохранение...')
         
         return {
             'success': True,
