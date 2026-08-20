@@ -2801,6 +2801,11 @@ def api_headcount_violations():
         CHEF_DOLS_ART_RAW = ["Повар холодный цех", "Повар горячий цех"]
         CHEF_COMBINED_DOL_ART = "Повар"
         
+# --- Горничные (Волна) ---
+        HOUSEKEEPER_POD = "Волна"
+        HOUSEKEEPER_DOLS_RAW = ["Горничная", "Старшая горничная"]
+        HOUSEKEEPER_COMBINED_DOL = "Горничная"
+        
         def normalize_dol(dol):
             """Нормализует название должности: strip + lower + сжатие пробелов.
             Заменяет неразрывные пробелы (NBSP) и другие спецсимволы на обычные."""
@@ -2821,6 +2826,7 @@ def api_headcount_violations():
         WAITER_DOLS_NORM = {normalize_dol(d) for d in WAITER_DOLS_RAW}
         CHEF_WAVE_DOLS_NORM = {normalize_dol(d) for d in CHEF_DOLS_WAVE_RAW}
         CHEF_ART_DOLS_NORM = {normalize_dol(d) for d in CHEF_DOLS_ART_RAW}
+        HOUSEKEEPER_DOLS_NORM = {normalize_dol(d) for d in HOUSEKEEPER_DOLS_RAW}
         
         def is_combined_waiter(pod_val, dolzhnost):
             return normalize_pod(pod_val) == normalize_pod(WAITER_POD) and normalize_dol(dolzhnost) in WAITER_DOLS_NORM
@@ -2830,6 +2836,9 @@ def api_headcount_violations():
         
         def is_combined_chef_art(pod_val, dolzhnost):
             return normalize_pod(pod_val) == normalize_pod(CHEF_POD_ART) and normalize_dol(dolzhnost) in CHEF_ART_DOLS_NORM
+        
+        def is_combined_housekeeper(pod_val, dolzhnost):
+            return normalize_pod(pod_val) == normalize_pod(HOUSEKEEPER_POD) and normalize_dol(dolzhnost) in HOUSEKEEPER_DOLS_NORM
         
         def get_combined_group_limits(limits_db, group_dols, pod_val):
             """Суммирует лимиты для группы должностей (официанты, повара).
@@ -2867,6 +2876,10 @@ def api_headcount_violations():
                 combined_pod = CHEF_POD_ART
                 combined_dol = CHEF_COMBINED_DOL_ART
                 group_dols = CHEF_DOLS_ART_RAW
+            elif is_combined_housekeeper(pod_val, dolzhnost):
+                combined_pod = HOUSEKEEPER_POD
+                combined_dol = HOUSEKEEPER_COMBINED_DOL
+                group_dols = HOUSEKEEPER_DOLS_RAW
             
             # Получаем лимиты: для группы суммируем, для обычных — берём напрямую
             if group_dols:
@@ -2900,6 +2913,7 @@ def api_headcount_violations():
         waiter_days = {}   # date_str -> {fact_count, total_nachisleno, shift_count, otdels}
         chef_wave_days = {} # date_str -> {...}
         chef_art_days = {}  # date_str -> {...}
+        housekeeper_days = {}  # date_str -> {...}
         
         violations_map = {}
         total_excess = 0
@@ -2909,8 +2923,8 @@ def api_headcount_violations():
         logger.info(f'HC DEBUG: unique fact pairs: {sorted(set(zip(df_fact["podrazdelenie"].astype(str).str.strip(), df_fact["dolzhnost"].astype(str).str.strip())))[:50]}')
         logger.info(f'HC DEBUG: limits_db keys: {sorted(limits_db.keys())[:50], len(limits_db)}')
         
-        # Точный лог ТОЛЬКО по групповым должностям (официанты + повара)
-        group_all_norm = {normalize_dol(d) for d in (WAITER_DOLS_RAW + CHEF_DOLS_WAVE_RAW + CHEF_DOLS_ART_RAW)}
+        # Точный лог ТОЛЬКО по групповым должностям (официанты + повара + горничные)
+        group_all_norm = {normalize_dol(d) for d in (WAITER_DOLS_RAW + CHEF_DOLS_WAVE_RAW + CHEF_DOLS_ART_RAW + HOUSEKEEPER_DOLS_RAW)}
         fact_pairs_group = sorted(set(
             (str(r['podrazdelenie']).strip(), str(r['dolzhnost']).strip())
             for _, r in df_fact.iterrows()
@@ -2941,6 +2955,7 @@ def api_headcount_violations():
             is_waiter = is_combined_waiter(pod_val, dolzhnost)
             is_chef_wave = is_combined_chef_wave(pod_val, dolzhnost)
             is_chef_art = is_combined_chef_art(pod_val, dolzhnost)
+            is_housekeeper = is_combined_housekeeper(pod_val, dolzhnost)
             
             # Отладка группировки: показываем проверку для ВСЕХ групповых должностей
             if normalize_dol(dolzhnost) in group_all_norm:
@@ -2987,6 +3002,20 @@ def api_headcount_violations():
                 cd['shift_count'] += shift_count
                 if otdel_val != '—':
                     cd['otdels'].add(otdel_val)
+                continue
+            
+            if is_housekeeper:
+                if date_str not in housekeeper_days:
+                    housekeeper_days[date_str] = {
+                        'fact_count': 0, 'total_nachisleno': 0,
+                        'shift_count': 0, 'otdels': set()
+                    }
+                hd = housekeeper_days[date_str]
+                hd['fact_count'] += fact_count
+                hd['total_nachisleno'] += total_nachisleno
+                hd['shift_count'] += shift_count
+                if otdel_val != '—':
+                    hd['otdels'].add(otdel_val)
                 continue
             
             # --- Обычные должности: проверяем с динамическим лимитом ---
@@ -3156,6 +3185,55 @@ def api_headcount_violations():
                         violations_map[key] = {
                             'podrazdelenie': CHEF_POD_ART,
                             'dolzhnost': CHEF_COMBINED_DOL_ART,
+                            'otdels': otdels_str,
+                            'limit': limit_count,
+                            'limit_level': limit_level,
+                            'max_fact': fact_count,
+                            'total_excess': 0,
+                            'total_excess_cost': 0,
+                            'daily': {}
+                        }
+                    
+                    v = violations_map[key]
+                    v['total_excess'] += excess
+                    v['total_excess_cost'] += excess_cost
+                    if fact_count > v['max_fact']:
+                        v['max_fact'] = fact_count
+                    
+                    v['daily'][date_str] = {
+                        'date': date_str,
+                        'limit': limit_count,
+                        'limit_level': limit_level,
+                        'occupancy': occupancy_value,
+                        'fact': fact_count,
+                        'excess': excess,
+                        'excess_cost': round(excess_cost)
+                    }
+        
+        # --- Обработка комбинированных горничных (Волна) ---
+        if housekeeper_days:
+            for date_str, hd in housekeeper_days.items():
+                fact_count = hd['fact_count']
+                result = get_limit_and_occupancy(HOUSEKEEPER_POD, HOUSEKEEPER_COMBINED_DOL, date_str)
+                if result is None:
+                    continue
+                
+                limit_count, occupancy_value, limit_level = result
+                
+                if fact_count > limit_count:
+                    excess = fact_count - limit_count
+                    total_excess += excess
+                    avg_shift_cost = (hd['total_nachisleno'] / hd['shift_count']) if hd['shift_count'] > 0 else 0
+                    excess_cost = avg_shift_cost * excess
+                    total_excess_cost += excess_cost
+                    
+                    key = (HOUSEKEEPER_POD, HOUSEKEEPER_COMBINED_DOL)
+                    otdels_str = ', '.join(sorted(hd['otdels'])) if hd['otdels'] else '—'
+                    
+                    if key not in violations_map:
+                        violations_map[key] = {
+                            'podrazdelenie': HOUSEKEEPER_POD,
+                            'dolzhnost': HOUSEKEEPER_COMBINED_DOL,
                             'otdels': otdels_str,
                             'limit': limit_count,
                             'limit_level': limit_level,

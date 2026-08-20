@@ -1171,6 +1171,16 @@ function formatDateDisplay(dateStr) {
 }
 
 // ==================== CLEAR: CURRENT MONTH ====================
+// Форматирование даты в YYYY-MM-DD в локальном часовом поясе
+// (toISOString() конвертирует в UTC и может смещать день назад,
+//  например 01.08 00:00 MSK -> 31.07 21:00 UTC)
+function formatLocalDate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
 function clearCurrentMonth() {
     const now = new Date();
     const year = now.getFullYear();
@@ -1181,8 +1191,8 @@ function clearCurrentMonth() {
     // Последний день текущего месяца
     const to = new Date(year, month + 1, 0);
     
-    const fromStr = from.toISOString().split('T')[0];
-    const toStr = to.toISOString().split('T')[0];
+    const fromStr = formatLocalDate(from);
+    const toStr = formatLocalDate(to);
     
     const fromDisplay = formatDateDisplay(fromStr);
     const toDisplay = formatDateDisplay(toStr);
