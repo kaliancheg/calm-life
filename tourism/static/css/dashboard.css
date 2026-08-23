@@ -1571,21 +1571,19 @@ body {
     transform: rotate(90deg);
 }
 
-/* Вложенная строка с должностями — grid animation */
+/* Вложенная строка с должностями — max-height animation (работает с <tr>) */
 .lfl-otdel-children {
-    display: grid;
-    grid-template-rows: 0fr;
-    overflow: hidden;
-    transition: grid-template-rows 0.3s ease;
-}
-
-.lfl-otdel-children.is-open {
-    grid-template-rows: 1fr;
+    display: table-row;
 }
 
 .lfl-otdel-children-inner {
+    max-height: 0;
     overflow: hidden;
-    padding: 0;
+    transition: max-height 0.3s ease;
+}
+
+.lfl-otdel-children.is-open .lfl-otdel-children-inner {
+    max-height: 2000px;
 }
 
 /* Вложенная таблица должностей — чуть меньше padding */
