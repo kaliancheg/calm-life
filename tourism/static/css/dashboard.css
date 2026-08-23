@@ -1595,17 +1595,20 @@ body {
     background: transparent !important;
 }
 
-/* Контейнер для анимации раскрытия — display: block нужен чтобы max-height работал */
+/* Контейнер для анимации раскрытия/сворачивания — grid-template-rows (без задержек в обе стороны) */
 .lfl-otdel-children-inner {
-    display: block;
-    max-height: 0;
+    display: grid;
+    grid-template-rows: 0fr;
     overflow: hidden;
-    transition: max-height 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
-    transition-delay: 0s;
+    transition: grid-template-rows 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.lfl-otdel-children-inner > * {
+    min-height: 0;
 }
 
 .lfl-otdel-children.is-open .lfl-otdel-children-inner {
-    max-height: 1500px;
+    grid-template-rows: 1fr;
 }
 
 /* Вложенная таблица должностей */
