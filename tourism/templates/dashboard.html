@@ -1091,9 +1091,10 @@ function renderLFLDetails() {
                     </div>
                 </td>
             </tr>`,
-            absChange: Math.abs(changePct)
+            absChange: Math.abs(changePct),
+            curMoney: c.money
         };
-    }).sort((a, b) => b.absChange - a.absChange).map(r => r.html).join('');
+    }).sort((a, b) => b.curMoney - a.curMoney).map(r => r.html).join('');
     
     document.querySelector('#lflModalOtdelTable tbody').innerHTML = otdelRows;
     
