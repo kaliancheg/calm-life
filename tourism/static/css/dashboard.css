@@ -1469,6 +1469,21 @@ body {
     color: #ff6b6b;
 }
 
+.lfl-modal-summary-pct {
+    font-size: 0.82em;
+    font-weight: 500;
+    margin-top: 4px;
+    color: #b8b8ff;
+}
+
+.lfl-modal-summary-pct.positive {
+    color: #00cc6a;
+}
+
+.lfl-modal-summary-pct.negative {
+    color: #e05555;
+}
+
 .lfl-modal-section {
     margin-bottom: 25px;
 }

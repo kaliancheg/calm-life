@@ -953,24 +953,34 @@ function renderLFLDetails() {
     const cur = lastLFLData.period_current;
     const prev = lastLFLData.period_previous;
     const change = lastLFLData.change;
+    const delta = lastLFLData.delta;
     
     // Summary cards
     const summaryHtml = `
         <div class="lfl-modal-summary-card">
             <div class="lfl-modal-summary-label">Начислено</div>
-            <div class="lfl-modal-summary-value ${change.money >= 0 ? 'positive' : 'negative'}">
+            <div class="lfl-modal-summary-value ${delta.money >= 0 ? 'positive' : 'negative'}">
+                ${delta.money >= 0 ? '+' : ''}${formatMoney(Math.abs(delta.money)).replace(' ₽', '')}
+            </div>
+            <div class="lfl-modal-summary-pct ${delta.money >= 0 ? 'positive' : 'negative'}">
                 ${change.money >= 0 ? '+' : ''}${change.money.toFixed(1)}%
             </div>
         </div>
         <div class="lfl-modal-summary-card">
             <div class="lfl-modal-summary-label">Сотрудники</div>
-            <div class="lfl-modal-summary-value ${change.employees >= 0 ? 'positive' : 'negative'}">
+            <div class="lfl-modal-summary-value ${delta.employees >= 0 ? 'positive' : 'negative'}">
+                ${delta.employees >= 0 ? '+' : ''}${delta.employees}
+            </div>
+            <div class="lfl-modal-summary-pct ${delta.employees >= 0 ? 'positive' : 'negative'}">
                 ${change.employees >= 0 ? '+' : ''}${change.employees.toFixed(1)}%
             </div>
         </div>
         <div class="lfl-modal-summary-card">
             <div class="lfl-modal-summary-label">Часы</div>
-            <div class="lfl-modal-summary-value ${change.hours >= 0 ? 'positive' : 'negative'}">
+            <div class="lfl-modal-summary-value ${delta.hours >= 0 ? 'positive' : 'negative'}">
+                ${delta.hours >= 0 ? '+' : ''}${Math.round(delta.hours)}
+            </div>
+            <div class="lfl-modal-summary-pct ${delta.hours >= 0 ? 'positive' : 'negative'}">
                 ${change.hours >= 0 ? '+' : ''}${change.hours.toFixed(1)}%
             </div>
         </div>
