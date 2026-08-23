@@ -1546,6 +1546,69 @@ body {
     border-bottom: 2px solid rgba(0, 255, 255, 0.3);
 }
 
+/* =========================================
+   LFL Modal — Expandable Department Rows
+   ========================================= */
+.lfl-otdel-row {
+    transition: background 0.2s ease;
+}
+
+.lfl-otdel-row:hover {
+    background: rgba(0, 255, 255, 0.12);
+}
+
+.lfl-otdel-toggle {
+    display: inline-block;
+    width: 16px;
+    margin-right: 6px;
+    text-align: center;
+    font-size: 0.8em;
+    color: #00ffff;
+    transition: transform 0.2s ease;
+}
+
+.lfl-otdel-row.expanded .lfl-otdel-toggle {
+    transform: rotate(90deg);
+}
+
+/* Вложенная строка с должностями — grid animation */
+.lfl-otdel-children {
+    display: grid;
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    transition: grid-template-rows 0.3s ease;
+}
+
+.lfl-otdel-children.is-open {
+    grid-template-rows: 1fr;
+}
+
+.lfl-otdel-children-inner {
+    overflow: hidden;
+    padding: 0;
+}
+
+/* Вложенная таблица должностей — чуть меньше padding */
+.lfl-modal-table-children {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.lfl-modal-table-children th,
+.lfl-modal-table-children td {
+    padding: 8px 10px;
+    font-size: 0.88em;
+}
+
+.lfl-modal-table-children td:first-child {
+    padding-left: 28px;
+    color: #d0d0ff;
+}
+
+/* Первая ячейка children-строки — без рамки */
+.lfl-otdel-children td:first-child {
+    border-right: none;
+}
+
 /* Charts */
 .charts {
     display: grid;

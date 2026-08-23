@@ -1002,23 +1002,97 @@ function renderLFLDetails() {
         return agg;
     };
     
+    // Aggregate by otdel + dolzhnost (для вложенных строк)
+    const aggByOtdelDolzhnost = (data) => {
+        const agg = {};
+        data.forEach(r => {
+            const key = r.otdel + '|' + r.dolzhnost;
+            if (!agg[key]) agg[key] = { otdel: r.otdel, dolzhnost: r.dolzhnost, money: 0, hours: 0, employees: new Set() };
+            agg[key].money += r.itogo;
+            agg[key].hours += r.chasy;
+            agg[key].employees.add(r.fio);
+        });
+        return agg;
+    };
+    
     const curOtdel = aggByOtdel(curData);
     const prevOtdel = aggByOtdel(prevData);
     const allOtdels = new Set([...Object.keys(curOtdel), ...Object.keys(prevOtdel)]);
     
-    // Build otdel table sorted by absolute change
+    // Build position-level maps
+    const curDolzhnost = aggByOtdelDolzhnost(curData);
+    const prevDolzhnost = aggByOtdelDolzhnost(prevData);
+    
+    // Store position-level data for each otdel (для раскрытия)
+    const otdelDolzhnostData = {};
+    const allDolzhnostKeys = new Set([
+        ...Object.keys(curDolzhnost),
+        ...Object.keys(prevDolzhnost)
+    ]);
+    
+    allDolzhnostKeys.forEach(key => {
+        const parts = key.split('|');
+        const otdel = parts[0];
+        const c = curDolzhnost[key] || { otdel: otdel, dolzhnost: prevDolzhnost[key]?.dolzhnost || '—', money: 0, hours: 0, employees: new Set() };
+        const p = prevDolzhnost[key] || { otdel: otdel, dolzhnost: curDolzhnost[key]?.dolzhnost || '—', money: 0, hours: 0, employees: new Set() };
+        const changePct = p.money > 0 ? ((c.money - p.money) / p.money * 100) : (c.money > 0 ? 100 : 0);
+        const sign = changePct > 0 ? '▲' : changePct < 0 ? '▼' : '—';
+        const colorClass = changePct > 0 ? 'positive' : changePct < 0 ? 'negative' : '';
+        if (!otdelDolzhnostData[otdel]) otdelDolzhnostData[otdel] = [];
+        otdelDolzhnostData[otdel].push({
+            dolzhnost: c.dolzhnost,
+            curMoney: c.money,
+            prevMoney: p.money,
+            changePct: changePct,
+            sign: sign,
+            colorClass: colorClass,
+            hours: c.hours
+        });
+    });
+    
+    // Sort positions within each otdel by absolute change
+    Object.keys(otdelDolzhnostData).forEach(otdel => {
+        otdelDolzhnostData[otdel].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
+    });
+    
+    // Build otdel table sorted by absolute change (с возможностью раскрытия)
     const otdelRows = Array.from(allOtdels).map(otdel => {
         const c = curOtdel[otdel] || { money: 0, hours: 0, employees: new Set() };
         const p = prevOtdel[otdel] || { money: 0, hours: 0, employees: new Set() };
         const changePct = p.money > 0 ? ((c.money - p.money) / p.money * 100) : (c.money > 0 ? 100 : 0);
         const sign = changePct > 0 ? '▲' : changePct < 0 ? '▼' : '—';
         const colorClass = changePct > 0 ? 'positive' : changePct < 0 ? 'negative' : '';
-        return { html: `<tr>
-            <td>${otdel}</td>
-            <td>${formatMoney(c.money)}</td>
-            <td>${formatMoney(p.money)}</td>
-            <td class="${colorClass}">${changePct > 0 ? '+' : ''}${changePct.toFixed(1)}% ${sign}</td>
-        </tr>`, absChange: Math.abs(changePct) };
+        const positions = otdelDolzhnostData[otdel] || [];
+        const hasPositions = positions.length > 0;
+        return {
+            html: `<tr class="lfl-otdel-row" data-otdel="${otdel}" onclick="toggleLFLDetailRow(this)" style="cursor:pointer;">
+                <td><span class="lfl-otdel-toggle">▶</span> ${otdel}</td>
+                <td>${formatMoney(c.money)}</td>
+                <td>${formatMoney(p.money)}</td>
+                <td class="${colorClass}">${changePct > 0 ? '+' : ''}${changePct.toFixed(1)}% ${sign}</td>
+            </tr>
+            <tr class="lfl-otdel-children" data-otdel="${otdel}" style="display:none;">
+                <td colspan="4">
+                    <div class="lfl-otdel-children-inner">
+                        <table class="lfl-modal-table lfl-modal-table-children">
+                            <thead>
+                                <tr><th>Должность</th><th>Часы</th><th>Текущий</th><th>Предыдущий</th><th>Изменение</th></tr>
+                            </thead>
+                            <tbody>
+                                ${positions.map(pos => `<tr>
+                                    <td>${pos.dolzhnost}</td>
+                                    <td>${Math.round(pos.hours)}</td>
+                                    <td>${formatMoney(pos.curMoney)}</td>
+                                    <td>${formatMoney(pos.prevMoney)}</td>
+                                    <td class="${pos.colorClass}">${pos.changePct > 0 ? '+' : ''}${pos.changePct.toFixed(1)}% ${pos.sign}</td>
+                                </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </td>
+            </tr>`,
+            absChange: Math.abs(changePct)
+        };
     }).sort((a, b) => b.absChange - a.absChange).map(r => r.html).join('');
     
     document.querySelector('#lflModalOtdelTable tbody').innerHTML = otdelRows;
@@ -1067,6 +1141,22 @@ function renderLFLDetails() {
     }).sort((a, b) => b.absChange - a.absChange).slice(0, 20).map(r => r.html).join('');
     
     document.querySelector('#lflModalEmpTable tbody').innerHTML = empRows;
+}
+
+// Раскрытие/сворачивание строк отделов в LFL модалке
+function toggleLFLDetailRow(row) {
+    const otdel = row.dataset.otdel;
+    if (!otdel) return;
+    
+    // Переключаем состояние строки отдела
+    row.classList.toggle('expanded');
+    
+    // Находим вложенную строку с должностями
+    const childrenRow = document.querySelector(`.lfl-otdel-children[data-otdel="${otdel}"]`);
+    if (childrenRow) {
+        const shouldOpen = !childrenRow.classList.contains('is-open');
+        childrenRow.classList.toggle('is-open', shouldOpen);
+    }
 }
 
 // ==================== EMPLOYEE DETAIL MODAL ====================
