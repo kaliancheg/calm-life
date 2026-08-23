@@ -1550,7 +1550,7 @@ body {
    LFL Modal — Expandable Department Rows
    ========================================= */
 .lfl-otdel-row {
-    transition: background 0.2s ease;
+    transition: background 0.25s ease;
 }
 
 .lfl-otdel-row:hover {
@@ -1564,7 +1564,7 @@ body {
     text-align: center;
     font-size: 0.8em;
     color: #00ffff;
-    transition: transform 0.2s ease;
+    transition: transform 0.3s ease;
 }
 
 .lfl-otdel-row.expanded .lfl-otdel-toggle {
@@ -1574,27 +1574,43 @@ body {
 /* Вложенная строка с должностями — max-height animation (работает с <tr>) */
 .lfl-otdel-children {
     display: table-row;
+    border-bottom: none;
 }
 
 .lfl-otdel-children-inner {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .lfl-otdel-children.is-open .lfl-otdel-children-inner {
     max-height: 2000px;
 }
 
-/* Вложенная таблица должностей — чуть меньше padding */
+/* Вложенная таблица должностей — без border между строками, своя подсветка */
 .lfl-modal-table-children {
     background: rgba(0, 0, 0, 0.15);
+    border: none;
+}
+
+.lfl-modal-table-children thead tr {
+    border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.lfl-modal-table-children tbody tr {
+    border-bottom: none;
+    transition: background 0.25s ease;
+}
+
+.lfl-modal-table-children tbody tr:hover {
+    background: rgba(0, 255, 255, 0.06);
 }
 
 .lfl-modal-table-children th,
 .lfl-modal-table-children td {
     padding: 8px 10px;
     font-size: 0.88em;
+    border: none;
 }
 
 .lfl-modal-table-children td:first-child {
@@ -1605,6 +1621,11 @@ body {
 /* Первая ячейка children-строки — без рамки */
 .lfl-otdel-children td:first-child {
     border-right: none;
+}
+
+/* Отключаем общий hover таблицы для вложенной таблицы */
+.lfl-modal-table-children tr:hover {
+    background: transparent;
 }
 
 /* Charts */
