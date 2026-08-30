@@ -1086,16 +1086,21 @@ function renderLFLDetails() {
                     <div class="lfl-otdel-children-inner">
                         <table class="lfl-modal-table lfl-modal-table-children">
                             <thead>
-                                <tr><th>Должность</th><th>Часы</th><th>Текущий</th><th>Предыдущий</th><th>Изменение</th></tr>
+                                <tr><th>Должность</th><th>Часы</th><th>Текущий</th><th>Предыдущий</th><th>Разница</th><th>Изменение</th></tr>
                             </thead>
                             <tbody>
-                                ${positions.map(pos => `<tr>
-                                    <td>${pos.dolzhnost}</td>
-                                    <td>${Math.round(pos.hours)}</td>
-                                    <td>${formatMoney(pos.curMoney)}</td>
-                                    <td>${formatMoney(pos.prevMoney)}</td>
-                                    <td class="${pos.colorClass}">${pos.changePct > 0 ? '+' : ''}${pos.changePct.toFixed(1)}% ${pos.sign}</td>
-                                </tr>`).join('')}
+                                ${positions.map(pos => {
+                                    const diff = pos.curMoney - pos.prevMoney;
+                                    const diffClass = diff > 0 ? 'positive' : diff < 0 ? 'negative' : '';
+                                    return `<tr>
+                                        <td>${pos.dolzhnost}</td>
+                                        <td>${Math.round(pos.hours)}</td>
+                                        <td>${formatMoney(pos.curMoney)}</td>
+                                        <td>${formatMoney(pos.prevMoney)}</td>
+                                        <td class="${diffClass}">${diff > 0 ? '+' : ''}${formatMoney(diff).replace(' ₽', '')}</td>
+                                        <td class="${pos.colorClass}">${pos.changePct > 0 ? '+' : ''}${pos.changePct.toFixed(1)}% ${pos.sign}</td>
+                                    </tr>`;
+                                }).join('')}
                             </tbody>
                         </table>
                     </div>
