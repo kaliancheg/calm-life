@@ -1711,7 +1711,7 @@ def _import_headcount_limits(tmp_path, file, sheet_name):
         if df.empty:
             return jsonify({'error': 'Лист "Штатное_расписание" пустой'}), 400
         
-        # Маппинг колонок (динамические лимиты)
+        # Маппинг колонок (динамические лимиты — 3 уровня)
         col_map = {}
         for col in df.columns:
             col_lower = str(col).lower().strip()
@@ -1719,16 +1719,14 @@ def _import_headcount_limits(tmp_path, file, sheet_name):
                 col_map['podrazdelenie'] = col
             elif 'должность' in col_lower:
                 col_map['dolzhnost'] = col
-            elif col_lower in ('лимит_1', 'лимит 1', 'лимит1', '≥85%', '85 и более', 'лимит_85'):
+            elif col_lower in ('лимит_1', 'лимит 1', 'лимит1', '≥70%', '70 и более', 'лимит_70'):
                 col_map['limit_1'] = col
-            elif col_lower in ('лимит_2', 'лимит 2', 'лимит2', '70–85', '70-85', 'лимит_70_85'):
+            elif col_lower in ('лимит_2', 'лимит 2', 'лимит2', '50–69', '50-69', 'лимит_50_69'):
                 col_map['limit_2'] = col
-            elif col_lower in ('лимит_3', 'лимит 3', 'лимит3', '65–70', '65-70', 'менее 70', 'лимит_<70'):
+            elif col_lower in ('лимит_3', 'лимит 3', 'лимит3', '<50', 'менее 50', 'лимит_<50'):
                 col_map['limit_3'] = col
-            elif col_lower in ('лимит_4', 'лимит 4', 'лимит4', '<65', 'менее 65', 'лимит_<65'):
-                col_map['limit_4'] = col
         
-        required = ['podrazdelenie', 'dolzhnost', 'limit_1', 'limit_2', 'limit_3', 'limit_4']
+        required = ['podrazdelenie', 'dolzhnost', 'limit_1', 'limit_2', 'limit_3']
         missing = [r for r in required if r not in col_map]
         if missing:
             return jsonify({'error': f'Не найдены колонки: {", ".join(missing)}'}), 400
@@ -1753,17 +1751,15 @@ def _import_headcount_limits(tmp_path, file, sheet_name):
                 limit_1 = int(float(row[col_map['limit_1']]))
                 limit_2 = int(float(row[col_map['limit_2']]))
                 limit_3 = int(float(row[col_map['limit_3']]))
-                limit_4 = int(float(row[col_map['limit_4']]))
                 
                 cursor.execute('''
-                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3, limit_4)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         limit_1=VALUES(limit_1), 
                         limit_2=VALUES(limit_2), 
-                        limit_3=VALUES(limit_3),
-                        limit_4=VALUES(limit_4)
-                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3, limit_4))
+                        limit_3=VALUES(limit_3)
+                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3))
                 inserted += 1
                 
             except Exception:
@@ -2251,7 +2247,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
         if df.empty:
             return {'error': 'Лист "Штатное_расписание" пустой'}, 400
         
-        # Маппинг колонок (динамические лимиты)
+        # Маппинг колонок (динамические лимиты — 3 уровня)
         col_map = {}
         for col in df.columns:
             col_lower = str(col).lower().strip()
@@ -2259,16 +2255,14 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
                 col_map['podrazdelenie'] = col
             elif 'должность' in col_lower:
                 col_map['dolzhnost'] = col
-            elif col_lower in ('лимит_1', 'лимит 1', 'лимит1', '≥85%', '85 и более', 'лимит_85'):
+            elif col_lower in ('лимит_1', 'лимит 1', 'лимит1', '≥70%', '70 и более', 'лимит_70'):
                 col_map['limit_1'] = col
-            elif col_lower in ('лимит_2', 'лимит 2', 'лимит2', '70–85', '70-85', 'лимит_70_85'):
+            elif col_lower in ('лимит_2', 'лимит 2', 'лимит2', '50–69', '50-69', 'лимит_50_69'):
                 col_map['limit_2'] = col
-            elif col_lower in ('лимит_3', 'лимит 3', 'лимит3', '65–70', '65-70', 'менее 70', 'лимит_<70'):
+            elif col_lower in ('лимит_3', 'лимит 3', 'лимит3', '<50', 'менее 50', 'лимит_<50'):
                 col_map['limit_3'] = col
-            elif col_lower in ('лимит_4', 'лимит 4', 'лимит4', '<65', 'менее 65', 'лимит_<65'):
-                col_map['limit_4'] = col
         
-        required = ['podrazdelenie', 'dolzhnost', 'limit_1', 'limit_2', 'limit_3', 'limit_4']
+        required = ['podrazdelenie', 'dolzhnost', 'limit_1', 'limit_2', 'limit_3']
         missing = [r for r in required if r not in col_map]
         if missing:
             return {'error': f'Не найдены колонки: {", ".join(missing)}'}, 400
@@ -2296,17 +2290,15 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
                 limit_1 = int(float(row[col_map['limit_1']]))
                 limit_2 = int(float(row[col_map['limit_2']]))
                 limit_3 = int(float(row[col_map['limit_3']]))
-                limit_4 = int(float(row[col_map['limit_4']]))
                 
                 cursor.execute('''
-                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3, limit_4)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         limit_1=VALUES(limit_1), 
                         limit_2=VALUES(limit_2), 
-                        limit_3=VALUES(limit_3),
-                        limit_4=VALUES(limit_4)
-                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3, limit_4))
+                        limit_3=VALUES(limit_3)
+                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3))
                 inserted += 1
                 
                 # Обновляем прогресс каждые 50 записей
@@ -2590,7 +2582,7 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
         if df.empty:
             return jsonify({'error': 'Лист "Штатное_расписание" пустой'}), 400
         
-        # Маппинг колонок (динамические лимиты)
+        # Маппинг колонок (динамические лимиты — 3 уровня)
         col_map = {}
         for col in df.columns:
             col_lower = str(col).lower().strip()
@@ -2598,16 +2590,14 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
                 col_map['podrazdelenie'] = col
             elif 'должность' in col_lower:
                 col_map['dolzhnost'] = col
-            elif col_lower in ('лимит_1', 'лимит 1', 'лимит1', '≥85%', '85 и более', 'лимит_85'):
+            elif col_lower in ('лимит_1', 'лимит 1', 'лимит1', '≥70%', '70 и более', 'лимит_70'):
                 col_map['limit_1'] = col
-            elif col_lower in ('лимит_2', 'лимит 2', 'лимит2', '70–85', '70-85', 'лимит_70_85'):
+            elif col_lower in ('лимит_2', 'лимит 2', 'лимит2', '50–69', '50-69', 'лимит_50_69'):
                 col_map['limit_2'] = col
-            elif col_lower in ('лимит_3', 'лимит 3', 'лимит3', '65–70', '65-70', 'менее 70', 'лимит_<70'):
+            elif col_lower in ('лимит_3', 'лимит 3', 'лимит3', '<50', 'менее 50', 'лимит_<50'):
                 col_map['limit_3'] = col
-            elif col_lower in ('лимит_4', 'лимит 4', 'лимит4', '<65', 'менее 65', 'лимит_<65'):
-                col_map['limit_4'] = col
         
-        required = ['podrazdelenie', 'dolzhnost', 'limit_1', 'limit_2', 'limit_3', 'limit_4']
+        required = ['podrazdelenie', 'dolzhnost', 'limit_1', 'limit_2', 'limit_3']
         missing = [r for r in required if r not in col_map]
         if missing:
             return jsonify({'error': f'Не найдены колонки: {", ".join(missing)}'}), 400
@@ -2634,17 +2624,15 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
                 limit_1 = int(float(row[col_map['limit_1']]))
                 limit_2 = int(float(row[col_map['limit_2']]))
                 limit_3 = int(float(row[col_map['limit_3']]))
-                limit_4 = int(float(row[col_map['limit_4']]))
                 
                 cursor.execute('''
-                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3, limit_4)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         limit_1=VALUES(limit_1), 
                         limit_2=VALUES(limit_2), 
-                        limit_3=VALUES(limit_3),
-                        limit_4=VALUES(limit_4)
-                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3, limit_4))
+                        limit_3=VALUES(limit_3)
+                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3))
                 inserted += 1
                 
                 # Отправляем прогресс каждые 50 записей
@@ -2761,9 +2749,9 @@ def api_headcount_violations():
                     occupancy_cache[cache_key] = float(row['occupancy_percent']) if row else None
         
         # 3. Загружаем лимиты из БД (с .strip() для надёжности)
-        cursor.execute('SELECT podrazdelenie, dolzhnost, limit_1, limit_2, limit_3, limit_4 FROM headcount_limits')
+        cursor.execute('SELECT podrazdelenie, dolzhnost, limit_1, limit_2, limit_3 FROM headcount_limits')
         limits_rows = cursor.fetchall()
-        limits_db = {}  # (podrazdelenie, dolzhnost) -> {limit_1, limit_2, limit_3, limit_4}
+        limits_db = {}  # (podrazdelenie, dolzhnost) -> {limit_1, limit_2, limit_3}
         for lr in limits_rows:
             pod = lr['podrazdelenie'].strip() if lr['podrazdelenie'] else ''
             dol = lr['dolzhnost'].strip() if lr['dolzhnost'] else ''
@@ -2771,8 +2759,7 @@ def api_headcount_violations():
             limits_db[key] = {
                 'limit_1': int(lr['limit_1']),
                 'limit_2': int(lr['limit_2']),
-                'limit_3': int(lr['limit_3']),
-                'limit_4': int(lr['limit_4'])
+                'limit_3': int(lr['limit_3'])
             }
         
         # 4. Определяем группировки должностей
@@ -2833,7 +2820,7 @@ def api_headcount_violations():
         def get_combined_group_limits(limits_db, group_dols, pod_val):
             """Суммирует лимиты для группы должностей (официанты, повара).
             Поиск в limits_db с нормализацией названий (strip + lower + сжатие пробелов)."""
-            result = {'limit_1': 0, 'limit_2': 0, 'limit_3': 0, 'limit_4': 0}
+            result = {'limit_1': 0, 'limit_2': 0, 'limit_3': 0}
             found = False
             pod_norm = normalize_pod(pod_val)
             # Проходим по всем ключам limits_db и находим совпадения по нормализованным названиям
@@ -2844,7 +2831,6 @@ def api_headcount_violations():
                     result['limit_1'] += limits['limit_1']
                     result['limit_2'] += limits['limit_2']
                     result['limit_3'] += limits['limit_3']
-                    result['limit_4'] += limits['limit_4']
                     found = True
             return result if found else None
         
@@ -2893,14 +2879,12 @@ def api_headcount_violations():
             if occupancy is None:
                 # Если нет данных по загрузке — берём средний лимит (limit_2)
                 return (limits['limit_2'], None, 'нет данных')
-            elif occupancy >= 85:
-                return (limits['limit_1'], occupancy, '≥85%')
             elif occupancy >= 70:
-                return (limits['limit_2'], occupancy, '70-85%')
-            elif occupancy >= 65:
-                return (limits['limit_3'], occupancy, '65-70%')
+                return (limits['limit_1'], occupancy, '≥70%')
+            elif occupancy >= 50:
+                return (limits['limit_2'], occupancy, '50-69%')
             else:
-                return (limits['limit_4'], occupancy, '<65%')
+                return (limits['limit_3'], occupancy, '<50%')
         
 # 5. Агрегация по дням для комбинированных должностей
         waiter_days = {}   # date_str -> {fact_count, total_nachisleno, shift_count, otdels}
