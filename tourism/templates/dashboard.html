@@ -2650,7 +2650,7 @@ async function toggleHeadcountDateRow(row, event) {
         } else {
             listEl.innerHTML = '<strong style="color:#00ffff;">Сотрудники (' + employees.length + '):</strong>' +
                 '<div style="margin-top:6px;">' +
-                employees.map(e => '<span class="hc-employee-tag">' + e.fio + ' ' + (e.status_field ? (e.status_field === 'Уволен' ? '🔴' : '🟢') : '') + '</span>').join('') +
+                employees.map(e => '<span class="hc-employee-tag">' + e.fio + '</span>').join('') +
                 '</div>';
         }
         
