@@ -2458,7 +2458,6 @@ async function loadHeadcountViolations() {
                                                 <th>Факт</th>
                                                 <th>Превышение</th>
                                                 <th>Стоимость</th>
-                                                <th class="hc-divider"></th>
                                                 <th>Max. лимит</th>
                                                 <th>Превышение max</th>
                                                 <th></th>
@@ -2473,7 +2472,6 @@ async function loadHeadcountViolations() {
                                                     <td>${d.fact}</td>
                                                     <td class="excess-col">+${d.excess}</td>
                                                     <td class="cost-col">${formatMoney(d.excess_cost || 0)}</td>
-                                                    <td class="hc-divider"></td>
                                                     <td>${d.max_limit != null ? d.max_limit : '—'}</td>
                                                     <td class="excess-col">${d.excess_max > 0 ? '+' + d.excess_max : '—'}</td>
                                                     <td class="hc-expand-cell">▶</td>
@@ -2535,7 +2533,6 @@ async function loadHeadcountViolations() {
                                         <th>Факт</th>
                                         <th>Превышение</th>
                                         <th>Стоимость</th>
-                                        <th class="hc-divider"></th>
                                         <th>Max. лимит</th>
                                         <th>Превышение max</th>
                                         <th></th>
@@ -2550,7 +2547,6 @@ async function loadHeadcountViolations() {
                                             <td>${d.fact}</td>
                                             <td class="excess-col">+${d.excess}</td>
                                             <td class="cost-col">${formatMoney(d.excess_cost || 0)}</td>
-                                            <td class="hc-divider"></td>
                                             <td>${d.max_limit != null ? d.max_limit : '—'}</td>
                                             <td class="excess-col">${d.excess_max > 0 ? '+' + d.excess_max : '—'}</td>
                                             <td class="hc-expand-cell">▶</td>
@@ -2623,7 +2619,7 @@ async function toggleHeadcountDateRow(row, event) {
     // Создаём строку СО свёрнутым grid-контейнером (без is-open)
     const loadingRow = document.createElement('tr');
     loadingRow.classList.add('hc-employees-row');
-    loadingRow.innerHTML = '<td colspan="9"><div class="hc-employees-wrap"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</div></div></div></td>';
+    loadingRow.innerHTML = '<td colspan="8"><div class="hc-employees-wrap"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</div></div></div></td>';
     row.parentNode.insertBefore(loadingRow, row.nextSibling);
     
     // Меняем стрелку на индикатор загрузки

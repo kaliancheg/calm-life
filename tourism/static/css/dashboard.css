@@ -2584,14 +2584,13 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 
 .hc-table th:nth-child(1) { width: 12%; }
 .hc-table th:nth-child(2) { width: 10%; }
-.hc-table th:nth-child(3) { width: 8%; }
+.hc-table th:nth-child(3) { width: 10%; }
 .hc-table th:nth-child(4) { width: 8%; }
 .hc-table th:nth-child(5) { width: 10%; }
 .hc-table th:nth-child(6) { width: 12%; }
-.hc-table th:nth-child(7) { width: 1%; }
-.hc-table th:nth-child(8) { width: 8%; }
-.hc-table th:nth-child(9) { width: 10%; }
-.hc-table th:nth-child(10) { width: 30px; }
+.hc-table th:nth-child(7) { width: 10%; }
+.hc-table th:nth-child(8) { width: 10%; }
+.hc-table th:nth-child(9) { width: 30px; }
 
 .hc-table td {
     padding: 7px 12px;
@@ -2600,7 +2599,8 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     color: #e8e8ff;
 }
 
-.hc-table tr:last-child td {
+.hc-table tr:last-child td,
+.hc-employees-row td {
     border-bottom: none;
 }
 
@@ -2626,18 +2626,6 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     white-space: nowrap;
 }
 
-/* Вертикальный разделитель между секциями таблицы */
-.hc-table th.hc-divider,
-.hc-table td.hc-divider {
-    border-left: 2px solid rgba(255, 107, 107, 0.25);
-    padding: 0 8px !important;
-    min-width: 8px;
-}
-
-.hc-table th.hc-divider {
-    background: rgba(255, 107, 107, 0.25) !important;
-}
-
 /* Кликабельные строки дат */
 .hc-date-row {
     cursor: pointer;
@@ -2654,11 +2642,12 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     text-align: center;
 }
 
-/* Раскрытая строка с сотрудниками */
+/* Раскрытая строка с сотрудниками — фон как в таблице, без видимых границ */
 .hc-employees-row td {
-    background: rgba(0, 0, 0, 0.25) !important;
+    background: transparent !important;
     padding: 0 !important;
-    border-bottom: none !important;
+    border: none !important;
+    background-color: transparent !important;
 }
 
 .hc-employees-wrap {
