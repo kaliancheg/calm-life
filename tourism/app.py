@@ -2835,7 +2835,7 @@ def api_headcount_violations():
             return result if found else None
         
         def get_limit_and_occupancy(pod_val, dolzhnost, date_str):
-            """Возвращает (limit_count, occupancy_value, limit_level) или None если нет лимита."""
+            """Возвращает (limit_count, occupancy_value, limit_level, max_limit) или None если нет лимита."""
             combined_pod = pod_val
             combined_dol = dolzhnost
             group_dols = None
@@ -2868,6 +2868,9 @@ def api_headcount_violations():
             if limits is None:
                 return None
             
+            # Max limit — это limit_1 (лимит при загрузке ≥70%, максимальный допустимый штат)
+            max_limit = limits['limit_1']
+            
             # Определяем уровень загрузки (occupancy = 0 — это валидное значение!)
             occ_key = (combined_pod, date_str)
             occupancy = occupancy_cache.get(occ_key)
@@ -2878,13 +2881,13 @@ def api_headcount_violations():
             
             if occupancy is None:
                 # Если нет данных по загрузке — берём средний лимит (limit_2)
-                return (limits['limit_2'], None, 'нет данных')
+                return (limits['limit_2'], None, 'нет данных', max_limit)
             elif occupancy >= 70:
-                return (limits['limit_1'], occupancy, '≥70%')
+                return (limits['limit_1'], occupancy, '≥70%', max_limit)
             elif occupancy >= 50:
-                return (limits['limit_2'], occupancy, '50-69%')
+                return (limits['limit_2'], occupancy, '50-69%', max_limit)
             else:
-                return (limits['limit_3'], occupancy, '<50%')
+                return (limits['limit_3'], occupancy, '<50%', max_limit)
         
 # 5. Агрегация по дням для комбинированных должностей
         waiter_days = {}   # date_str -> {fact_count, total_nachisleno, shift_count, otdels}
@@ -3000,7 +3003,7 @@ def api_headcount_violations():
             if result is None:
                 continue
             
-            limit_count, occupancy_value, limit_level = result
+            limit_count, occupancy_value, limit_level, max_limit = result
             
             if fact_count > limit_count:
                 excess = fact_count - limit_count
@@ -3030,6 +3033,8 @@ def api_headcount_violations():
                 if fact_count > v['max_fact']:
                     v['max_fact'] = fact_count
                 
+                excess_max = max(0, fact_count - max_limit)
+                
                 v['daily'][date_str] = {
                     'date': date_str,
                     'limit': limit_count,
@@ -3037,7 +3042,9 @@ def api_headcount_violations():
                     'occupancy': occupancy_value,
                     'fact': fact_count,
                     'excess': excess,
-                    'excess_cost': round(excess_cost)
+                    'excess_cost': round(excess_cost),
+                    'max_limit': max_limit,
+                    'excess_max': excess_max
                 }
         
         # --- Обработка комбинированных официантов ---
@@ -3048,7 +3055,7 @@ def api_headcount_violations():
                 if result is None:
                     continue
                 
-                limit_count, occupancy_value, limit_level = result
+                limit_count, occupancy_value, limit_level, max_limit = result
                 
                 if fact_count > limit_count:
                     excess = fact_count - limit_count
@@ -3079,6 +3086,8 @@ def api_headcount_violations():
                     if fact_count > v['max_fact']:
                         v['max_fact'] = fact_count
                     
+                    excess_max = max(0, fact_count - max_limit)
+                    
                     v['daily'][date_str] = {
                         'date': date_str,
                         'limit': limit_count,
@@ -3086,7 +3095,9 @@ def api_headcount_violations():
                         'occupancy': occupancy_value,
                         'fact': fact_count,
                         'excess': excess,
-                        'excess_cost': round(excess_cost)
+                        'excess_cost': round(excess_cost),
+                        'max_limit': max_limit,
+                        'excess_max': excess_max
                     }
         
         # --- Обработка комбинированных поваров (Волна) ---
@@ -3097,7 +3108,7 @@ def api_headcount_violations():
                 if result is None:
                     continue
                 
-                limit_count, occupancy_value, limit_level = result
+                limit_count, occupancy_value, limit_level, max_limit = result
                 
                 if fact_count > limit_count:
                     excess = fact_count - limit_count
@@ -3128,6 +3139,8 @@ def api_headcount_violations():
                     if fact_count > v['max_fact']:
                         v['max_fact'] = fact_count
                     
+                    excess_max = max(0, fact_count - max_limit)
+                    
                     v['daily'][date_str] = {
                         'date': date_str,
                         'limit': limit_count,
@@ -3135,7 +3148,9 @@ def api_headcount_violations():
                         'occupancy': occupancy_value,
                         'fact': fact_count,
                         'excess': excess,
-                        'excess_cost': round(excess_cost)
+                        'excess_cost': round(excess_cost),
+                        'max_limit': max_limit,
+                        'excess_max': excess_max
                     }
         
         # --- Обработка комбинированных поваров (Арт_Лайф) ---
@@ -3146,7 +3161,7 @@ def api_headcount_violations():
                 if result is None:
                     continue
                 
-                limit_count, occupancy_value, limit_level = result
+                limit_count, occupancy_value, limit_level, max_limit = result
                 
                 if fact_count > limit_count:
                     excess = fact_count - limit_count
@@ -3177,6 +3192,8 @@ def api_headcount_violations():
                     if fact_count > v['max_fact']:
                         v['max_fact'] = fact_count
                     
+                    excess_max = max(0, fact_count - max_limit)
+                    
                     v['daily'][date_str] = {
                         'date': date_str,
                         'limit': limit_count,
@@ -3184,7 +3201,9 @@ def api_headcount_violations():
                         'occupancy': occupancy_value,
                         'fact': fact_count,
                         'excess': excess,
-                        'excess_cost': round(excess_cost)
+                        'excess_cost': round(excess_cost),
+                        'max_limit': max_limit,
+                        'excess_max': excess_max
                     }
         
         # --- Обработка комбинированных горничных (Волна) ---
@@ -3195,7 +3214,7 @@ def api_headcount_violations():
                 if result is None:
                     continue
                 
-                limit_count, occupancy_value, limit_level = result
+                limit_count, occupancy_value, limit_level, max_limit = result
                 
                 if fact_count > limit_count:
                     excess = fact_count - limit_count
@@ -3226,6 +3245,8 @@ def api_headcount_violations():
                     if fact_count > v['max_fact']:
                         v['max_fact'] = fact_count
                     
+                    excess_max = max(0, fact_count - max_limit)
+                    
                     v['daily'][date_str] = {
                         'date': date_str,
                         'limit': limit_count,
@@ -3233,7 +3254,9 @@ def api_headcount_violations():
                         'occupancy': occupancy_value,
                         'fact': fact_count,
                         'excess': excess,
-                        'excess_cost': round(excess_cost)
+                        'excess_cost': round(excess_cost),
+                        'max_limit': max_limit,
+                        'excess_max': excess_max
                     }
         
         # Преобразуем в список

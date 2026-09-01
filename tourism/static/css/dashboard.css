@@ -2616,6 +2616,18 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     white-space: nowrap;
 }
 
+/* Вертикальный разделитель между секциями таблицы */
+.hc-table th.hc-divider,
+.hc-table td.hc-divider {
+    border-left: 2px solid rgba(255, 107, 107, 0.25);
+    padding: 0 8px !important;
+    min-width: 8px;
+}
+
+.hc-table th.hc-divider {
+    background: rgba(255, 107, 107, 0.25) !important;
+}
+
 /* Кликабельные строки дат */
 .hc-date-row {
     cursor: pointer;
