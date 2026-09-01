@@ -2568,6 +2568,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 .hc-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 .hc-table th {
@@ -2577,11 +2578,20 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     padding: 8px 12px;
     text-align: left;
     border-bottom: 1px solid rgba(255, 107, 107, 0.15);
+    vertical-align: middle;
+    white-space: nowrap;
 }
 
-.hc-table th:last-child {
-    width: 30px;
-}
+.hc-table th:nth-child(1) { width: 12%; }
+.hc-table th:nth-child(2) { width: 10%; }
+.hc-table th:nth-child(3) { width: 8%; }
+.hc-table th:nth-child(4) { width: 8%; }
+.hc-table th:nth-child(5) { width: 10%; }
+.hc-table th:nth-child(6) { width: 12%; }
+.hc-table th:nth-child(7) { width: 1%; }
+.hc-table th:nth-child(8) { width: 8%; }
+.hc-table th:nth-child(9) { width: 10%; }
+.hc-table th:nth-child(10) { width: 30px; }
 
 .hc-table td {
     padding: 7px 12px;
@@ -2648,6 +2658,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 .hc-employees-row td {
     background: rgba(0, 0, 0, 0.25) !important;
     padding: 0 !important;
+    border-bottom: none !important;
 }
 
 .hc-employees-wrap {
@@ -2655,6 +2666,7 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     grid-template-rows: 0fr;
     overflow: hidden;
     transition: grid-template-rows 0.3s ease;
+    width: 100%;
 }
 
 .hc-employees-wrap.is-open {
@@ -2663,18 +2675,26 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 
 .hc-employees-wrap-inner {
     overflow: hidden;
+    width: 100%;
+    display: block;
+    padding: 0;
 }
 
 .hc-employees-list {
     padding: 6px 14px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: visible;
 }
 
-/* Сетка сотрудников: 5 колонок на десктопе */
+/* Сетка сотрудников: 5 колонок на десктопе, растягивается на всю ширину */
 .hc-employees-list > div {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 4px 6px;
     margin-top: 6px;
+    width: 100%;
+    min-width: 0;
 }
 
 /* Спиннер загрузки в ячейке раскрытия */

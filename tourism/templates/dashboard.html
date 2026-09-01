@@ -2623,7 +2623,7 @@ async function toggleHeadcountDateRow(row, event) {
     // Создаём строку СО свёрнутым grid-контейнером (без is-open)
     const loadingRow = document.createElement('tr');
     loadingRow.classList.add('hc-employees-row');
-    loadingRow.innerHTML = '<td colspan="8"><div class="hc-employees-wrap"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</div></div></div></td>';
+    loadingRow.innerHTML = '<td colspan="9"><div class="hc-employees-wrap"><div class="hc-employees-wrap-inner"><div class="hc-employees-list" style="text-align:center;color:#b8b8ff;padding:10px;">Загрузка сотрудников...</div></div></div></td>';
     row.parentNode.insertBefore(loadingRow, row.nextSibling);
     
     // Меняем стрелку на индикатор загрузки
