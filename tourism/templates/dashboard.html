@@ -221,7 +221,7 @@
                 <div class="lfl-modal-table-wrap">
                     <table class="lfl-modal-table" id="lflModalOtdelTable">
                         <thead>
-                            <tr><th>Отдел</th><th>Текущий</th><th>Предыдущий</th><th>Изменение</th></tr>
+                            <tr><th>Отдел</th><th>Текущий</th><th>Предыдущий</th><th>Разница</th><th>Изменение</th></tr>
                         </thead>
                         <tbody></tbody>
                     </table>
@@ -1069,6 +1069,8 @@ function renderLFLDetails() {
     const otdelRows = Array.from(allOtdels).map(otdel => {
         const c = curOtdel[otdel] || { money: 0, hours: 0, employees: new Set() };
         const p = prevOtdel[otdel] || { money: 0, hours: 0, employees: new Set() };
+        const diff = c.money - p.money;
+        const diffClass = diff > 0 ? 'positive' : diff < 0 ? 'negative' : '';
         const changePct = p.money > 0 ? ((c.money - p.money) / p.money * 100) : (c.money > 0 ? 100 : 0);
         const sign = changePct > 0 ? '▲' : changePct < 0 ? '▼' : '—';
         const colorClass = changePct > 0 ? 'positive' : changePct < 0 ? 'negative' : '';
@@ -1079,10 +1081,11 @@ function renderLFLDetails() {
                 <td><span class="lfl-otdel-toggle">▶</span> ${otdel}</td>
                 <td>${formatMoney(c.money)}</td>
                 <td>${formatMoney(p.money)}</td>
+                <td class="${diffClass}">${diff > 0 ? '+' : ''}${formatMoney(diff).replace(' ₽', '')}</td>
                 <td class="${colorClass}">${changePct > 0 ? '+' : ''}${changePct.toFixed(1)}% ${sign}</td>
             </tr>
             <tr class="lfl-otdel-children" data-otdel="${otdel}">
-                <td colspan="4">
+                <td colspan="5">
                     <div class="lfl-otdel-children-inner">
                         <table class="lfl-modal-table lfl-modal-table-children">
                             <thead>
