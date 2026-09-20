@@ -4,7 +4,8 @@ import multiprocessing
 import os
 
 # Bind to this address - используем Unix socket для лучшей совместимости
-bind = "unix:/tmp/tourism-dashboard.sock"
+# Каталог /run/tourism-dashboard создаётся systemd (RuntimeDirectory) при старте сервиса
+bind = "unix:/run/tourism-dashboard/tourism-dashboard.sock"
 
 # Worker processes
 workers = 2
@@ -19,13 +20,18 @@ max_requests_jitter = 50
 
 # Process naming
 daemon = False
-pidfile = "/tmp/tourism-dashboard.pid"
+pidfile = "/run/tourism-dashboard/tourism-dashboard.pid"
 umask = 0o000
 user = "www-data"
 group = "www-data"
 
 # Рабочая директория для временных файлов Gunicorn
-worker_tmp_dir = "/tmp/tourism-dashboard"
+# Должна существовать всегда: systemd создаёт её через RuntimeDirectory
+worker_tmp_dir = "/run/tourism-dashboard"
+
+# Control-сокет gunicorn 26+ по умолчанию ищет в $XDG_RUNTIME_DIR или $HOME,
+# а у www-data HOME=/var/www недоступен на запись -> ошибка в логе при старте.
+control_socket = "/run/tourism-dashboard/gunicorn.ctl"
 
 # Logging
 errorlog = "/var/log/tourism-dashboard/error.log"

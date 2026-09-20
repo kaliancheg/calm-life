@@ -1,11 +1,18 @@
 [Unit]
 Description=Tourism Dashboard Application
 After=network.target mysql.service
+Wants=mysql.service
 
 [Service]
 Type=notify
 User=www-data
 Group=www-data
+
+# Каталог для unix-сокета, pid и worker_tmp: создаётся systemd при старте,
+# принадлежит www-data. /run не очищается tmpfiles, в отличие от /tmp,
+# поэтому сокет не исчезает ни после перезагрузки, ни по истечении 10 дней.
+RuntimeDirectory=tourism-dashboard
+RuntimeDirectoryMode=0755
 
 # Путь к проекту
 WorkingDirectory=/var/www/calm-life/tourism
