@@ -264,9 +264,9 @@
                 </select>
             </div>
             <div class="form-group" id="headcountPeriodGroup" style="display:none;">
-                <label>Период действия штатного расписания:</label>
+                <label>Дата начала действия штатного расписания:</label>
                 <div style="display:flex; gap:10px;">
-                    <select id="hcPeriodMonth" class="form-control">
+                    <select id="hcPeriodMonth" class="form-control" onchange="updateHeadcountDays()">
                         <option value="1">Январь</option>
                         <option value="2">Февраль</option>
                         <option value="3">Март</option>
@@ -280,10 +280,11 @@
                         <option value="11">Ноябрь</option>
                         <option value="12">Декабрь</option>
                     </select>
+                    <select id="hcPeriodDay" class="form-control"></select>
                     <select id="hcPeriodYear" class="form-control"></select>
                 </div>
                 <small style="color:var(--gray);display:block;margin-top:6px;">
-                    Лимиты действуют с выбранного месяца вперёд, пока не загрузите штатное расписание за более поздний период.
+                    Лимиты действуют с выбранной даты вперёд, пока не загрузите штатное расписание за более позднюю дату.
                 </small>
             </div>
 <!-- Progress Bar -->
@@ -1006,15 +1007,16 @@ function createFormData(file, sheetName) {
     formData.append('file', file);
     formData.append('sheet', sheetName);
     
-    // Период (месяц/год) передаём только для штатного расписания
+    // Дату начала действия (число/месяц/год) передаём только для штатного расписания
     if (sheetName === 'Штатное_расписание') {
+        formData.append('period_day', document.getElementById('hcPeriodDay').value);
         formData.append('period_month', document.getElementById('hcPeriodMonth').value);
         formData.append('period_year', document.getElementById('hcPeriodYear').value);
     }
     return formData;
 }
 
-// Показываем селекторы периода только для листа «Штатное_расписание»
+// Показываем селекторы даты только для листа «Штатное_расписание»
 function updateHeadcountPeriodVisibility() {
     const sheetName = document.getElementById('excelSheet').value;
     const group = document.getElementById('headcountPeriodGroup');
@@ -1022,7 +1024,29 @@ function updateHeadcountPeriodVisibility() {
     group.style.display = (sheetName === 'Штатное_расписание') ? 'block' : 'none';
 }
 
-// Заполняем годы и ставим текущий месяц/год по умолчанию
+// Перестраиваем список чисел месяца под выбранный месяц и год
+function updateHeadcountDays() {
+    const daySelect = document.getElementById('hcPeriodDay');
+    const monthSelect = document.getElementById('hcPeriodMonth');
+    const yearSelect = document.getElementById('hcPeriodYear');
+    if (!daySelect || !monthSelect || !yearSelect) return;
+    
+    const prevDay = parseInt(daySelect.value) || 1;
+    const month = parseInt(monthSelect.value) || 1;
+    const year = parseInt(yearSelect.value) || new Date().getFullYear();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    daySelect.innerHTML = '';
+    for (let day = 1; day <= daysInMonth; day++) {
+        const option = document.createElement('option');
+        option.value = day;
+        option.textContent = day;
+        daySelect.appendChild(option);
+    }
+    daySelect.value = Math.min(prevDay, daysInMonth);
+}
+
+// Заполняем годы/дни и ставим текущую дату по умолчанию
 function initHeadcountPeriodSelectors() {
     const yearSelect = document.getElementById('hcPeriodYear');
     if (!yearSelect) return;
@@ -1037,6 +1061,8 @@ function initHeadcountPeriodSelectors() {
     }
     yearSelect.value = currentYear;
     document.getElementById('hcPeriodMonth').value = now.getMonth() + 1;
+    updateHeadcountDays();
+    document.getElementById('hcPeriodDay').value = now.getDate();
     
     updateHeadcountPeriodVisibility();
 }

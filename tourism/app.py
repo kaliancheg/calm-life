@@ -106,20 +106,27 @@ login_manager.session_protection = 'strong'
 
 
 def _parse_import_period():
-    """Читает период (год/месяц) из формы импорта Excel.
-    Если поля не переданы — берётся текущий месяц. Возвращает (year, month)
-    или (None, None) при некорректных значениях."""
+    """Читает дату начала действия (год/месяц/число) из формы импорта Excel.
+    Если поля не переданы — берётся текущая дата. Возвращает (year, month, day)
+    или (None, None, None) при некорректных значениях."""
     now = datetime.now(SERVER_TIMEZONE)
     year_raw = request.form.get('period_year')
     month_raw = request.form.get('period_month')
+    day_raw = request.form.get('period_day')
     try:
         year = int(year_raw) if year_raw not in (None, '') else now.year
         month = int(month_raw) if month_raw not in (None, '') else now.month
+        day = int(day_raw) if day_raw not in (None, '') else now.day
     except (TypeError, ValueError):
-        return None, None
+        return None, None, None
     if not (1 <= month <= 12) or not (2000 <= year <= 2100):
-        return None, None
-    return year, month
+        return None, None, None
+    # Проверяем, что число существует в указанном месяце
+    try:
+        datetime(year, month, day)
+    except ValueError:
+        return None, None, None
+    return year, month, day
 
 MYSQL_CONFIG = {
     'host': 'localhost', 'port': 3306, 'user': 'tourism', 'password': 'tourism123',
@@ -1720,9 +1727,9 @@ def _import_records(df, file, sheet_name):
     })
 
 
-def _import_headcount_limits(tmp_path, file, sheet_name, period_year, period_month):
-    """Импорт штатного расписания из Excel за указанный период (месяц/год).
-    Заменяет лимиты только этого периода, не трогая лимиты других периодов."""
+def _import_headcount_limits(tmp_path, file, sheet_name, period_year, period_month, period_day):
+    """Импорт штатного расписания из Excel с указанной датой начала действия.
+    Заменяет лимиты только этой даты, не трогая лимиты других периодов."""
     try:
         df = pd.read_excel(tmp_path, sheet_name=sheet_name)
         
@@ -1749,12 +1756,12 @@ def _import_headcount_limits(tmp_path, file, sheet_name, period_year, period_mon
         if missing:
             return jsonify({'error': f'Не найдены колонки: {", ".join(missing)}'}), 400
         
-        # Заменяем лимиты только за указанный период
+        # Заменяем лимиты только за указанную дату
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
         cursor.execute(
-            'DELETE FROM headcount_limits WHERE effective_year=%s AND effective_month=%s',
-            (period_year, period_month)
+            'DELETE FROM headcount_limits WHERE effective_year=%s AND effective_month=%s AND effective_day=%s',
+            (period_year, period_month, period_day)
         )
         
         inserted = 0
@@ -1775,13 +1782,13 @@ def _import_headcount_limits(tmp_path, file, sheet_name, period_year, period_mon
                 
                 cursor.execute('''
                     INSERT INTO headcount_limits 
-                        (podrazdelenie, dolzhnost, effective_year, effective_month, limit_1, limit_2, limit_3)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        (podrazdelenie, dolzhnost, effective_year, effective_month, effective_day, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         limit_1=VALUES(limit_1), 
                         limit_2=VALUES(limit_2), 
                         limit_3=VALUES(limit_3)
-                ''', (podrazdelenie, dolzhnost, period_year, period_month, limit_1, limit_2, limit_3))
+                ''', (podrazdelenie, dolzhnost, period_year, period_month, period_day, limit_1, limit_2, limit_3))
                 inserted += 1
                 
             except Exception:
@@ -1794,7 +1801,7 @@ def _import_headcount_limits(tmp_path, file, sheet_name, period_year, period_mon
         
         log_action(current_user.id, 'import', 'headcount_limits', {
             'filename': file.filename,
-            'period': f'{period_year}-{period_month:02d}',
+            'period': f'{period_year}-{period_month:02d}-{period_day:02d}',
             'inserted': inserted,
             'skipped': skipped
         })
@@ -1803,7 +1810,7 @@ def _import_headcount_limits(tmp_path, file, sheet_name, period_year, period_mon
             'success': True,
             'inserted': inserted,
             'skipped': skipped,
-            'message': f'Штатное расписание за {period_month:02d}.{period_year}: загружено {inserted} лимитов, пропущено {skipped}'
+            'message': f'Штатное расписание с {period_day:02d}.{period_month:02d}.{period_year}: загружено {inserted} лимитов, пропущено {skipped}'
         })
     
     except Exception as e:
@@ -1921,7 +1928,7 @@ def import_excel():
             return jsonify({'error': 'Неверный формат файла. Используйте .xlsx или .xls'}), 400
         
         sheet_name = request.form.get('sheet', 'Архив')
-        period_year, period_month = _parse_import_period()
+        period_year, period_month, period_day = _parse_import_period()
         
         logger.info(f'User {current_user.username} importing Excel file: {file.filename}, sheet: {sheet_name}')
         
@@ -1934,9 +1941,9 @@ def import_excel():
             # Читаем Excel файл
             if sheet_name == 'Штатное_расписание':
                 if period_year is None:
-                    return jsonify({'error': 'Укажите корректный период (месяц и год) для штатного расписания'}), 400
-                # Импорт штатного расписания — динамические лимиты за период
-                result = _import_headcount_limits(tmp_path, file, sheet_name, period_year, period_month)
+                    return jsonify({'error': 'Укажите корректную дату (число, месяц и год) для штатного расписания'}), 400
+                # Импорт штатного расписания — динамические лимиты с датой начала действия
+                result = _import_headcount_limits(tmp_path, file, sheet_name, period_year, period_month, period_day)
             elif sheet_name == 'Загрузка':
                 # Импорт загрузки отеля по дням
                 result = _import_hotel_occupancy(tmp_path, file, sheet_name)
@@ -1982,10 +1989,10 @@ def import_excel_stream():
             return jsonify({'error': 'Неверный формат файла. Используйте .xlsx или .xls'}), 400
         
         sheet_name = request.form.get('sheet', 'Архив')
-        period_year, period_month = _parse_import_period()
+        period_year, period_month, period_day = _parse_import_period()
         
         if sheet_name == 'Штатное_расписание' and period_year is None:
-            return jsonify({'error': 'Укажите корректный период (месяц и год) для штатного расписания'}), 400
+            return jsonify({'error': 'Укажите корректную дату (число, месяц и год) для штатного расписания'}), 400
         
         logger.info(f'User {current_user.username} importing Excel file: {file.filename}, sheet: {sheet_name}')
         
@@ -2013,7 +2020,8 @@ def import_excel_stream():
                 'tmp_path': tmp_path,
                 'sheet_name': sheet_name,
                 'period_year': period_year,
-                'period_month': period_month
+                'period_month': period_month,
+                'period_day': period_day
             }
         _save_import_job(job_id)
         
@@ -2021,7 +2029,7 @@ def import_excel_stream():
         # Запускаем фоновую задачу для импорта
         thread = threading.Thread(
             target=_run_import_job,
-            args=(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month)
+            args=(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month, period_day)
         )
         thread.daemon = True
         thread.start()
@@ -2076,7 +2084,7 @@ def import_progress(job_id):
         }), 503  # 503 означает, что задача ещё выполняется
 
 
-def _run_import_job(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month):
+def _run_import_job(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month, period_day):
     """Фоновая задача импорта с обновлением прогресса"""
     try:
         with import_jobs_lock:
@@ -2085,7 +2093,7 @@ def _run_import_job(job_id, tmp_path, file, sheet_name, user_id, period_year, pe
         
         # Читаем Excel файл
         if sheet_name == 'Штатное_расписание':
-            result = _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month)
+            result = _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month, period_day)
         elif sheet_name == 'Загрузка':
             result = _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id)
         elif sheet_name == 'Реестр':
@@ -2281,8 +2289,8 @@ def _import_records_threaded(job_id, df, file, sheet_name, user_id):
     }
 
 
-def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month):
-    """Потоковая версия импорта штатного расписания за период с обновлением прогресса"""
+def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month, period_day):
+    """Потоковая версия импорта штатного расписания с датой начала действия"""
     try:
         try:
             df = pd.read_excel(tmp_path, sheet_name=sheet_name)
@@ -2319,8 +2327,8 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
         cursor.execute(
-            'DELETE FROM headcount_limits WHERE effective_year=%s AND effective_month=%s',
-            (period_year, period_month)
+            'DELETE FROM headcount_limits WHERE effective_year=%s AND effective_month=%s AND effective_day=%s',
+            (period_year, period_month, period_day)
         )
         
         inserted = 0
@@ -2341,13 +2349,13 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
                 
                 cursor.execute('''
                     INSERT INTO headcount_limits 
-                        (podrazdelenie, dolzhnost, effective_year, effective_month, limit_1, limit_2, limit_3)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        (podrazdelenie, dolzhnost, effective_year, effective_month, effective_day, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         limit_1=VALUES(limit_1), 
                         limit_2=VALUES(limit_2), 
                         limit_3=VALUES(limit_3)
-                ''', (podrazdelenie, dolzhnost, period_year, period_month, limit_1, limit_2, limit_3))
+                ''', (podrazdelenie, dolzhnost, period_year, period_month, period_day, limit_1, limit_2, limit_3))
                 inserted += 1
                 
                 # Обновляем прогресс каждые 50 записей
@@ -2365,7 +2373,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
         
         log_action(user_id, 'import', 'headcount_limits', {
             'filename': file.filename,
-            'period': f'{period_year}-{period_month:02d}',
+            'period': f'{period_year}-{period_month:02d}-{period_day:02d}',
             'inserted': inserted,
             'skipped': skipped
         })
@@ -2376,7 +2384,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
             'success': True,
             'inserted': inserted,
             'skipped': skipped,
-            'message': f'Штатное расписание за {period_month:02d}.{period_year}: загружено {inserted} лимитов, пропущено {skipped}'
+            'message': f'Штатное расписание с {period_day:02d}.{period_month:02d}.{period_year}: загружено {inserted} лимитов, пропущено {skipped}'
         }
     
     except Exception as e:
@@ -2626,8 +2634,8 @@ def _import_records_stream(df, file, sheet_name, progress_callback):
     }
 
 
-def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callback, period_year, period_month):
-    """Потоковая версия импорта штатного расписания за период с отправкой прогресса"""
+def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callback, period_year, period_month, period_day):
+    """Потоковая версия импорта штатного расписания с датой начала действия"""
     try:
         df = pd.read_excel(tmp_path, sheet_name=sheet_name)
         
@@ -2660,8 +2668,8 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
         cursor.execute(
-            'DELETE FROM headcount_limits WHERE effective_year=%s AND effective_month=%s',
-            (period_year, period_month)
+            'DELETE FROM headcount_limits WHERE effective_year=%s AND effective_month=%s AND effective_day=%s',
+            (period_year, period_month, period_day)
         )
         
         inserted = 0
@@ -2682,13 +2690,13 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
                 
                 cursor.execute('''
                     INSERT INTO headcount_limits 
-                        (podrazdelenie, dolzhnost, effective_year, effective_month, limit_1, limit_2, limit_3)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        (podrazdelenie, dolzhnost, effective_year, effective_month, effective_day, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         limit_1=VALUES(limit_1), 
                         limit_2=VALUES(limit_2), 
                         limit_3=VALUES(limit_3)
-                ''', (podrazdelenie, dolzhnost, period_year, period_month, limit_1, limit_2, limit_3))
+                ''', (podrazdelenie, dolzhnost, period_year, period_month, period_day, limit_1, limit_2, limit_3))
                 inserted += 1
                 
                 # Отправляем прогресс каждые 50 записей
@@ -2706,7 +2714,7 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
         
         log_action(current_user.id, 'import', 'headcount_limits', {
             'filename': file.filename,
-            'period': f'{period_year}-{period_month:02d}',
+            'period': f'{period_year}-{period_month:02d}-{period_day:02d}',
             'inserted': inserted,
             'skipped': skipped
         })
@@ -2717,7 +2725,7 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
             'success': True,
             'inserted': inserted,
             'skipped': skipped,
-            'message': f'Штатное расписание за {period_month:02d}.{period_year}: загружено {inserted} лимитов, пропущено {skipped}'
+            'message': f'Штатное расписание с {period_day:02d}.{period_month:02d}.{period_year}: загружено {inserted} лимитов, пропущено {skipped}'
         }
     
     except Exception as e:
@@ -2805,10 +2813,10 @@ def api_headcount_violations():
                     row = cursor.fetchone()
                     occupancy_cache[cache_key] = float(row['occupancy_percent']) if row else None
         
-        # 3. Загружаем лимиты из БД с привязкой к периоду.
-        # limits_periods: (podrazdelenie, dolzhnost) -> список периодов [{year, month, limit_1..3}]
+        # 3. Загружаем лимиты из БД с привязкой к дате начала действия.
+        # limits_periods: (podrazdelenie, dolzhnost) -> список периодов [{year, month, day, limit_1..3}]
         cursor.execute(
-            'SELECT podrazdelenie, dolzhnost, effective_year, effective_month, limit_1, limit_2, limit_3 '
+            'SELECT podrazdelenie, dolzhnost, effective_year, effective_month, effective_day, limit_1, limit_2, limit_3 '
             'FROM headcount_limits'
         )
         limits_rows = cursor.fetchall()
@@ -2820,19 +2828,23 @@ def api_headcount_violations():
             limits_periods.setdefault(key, []).append({
                 'year': int(lr['effective_year']),
                 'month': int(lr['effective_month']),
+                'day': int(lr['effective_day']),
                 'limit_1': int(lr['limit_1']),
                 'limit_2': int(lr['limit_2']),
                 'limit_3': int(lr['limit_3'])
             })
         
         def pick_period_limits(entries, date_obj):
-            """Возвращает лимиты последнего периода ≤ date_obj (лимит действует вперёд)."""
+            """Возвращает лимиты последней даты начала ≤ date_obj (лимит действует вперёд)."""
             if not entries:
                 return None
-            applicable = [e for e in entries if (e['year'], e['month']) <= (date_obj.year, date_obj.month)]
+            applicable = [
+                e for e in entries
+                if (e['year'], e['month'], e['day']) <= (date_obj.year, date_obj.month, date_obj.day)
+            ]
             if not applicable:
                 return None
-            return max(applicable, key=lambda e: (e['year'], e['month']))
+            return max(applicable, key=lambda e: (e['year'], e['month'], e['day']))
         
         # 4. Определяем группировки должностей
         # --- Официанты + Мармитчик (Волна) ---
