@@ -266,6 +266,7 @@
             <div class="form-group" id="headcountPeriodGroup" style="display:none;">
                 <label>Дата начала действия штатного расписания:</label>
                 <div style="display:flex; gap:10px;">
+                    <select id="hcPeriodDay" class="form-control"></select>
                     <select id="hcPeriodMonth" class="form-control" onchange="updateHeadcountDays()">
                         <option value="1">Январь</option>
                         <option value="2">Февраль</option>
@@ -280,7 +281,6 @@
                         <option value="11">Ноябрь</option>
                         <option value="12">Декабрь</option>
                     </select>
-                    <select id="hcPeriodDay" class="form-control"></select>
                     <select id="hcPeriodYear" class="form-control"></select>
                 </div>
                 <small style="color:var(--gray);display:block;margin-top:6px;">
@@ -304,6 +304,29 @@
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="btn btn-primary" id="uploadBtn" onclick="uploadExcel()">📤 Загрузить и импортировать</button>
                 <button class="btn btn-danger" onclick="openClearPeriodModal()">🗑️ Очистка данных за период</button>
+            </div>
+        </div>
+
+        <!-- Loaded Headcount Limit Periods -->
+        <div class="card" style="margin-top:20px;">
+            <div class="card-header">
+                <h2 class="card-title">📋 Загруженные периоды лимитов</h2>
+                <button class="btn btn-secondary" onclick="loadHeadcountLimitPeriods()">🔄 Обновить</button>
+            </div>
+            <div class="table-container">
+                <table id="limitPeriodsTable">
+                    <thead>
+                        <tr>
+                            <th>Дата начала действия</th>
+                            <th>Должностей</th>
+                            <th>Загружено</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="limitPeriodsBody">
+                        <tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -949,6 +972,9 @@ function startProgressPolling() {
                     // Перезагружаем статистику
                     loadDashboardStats();
                     
+                    // Обновляем список загруженных периодов лимитов
+                    loadHeadcountLimitPeriods();
+                    
                     // Завершаем прогресс-бар
                     completeProgressBar();
                     updateProgress(100, 'Импорт завершён!', data.inserted, data.inserted + (data.skipped || 0));
@@ -1065,6 +1091,82 @@ function initHeadcountPeriodSelectors() {
     document.getElementById('hcPeriodDay').value = now.getDate();
     
     updateHeadcountPeriodVisibility();
+}
+
+// ==================== LOADED LIMIT PERIODS ====================
+
+function formatLimitPeriodDate(day, month, year) {
+    return `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}.${year}`;
+}
+
+function formatLimitPeriodTimestamp(isoStr) {
+    if (!isoStr) return '—';
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('ru-RU', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+}
+
+async function loadHeadcountLimitPeriods() {
+    const tbody = document.getElementById('limitPeriodsBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr>';
+    
+    try {
+        const resp = await fetch('/api/headcount/limits/periods');
+        if (!resp.ok) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger);">Ошибка загрузки периодов</td></tr>';
+            return;
+        }
+        const data = await resp.json();
+        const periods = data.periods || [];
+        
+        if (!periods.length) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray);">Нет загруженных периодов</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = periods.map(p => {
+            const dateStr = formatLimitPeriodDate(p.effective_day, p.effective_month, p.effective_year);
+            const loadedAt = formatLimitPeriodTimestamp(p.updated_at);
+            return `<tr>
+                <td><strong>${dateStr}</strong></td>
+                <td>${p.positions}</td>
+                <td>${loadedAt}</td>
+                <td><button class="btn btn-danger" onclick="deleteHeadcountLimitPeriod(${p.effective_year}, ${p.effective_month}, ${p.effective_day}, '${dateStr}')">🗑️ Удалить</button></td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--danger);">Ошибка: ${e.message}</td></tr>`;
+    }
+}
+
+async function deleteHeadcountLimitPeriod(year, month, day, dateStr) {
+    if (!confirm(`Удалить лимиты штатного расписания с датой начала ${dateStr}?\n\nЭто действие нельзя отменить.`)) {
+        return;
+    }
+    
+    try {
+        const resp = await fetch('/admin/headcount/limits/delete-period', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ year: year, month: month, day: day })
+        });
+        const data = await resp.json();
+        
+        if (!resp.ok) {
+            showToast(data.error || 'Ошибка удаления', 'error');
+            return;
+        }
+        
+        showToast(data.message || 'Период удалён', 'success');
+        loadHeadcountLimitPeriods();
+    } catch (e) {
+        showToast('Ошибка: ' + e.message, 'error');
+    }
 }
 
 function formatFileSize(bytes) {
@@ -1485,6 +1587,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Инициализируем селекторы периода штатного расписания
     initHeadcountPeriodSelectors();
+    
+    // Загружаем список загруженных периодов лимитов
+    loadHeadcountLimitPeriods();
     
     // Если пользователь администратор - активировать вкладку "Обзор" по умолчанию
     if (role === 'admin') {

@@ -2093,6 +2093,10 @@ def _run_import_job(job_id, tmp_path, file, sheet_name, user_id, period_year, pe
         
         # Читаем Excel файл
         if sheet_name == 'Штатное_расписание':
+            logger.info(
+                f'Headcount limits import: sheet={sheet_name}, '
+                f'period={period_year}-{period_month:02d}-{period_day:02d}'
+            )
             result = _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month, period_day)
         elif sheet_name == 'Загрузка':
             result = _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id)
@@ -3544,6 +3548,85 @@ def api_headcount_limits():
     
     except Exception as e:
         logger.error(f'API Headcount Limits Error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/headcount/limits/periods')
+@login_required
+def api_headcount_limit_periods():
+    """Возвращает список загруженных дат начала действия лимитов штатного расписания."""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Доступ запрещён'}), 403
+    
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT effective_year, effective_month, effective_day,
+                   COUNT(*) AS positions, MAX(updated_at) AS updated_at
+            FROM headcount_limits
+            GROUP BY effective_year, effective_month, effective_day
+            ORDER BY effective_year DESC, effective_month DESC, effective_day DESC
+        ''')
+        periods = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        for p in periods:
+            if isinstance(p.get('updated_at'), datetime):
+                p['updated_at'] = p['updated_at'].isoformat()
+        
+        return jsonify({'periods': periods})
+    
+    except Exception as e:
+        logger.error(f'API Headcount Limit Periods Error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/headcount/limits/delete-period', methods=['POST'])
+@login_required
+def delete_headcount_limit_period():
+    """Удаляет лимиты штатного расписания за указанную дату начала действия (только админ)."""
+    if current_user.role != 'admin':
+        logger.warning(f'User {current_user.username} tried to delete headcount period without admin role')
+        return jsonify({'error': 'Доступ запрещён. Требуется роль администратора'}), 403
+    
+    try:
+        data = request.get_json() or {}
+        try:
+            year = int(data.get('year'))
+            month = int(data.get('month'))
+            day = int(data.get('day'))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Укажите корректные год, месяц и число'}), 400
+        
+        if not (1 <= month <= 12) or not (2000 <= year <= 2100) or not (1 <= day <= 31):
+            return jsonify({'error': 'Некорректная дата'}), 400
+        
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute(
+            'DELETE FROM headcount_limits WHERE effective_year=%s AND effective_month=%s AND effective_day=%s',
+            (year, month, day)
+        )
+        deleted = cursor.rowcount
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        log_action(current_user.id, 'delete', 'headcount_limits', {
+            'period': f'{year}-{month:02d}-{day:02d}',
+            'deleted': deleted
+        })
+        
+        return jsonify({
+            'success': True,
+            'deleted': deleted,
+            'message': f'Удалено {deleted} лимитов за {day:02d}.{month:02d}.{year}'
+        })
+    
+    except Exception as e:
+        logger.error(f'Error deleting headcount limit period: {e}')
         return jsonify({'error': str(e)}), 500
 
 
