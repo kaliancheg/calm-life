@@ -2095,6 +2095,16 @@ def _run_import_job(job_id, tmp_path, file, sheet_name, user_id, period_year, pe
             df = pd.read_excel(tmp_path, sheet_name=sheet_name)
             result = _import_records_threaded(job_id, df, file, sheet_name, user_id)
         
+        # Функции *_threaded при ошибке возвращают кортеж (dict, http-код),
+        # при успехе — dict. Приводим к dict и пробрасываем реальную ошибку,
+        # иначе она маскируется ошибкой 'tuple indices must be integers or slices, not str'.
+        if isinstance(result, tuple):
+            result = result[0]
+        if not isinstance(result, dict):
+            raise Exception('Неизвестный результат импорта')
+        if result.get('error'):
+            raise Exception(result['error'])
+        
         # Завершаем job
         with import_jobs_lock:
             import_jobs[job_id]['status'] = 'completed'
@@ -2274,7 +2284,10 @@ def _import_records_threaded(job_id, df, file, sheet_name, user_id):
 def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month):
     """Потоковая версия импорта штатного расписания за период с обновлением прогресса"""
     try:
-        df = pd.read_excel(tmp_path, sheet_name=sheet_name)
+        try:
+            df = pd.read_excel(tmp_path, sheet_name=sheet_name)
+        except ValueError:
+            return {'error': f'В файле нет листа «{sheet_name}». Проверьте название листа.'}, 400
         
         if df.empty:
             return {'error': 'Лист "Штатное_расписание" пустой'}, 400
@@ -2368,6 +2381,8 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
     
     except Exception as e:
         logger.error(f'Error importing headcount_limits: {e}')
+        import traceback
+        traceback.print_exc()
         return {'error': str(e)}, 500
 
 
