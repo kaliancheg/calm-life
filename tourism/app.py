@@ -2738,6 +2738,50 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
 
 # ==================== HEADCOUNT VIOLATIONS ====================
 
+def _normalize_headcount_name(value):
+    """Нормализует подразделение/должность: NBSP → пробел, strip, lower, сжатие пробелов."""
+    if value is None:
+        return ''
+    s = str(value).replace('\u00a0', ' ').replace('\u202f', ' ').replace('\u2009', ' ')
+    return ' '.join(s.strip().lower().split())
+
+
+# Групповые объединения должностей для проверки лимитов штатного расписания.
+# combined — отображаемое название группы, positions — реальные должности.
+HEADCOUNT_GROUPS = {
+    'waiter_wave': {
+        'pod': 'Волна', 'combined': 'Официант',
+        'positions': ['Официант', 'Официант (улица)', 'Мармитчик'],
+    },
+    'chef_wave': {
+        'pod': 'Волна', 'combined': 'Повар',
+        'positions': ['Повар холодный цех', 'Повар горячий цех', 'Повар шоу кухни', 'Повар а-ля карт', 'Повар заготовочного цеха'],
+    },
+    'chef_art': {
+        'pod': 'Арт_Лайф', 'combined': 'Повар',
+        'positions': ['Повар холодный цех', 'Повар горячий цех'],
+    },
+    'housekeeper_wave': {
+        'pod': 'Волна', 'combined': 'Горничная',
+        'positions': ['Горничная', 'Старшая горничная'],
+    },
+}
+
+
+def _match_headcount_group(pod_val, dolzhnost):
+    """Возвращает группу для должности (по реальной должности или названию группы) либо None."""
+    pod_norm = _normalize_headcount_name(pod_val)
+    dol_norm = _normalize_headcount_name(dolzhnost)
+    for group in HEADCOUNT_GROUPS.values():
+        if _normalize_headcount_name(group['pod']) != pod_norm:
+            continue
+        names = {_normalize_headcount_name(p) for p in group['positions']}
+        names.add(_normalize_headcount_name(group['combined']))
+        if dol_norm in names:
+            return group
+    return None
+
+
 @app.route('/api/headcount/violations')
 @login_required
 def api_headcount_violations():
@@ -2781,12 +2825,15 @@ def api_headcount_violations():
                    COUNT(DISTINCT fio) AS fact_count,
                    COUNT(*) AS shift_count,
                    SUM(nachisleno) AS total_nachisleno,
+                   GROUP_CONCAT(DISTINCT fio SEPARATOR '||') AS fios,
                    GROUP_CONCAT(DISTINCT otdel SEPARATOR ', ') AS otdels
             FROM records
             {where_clause}
             GROUP BY podrazdelenie, dolzhnost, DATE(data)
         """
         
+        # Увеличиваем лимит GROUP_CONCAT, чтобы список ФИО по должности за день не обрезался
+        cursor.execute('SET SESSION group_concat_max_len = 1000000')
         df_fact = pd.read_sql(fact_q, conn, params=params)
         
         if df_fact.empty:
@@ -2850,42 +2897,25 @@ def api_headcount_violations():
                 return None
             return max(applicable, key=lambda e: (e['year'], e['month'], e['day']))
         
-        # 4. Определяем группировки должностей
-        # --- Официанты + Мармитчик (Волна) ---
-        WAITER_POD = "Волна"
-        WAITER_DOLS_RAW = ["Официант", "Официант (улица)", "Мармитчик"]
-        WAITER_COMBINED_DOL = "Официант"
+        # 4. Определяем группировки должностей (единый источник — HEADCOUNT_GROUPS)
+        WAITER_POD = HEADCOUNT_GROUPS['waiter_wave']['pod']
+        WAITER_DOLS_RAW = HEADCOUNT_GROUPS['waiter_wave']['positions']
+        WAITER_COMBINED_DOL = HEADCOUNT_GROUPS['waiter_wave']['combined']
         
-# --- Повара (Волна) ---
-        CHEF_POD_WAVE = "Волна"
-        CHEF_DOLS_WAVE_RAW = ["Повар холодный цех", "Повар горячий цех", "Повар шоу кухни", "Повар а-ля карт", "Повар заготовочного цеха"]
-        CHEF_COMBINED_DOL_WAVE = "Повар"
+        CHEF_POD_WAVE = HEADCOUNT_GROUPS['chef_wave']['pod']
+        CHEF_DOLS_WAVE_RAW = HEADCOUNT_GROUPS['chef_wave']['positions']
+        CHEF_COMBINED_DOL_WAVE = HEADCOUNT_GROUPS['chef_wave']['combined']
         
-# --- Повара (Арт_Лайф) ---
-        CHEF_POD_ART = "Арт_Лайф"
-        CHEF_DOLS_ART_RAW = ["Повар холодный цех", "Повар горячий цех"]
-        CHEF_COMBINED_DOL_ART = "Повар"
+        CHEF_POD_ART = HEADCOUNT_GROUPS['chef_art']['pod']
+        CHEF_DOLS_ART_RAW = HEADCOUNT_GROUPS['chef_art']['positions']
+        CHEF_COMBINED_DOL_ART = HEADCOUNT_GROUPS['chef_art']['combined']
         
-# --- Горничные (Волна) ---
-        HOUSEKEEPER_POD = "Волна"
-        HOUSEKEEPER_DOLS_RAW = ["Горничная", "Старшая горничная"]
-        HOUSEKEEPER_COMBINED_DOL = "Горничная"
+        HOUSEKEEPER_POD = HEADCOUNT_GROUPS['housekeeper_wave']['pod']
+        HOUSEKEEPER_DOLS_RAW = HEADCOUNT_GROUPS['housekeeper_wave']['positions']
+        HOUSEKEEPER_COMBINED_DOL = HEADCOUNT_GROUPS['housekeeper_wave']['combined']
         
-        def normalize_dol(dol):
-            """Нормализует название должности: strip + lower + сжатие пробелов.
-            Заменяет неразрывные пробелы (NBSP) и другие спецсимволы на обычные."""
-            if dol is None:
-                return ''
-            # Заменяем неразрывные пробелы и прочие пробельные символы Unicode
-            s = str(dol).replace('\u00a0', ' ').replace('\u202f', ' ').replace('\u2009', ' ')
-            return ' '.join(s.strip().lower().split())
-        
-        def normalize_pod(pod_val):
-            """Нормализует подразделение: strip + lower + сжатие пробелов."""
-            if pod_val is None:
-                return ''
-            s = str(pod_val).replace('\u00a0', ' ').replace('\u202f', ' ').replace('\u2009', ' ')
-            return ' '.join(s.strip().lower().split())
+        normalize_dol = _normalize_headcount_name
+        normalize_pod = _normalize_headcount_name
         
         # Нормализованные ключи для groups
         WAITER_DOLS_NORM = {normalize_dol(d) for d in WAITER_DOLS_RAW}
@@ -3001,6 +3031,12 @@ def api_headcount_violations():
                 fact_date = fact_date.date()
             date_str = str(fact_date)
             
+            # Список уникальных ФИО по должности за день (для дедупликации внутри группы)
+            fios_raw = row.get('fios')
+            fio_set = set()
+            if fios_raw is not None and not pd.isna(fios_raw):
+                fio_set = set(str(fios_raw).split('||'))
+            
 # Определяем, к какой группе относится должность
             is_waiter = is_combined_waiter(pod_val, dolzhnost)
             is_chef_wave = is_combined_chef_wave(pod_val, dolzhnost)
@@ -3011,11 +3047,11 @@ def api_headcount_violations():
             if is_waiter:
                 if date_str not in waiter_days:
                     waiter_days[date_str] = {
-                        'fact_count': 0, 'total_nachisleno': 0,
+                        'fios': set(), 'total_nachisleno': 0,
                         'shift_count': 0, 'otdels': set()
                     }
                 wd = waiter_days[date_str]
-                wd['fact_count'] += fact_count
+                wd['fios'].update(fio_set)
                 wd['total_nachisleno'] += total_nachisleno
                 wd['shift_count'] += shift_count
                 if otdel_val != '—':
@@ -3025,11 +3061,11 @@ def api_headcount_violations():
             if is_chef_wave:
                 if date_str not in chef_wave_days:
                     chef_wave_days[date_str] = {
-                        'fact_count': 0, 'total_nachisleno': 0,
+                        'fios': set(), 'total_nachisleno': 0,
                         'shift_count': 0, 'otdels': set()
                     }
                 cd = chef_wave_days[date_str]
-                cd['fact_count'] += fact_count
+                cd['fios'].update(fio_set)
                 cd['total_nachisleno'] += total_nachisleno
                 cd['shift_count'] += shift_count
                 if otdel_val != '—':
@@ -3039,11 +3075,11 @@ def api_headcount_violations():
             if is_chef_art:
                 if date_str not in chef_art_days:
                     chef_art_days[date_str] = {
-                        'fact_count': 0, 'total_nachisleno': 0,
+                        'fios': set(), 'total_nachisleno': 0,
                         'shift_count': 0, 'otdels': set()
                     }
                 cd = chef_art_days[date_str]
-                cd['fact_count'] += fact_count
+                cd['fios'].update(fio_set)
                 cd['total_nachisleno'] += total_nachisleno
                 cd['shift_count'] += shift_count
                 if otdel_val != '—':
@@ -3053,11 +3089,11 @@ def api_headcount_violations():
             if is_housekeeper:
                 if date_str not in housekeeper_days:
                     housekeeper_days[date_str] = {
-                        'fact_count': 0, 'total_nachisleno': 0,
+                        'fios': set(), 'total_nachisleno': 0,
                         'shift_count': 0, 'otdels': set()
                     }
                 hd = housekeeper_days[date_str]
-                hd['fact_count'] += fact_count
+                hd['fios'].update(fio_set)
                 hd['total_nachisleno'] += total_nachisleno
                 hd['shift_count'] += shift_count
                 if otdel_val != '—':
@@ -3116,7 +3152,7 @@ def api_headcount_violations():
         # --- Обработка комбинированных официантов ---
         if waiter_days:
             for date_str, wd in waiter_days.items():
-                fact_count = wd['fact_count']
+                fact_count = len(wd['fios'])
                 result = get_limit_and_occupancy(WAITER_POD, WAITER_COMBINED_DOL, date_str)
                 if result is None:
                     continue
@@ -3169,7 +3205,7 @@ def api_headcount_violations():
         # --- Обработка комбинированных поваров (Волна) ---
         if chef_wave_days:
             for date_str, cd in chef_wave_days.items():
-                fact_count = cd['fact_count']
+                fact_count = len(cd['fios'])
                 result = get_limit_and_occupancy(CHEF_POD_WAVE, CHEF_COMBINED_DOL_WAVE, date_str)
                 if result is None:
                     continue
@@ -3222,7 +3258,7 @@ def api_headcount_violations():
         # --- Обработка комбинированных поваров (Арт_Лайф) ---
         if chef_art_days:
             for date_str, cd in chef_art_days.items():
-                fact_count = cd['fact_count']
+                fact_count = len(cd['fios'])
                 result = get_limit_and_occupancy(CHEF_POD_ART, CHEF_COMBINED_DOL_ART, date_str)
                 if result is None:
                     continue
@@ -3275,7 +3311,7 @@ def api_headcount_violations():
         # --- Обработка комбинированных горничных (Волна) ---
         if housekeeper_days:
             for date_str, hd in housekeeper_days.items():
-                fact_count = hd['fact_count']
+                fact_count = len(hd['fios'])
                 result = get_limit_and_occupancy(HOUSEKEEPER_POD, HOUSEKEEPER_COMBINED_DOL, date_str)
                 if result is None:
                     continue
@@ -3483,7 +3519,11 @@ def api_headcount_history():
 @app.route('/api/headcount/employees')
 @login_required
 def api_headcount_employees():
-    """Возвращает список сотрудников за конкретную дату по подразделению и должности."""
+    """Возвращает список сотрудников за конкретную дату по подразделению и должности.
+    
+    Если должность входит в групповое объединение (официанты, повара, горничные),
+    возвращает всех сотрудников из всех должностей группы — как и при расчёте факта нарушений.
+    """
     if not current_user.has_permission('data', 'view'):
         return jsonify({'error': 'У вас нет прав для просмотра данных'}), 403
     
@@ -3498,17 +3538,32 @@ def api_headcount_employees():
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor(dictionary=True)
         
-        conditions = ['data = %s', 'podrazdelenie = %s', 'dolzhnost = %s']
-        params = [date, pod, dolzhnost]
+        conditions = ['data = %s', 'podrazdelenie = %s']
+        params = [date, pod]
+        
+        # Если должность входит в групповое объединение — берём всех сотрудников группы
+        group = _match_headcount_group(pod, dolzhnost)
+        if group:
+            placeholders = ','.join(['%s'] * len(group['positions']))
+            conditions.append(f'dolzhnost IN ({placeholders})')
+            params.extend(group['positions'])
+        else:
+            conditions.append('dolzhnost = %s')
+            params.append(dolzhnost)
         
         conditions, params = _apply_permission_filters(conditions, params)
+        
+        # Отдел "Подработчики" исключён так же, как при расчёте факта нарушений
+        conditions.append("otdel != 'Подработчики'")
         
         where_clause = 'WHERE ' + ' AND '.join(conditions)
         
         cursor.execute(f'''
-            SELECT DISTINCT fio, status_field, otdel
+            SELECT fio, MAX(status_field) AS status_field,
+                   GROUP_CONCAT(DISTINCT otdel SEPARATOR ', ') AS otdel
             FROM records
             {where_clause}
+            GROUP BY fio
             ORDER BY fio
         ''', tuple(params))
         
