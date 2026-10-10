@@ -104,6 +104,23 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.session_protection = 'strong'
 
+
+def _parse_import_period():
+    """Читает период (год/месяц) из формы импорта Excel.
+    Если поля не переданы — берётся текущий месяц. Возвращает (year, month)
+    или (None, None) при некорректных значениях."""
+    now = datetime.now(SERVER_TIMEZONE)
+    year_raw = request.form.get('period_year')
+    month_raw = request.form.get('period_month')
+    try:
+        year = int(year_raw) if year_raw not in (None, '') else now.year
+        month = int(month_raw) if month_raw not in (None, '') else now.month
+    except (TypeError, ValueError):
+        return None, None
+    if not (1 <= month <= 12) or not (2000 <= year <= 2100):
+        return None, None
+    return year, month
+
 MYSQL_CONFIG = {
     'host': 'localhost', 'port': 3306, 'user': 'tourism', 'password': 'tourism123',
     'database': 'daily_tourism', 'charset': 'utf8mb4',
@@ -1703,8 +1720,9 @@ def _import_records(df, file, sheet_name):
     })
 
 
-def _import_headcount_limits(tmp_path, file, sheet_name):
-    """Импорт штатного расписания из Excel"""
+def _import_headcount_limits(tmp_path, file, sheet_name, period_year, period_month):
+    """Импорт штатного расписания из Excel за указанный период (месяц/год).
+    Заменяет лимиты только этого периода, не трогая лимиты других периодов."""
     try:
         df = pd.read_excel(tmp_path, sheet_name=sheet_name)
         
@@ -1731,10 +1749,13 @@ def _import_headcount_limits(tmp_path, file, sheet_name):
         if missing:
             return jsonify({'error': f'Не найдены колонки: {", ".join(missing)}'}), 400
         
-        # Очищаем старые лимиты
+        # Заменяем лимиты только за указанный период
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM headcount_limits')
+        cursor.execute(
+            'DELETE FROM headcount_limits WHERE effective_year=%s AND effective_month=%s',
+            (period_year, period_month)
+        )
         
         inserted = 0
         skipped = 0
@@ -1753,13 +1774,14 @@ def _import_headcount_limits(tmp_path, file, sheet_name):
                 limit_3 = int(float(row[col_map['limit_3']]))
                 
                 cursor.execute('''
-                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO headcount_limits 
+                        (podrazdelenie, dolzhnost, effective_year, effective_month, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         limit_1=VALUES(limit_1), 
                         limit_2=VALUES(limit_2), 
                         limit_3=VALUES(limit_3)
-                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3))
+                ''', (podrazdelenie, dolzhnost, period_year, period_month, limit_1, limit_2, limit_3))
                 inserted += 1
                 
             except Exception:
@@ -1772,6 +1794,7 @@ def _import_headcount_limits(tmp_path, file, sheet_name):
         
         log_action(current_user.id, 'import', 'headcount_limits', {
             'filename': file.filename,
+            'period': f'{period_year}-{period_month:02d}',
             'inserted': inserted,
             'skipped': skipped
         })
@@ -1780,7 +1803,7 @@ def _import_headcount_limits(tmp_path, file, sheet_name):
             'success': True,
             'inserted': inserted,
             'skipped': skipped,
-            'message': f'Штатное расписание: загружено {inserted} лимитов, пропущено {skipped}'
+            'message': f'Штатное расписание за {period_month:02d}.{period_year}: загружено {inserted} лимитов, пропущено {skipped}'
         })
     
     except Exception as e:
@@ -1898,6 +1921,7 @@ def import_excel():
             return jsonify({'error': 'Неверный формат файла. Используйте .xlsx или .xls'}), 400
         
         sheet_name = request.form.get('sheet', 'Архив')
+        period_year, period_month = _parse_import_period()
         
         logger.info(f'User {current_user.username} importing Excel file: {file.filename}, sheet: {sheet_name}')
         
@@ -1909,8 +1933,10 @@ def import_excel():
         try:
             # Читаем Excel файл
             if sheet_name == 'Штатное_расписание':
-                # Импорт штатного расписания — динамические лимиты
-                result = _import_headcount_limits(tmp_path, file, sheet_name)
+                if period_year is None:
+                    return jsonify({'error': 'Укажите корректный период (месяц и год) для штатного расписания'}), 400
+                # Импорт штатного расписания — динамические лимиты за период
+                result = _import_headcount_limits(tmp_path, file, sheet_name, period_year, period_month)
             elif sheet_name == 'Загрузка':
                 # Импорт загрузки отеля по дням
                 result = _import_hotel_occupancy(tmp_path, file, sheet_name)
@@ -1956,6 +1982,10 @@ def import_excel_stream():
             return jsonify({'error': 'Неверный формат файла. Используйте .xlsx или .xls'}), 400
         
         sheet_name = request.form.get('sheet', 'Архив')
+        period_year, period_month = _parse_import_period()
+        
+        if sheet_name == 'Штатное_расписание' and period_year is None:
+            return jsonify({'error': 'Укажите корректный период (месяц и год) для штатного расписания'}), 400
         
         logger.info(f'User {current_user.username} importing Excel file: {file.filename}, sheet: {sheet_name}')
         
@@ -1981,7 +2011,9 @@ def import_excel_stream():
                 'message': '',
                 'error': None,
                 'tmp_path': tmp_path,
-                'sheet_name': sheet_name
+                'sheet_name': sheet_name,
+                'period_year': period_year,
+                'period_month': period_month
             }
         _save_import_job(job_id)
         
@@ -1989,7 +2021,7 @@ def import_excel_stream():
         # Запускаем фоновую задачу для импорта
         thread = threading.Thread(
             target=_run_import_job,
-            args=(job_id, tmp_path, file, sheet_name, user_id)
+            args=(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month)
         )
         thread.daemon = True
         thread.start()
@@ -2044,7 +2076,7 @@ def import_progress(job_id):
         }), 503  # 503 означает, что задача ещё выполняется
 
 
-def _run_import_job(job_id, tmp_path, file, sheet_name, user_id):
+def _run_import_job(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month):
     """Фоновая задача импорта с обновлением прогресса"""
     try:
         with import_jobs_lock:
@@ -2053,7 +2085,7 @@ def _run_import_job(job_id, tmp_path, file, sheet_name, user_id):
         
         # Читаем Excel файл
         if sheet_name == 'Штатное_расписание':
-            result = _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id)
+            result = _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month)
         elif sheet_name == 'Загрузка':
             result = _import_hotel_occupancy_threaded(job_id, tmp_path, file, sheet_name, user_id)
         elif sheet_name == 'Реестр':
@@ -2239,8 +2271,8 @@ def _import_records_threaded(job_id, df, file, sheet_name, user_id):
     }
 
 
-def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id):
-    """Потоковая версия импорта штатного расписания с обновлением прогресса"""
+def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_id, period_year, period_month):
+    """Потоковая версия импорта штатного расписания за период с обновлением прогресса"""
     try:
         df = pd.read_excel(tmp_path, sheet_name=sheet_name)
         
@@ -2273,7 +2305,10 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
         
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM headcount_limits')
+        cursor.execute(
+            'DELETE FROM headcount_limits WHERE effective_year=%s AND effective_month=%s',
+            (period_year, period_month)
+        )
         
         inserted = 0
         skipped = 0
@@ -2292,13 +2327,14 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
                 limit_3 = int(float(row[col_map['limit_3']]))
                 
                 cursor.execute('''
-                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO headcount_limits 
+                        (podrazdelenie, dolzhnost, effective_year, effective_month, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         limit_1=VALUES(limit_1), 
                         limit_2=VALUES(limit_2), 
                         limit_3=VALUES(limit_3)
-                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3))
+                ''', (podrazdelenie, dolzhnost, period_year, period_month, limit_1, limit_2, limit_3))
                 inserted += 1
                 
                 # Обновляем прогресс каждые 50 записей
@@ -2316,6 +2352,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
         
         log_action(user_id, 'import', 'headcount_limits', {
             'filename': file.filename,
+            'period': f'{period_year}-{period_month:02d}',
             'inserted': inserted,
             'skipped': skipped
         })
@@ -2326,7 +2363,7 @@ def _import_headcount_limits_threaded(job_id, tmp_path, file, sheet_name, user_i
             'success': True,
             'inserted': inserted,
             'skipped': skipped,
-            'message': f'Штатное расписание: загружено {inserted} лимитов, пропущено {skipped}'
+            'message': f'Штатное расписание за {period_month:02d}.{period_year}: загружено {inserted} лимитов, пропущено {skipped}'
         }
     
     except Exception as e:
@@ -2574,8 +2611,8 @@ def _import_records_stream(df, file, sheet_name, progress_callback):
     }
 
 
-def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callback):
-    """Потоковая версия импорта штатного расписания с отправкой прогресса"""
+def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callback, period_year, period_month):
+    """Потоковая версия импорта штатного расписания за период с отправкой прогресса"""
     try:
         df = pd.read_excel(tmp_path, sheet_name=sheet_name)
         
@@ -2607,7 +2644,10 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
         
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM headcount_limits')
+        cursor.execute(
+            'DELETE FROM headcount_limits WHERE effective_year=%s AND effective_month=%s',
+            (period_year, period_month)
+        )
         
         inserted = 0
         skipped = 0
@@ -2626,13 +2666,14 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
                 limit_3 = int(float(row[col_map['limit_3']]))
                 
                 cursor.execute('''
-                    INSERT INTO headcount_limits (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO headcount_limits 
+                        (podrazdelenie, dolzhnost, effective_year, effective_month, limit_1, limit_2, limit_3)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         limit_1=VALUES(limit_1), 
                         limit_2=VALUES(limit_2), 
                         limit_3=VALUES(limit_3)
-                ''', (podrazdelenie, dolzhnost, limit_1, limit_2, limit_3))
+                ''', (podrazdelenie, dolzhnost, period_year, period_month, limit_1, limit_2, limit_3))
                 inserted += 1
                 
                 # Отправляем прогресс каждые 50 записей
@@ -2650,6 +2691,7 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
         
         log_action(current_user.id, 'import', 'headcount_limits', {
             'filename': file.filename,
+            'period': f'{period_year}-{period_month:02d}',
             'inserted': inserted,
             'skipped': skipped
         })
@@ -2660,7 +2702,7 @@ def _import_headcount_limits_stream(tmp_path, file, sheet_name, progress_callbac
             'success': True,
             'inserted': inserted,
             'skipped': skipped,
-            'message': f'Штатное расписание: загружено {inserted} лимитов, пропущено {skipped}'
+            'message': f'Штатное расписание за {period_month:02d}.{period_year}: загружено {inserted} лимитов, пропущено {skipped}'
         }
     
     except Exception as e:
@@ -2748,19 +2790,34 @@ def api_headcount_violations():
                     row = cursor.fetchone()
                     occupancy_cache[cache_key] = float(row['occupancy_percent']) if row else None
         
-        # 3. Загружаем лимиты из БД (с .strip() для надёжности)
-        cursor.execute('SELECT podrazdelenie, dolzhnost, limit_1, limit_2, limit_3 FROM headcount_limits')
+        # 3. Загружаем лимиты из БД с привязкой к периоду.
+        # limits_periods: (podrazdelenie, dolzhnost) -> список периодов [{year, month, limit_1..3}]
+        cursor.execute(
+            'SELECT podrazdelenie, dolzhnost, effective_year, effective_month, limit_1, limit_2, limit_3 '
+            'FROM headcount_limits'
+        )
         limits_rows = cursor.fetchall()
-        limits_db = {}  # (podrazdelenie, dolzhnost) -> {limit_1, limit_2, limit_3}
+        limits_periods = {}
         for lr in limits_rows:
-            pod = lr['podrazdelenie'].strip() if lr['podrazdelenie'] else ''
-            dol = lr['dolzhnost'].strip() if lr['dolzhnost'] else ''
-            key = (pod, dol)
-            limits_db[key] = {
+            db_pod = lr['podrazdelenie'].strip() if lr['podrazdelenie'] else ''
+            db_dol = lr['dolzhnost'].strip() if lr['dolzhnost'] else ''
+            key = (db_pod, db_dol)
+            limits_periods.setdefault(key, []).append({
+                'year': int(lr['effective_year']),
+                'month': int(lr['effective_month']),
                 'limit_1': int(lr['limit_1']),
                 'limit_2': int(lr['limit_2']),
                 'limit_3': int(lr['limit_3'])
-            }
+            })
+        
+        def pick_period_limits(entries, date_obj):
+            """Возвращает лимиты последнего периода ≤ date_obj (лимит действует вперёд)."""
+            if not entries:
+                return None
+            applicable = [e for e in entries if (e['year'], e['month']) <= (date_obj.year, date_obj.month)]
+            if not applicable:
+                return None
+            return max(applicable, key=lambda e: (e['year'], e['month']))
         
         # 4. Определяем группировки должностей
         # --- Официанты + Мармитчик (Волна) ---
@@ -2817,25 +2874,30 @@ def api_headcount_violations():
         def is_combined_housekeeper(pod_val, dolzhnost):
             return normalize_pod(pod_val) == normalize_pod(HOUSEKEEPER_POD) and normalize_dol(dolzhnost) in HOUSEKEEPER_DOLS_NORM
         
-        def get_combined_group_limits(limits_db, group_dols, pod_val):
-            """Суммирует лимиты для группы должностей (официанты, повара).
-            Поиск в limits_db с нормализацией названий (strip + lower + сжатие пробелов)."""
+        def get_combined_group_limits(group_dols, pod_val, date_obj):
+            """Суммирует лимиты группы должностей (официанты, повара) на дату.
+            Для каждой должности берётся лимит последнего периода ≤ date_obj."""
             result = {'limit_1': 0, 'limit_2': 0, 'limit_3': 0}
             found = False
             pod_norm = normalize_pod(pod_val)
-            # Проходим по всем ключам limits_db и находим совпадения по нормализованным названиям
-            for (db_pod, db_dol), limits in limits_db.items():
+            group_norm = {normalize_dol(d) for d in group_dols}
+            for (db_pod, db_dol), entries in limits_periods.items():
                 if normalize_pod(db_pod) != pod_norm:
                     continue
-                if normalize_dol(db_dol) in {normalize_dol(d) for d in group_dols}:
-                    result['limit_1'] += limits['limit_1']
-                    result['limit_2'] += limits['limit_2']
-                    result['limit_3'] += limits['limit_3']
-                    found = True
+                if normalize_dol(db_dol) not in group_norm:
+                    continue
+                limits = pick_period_limits(entries, date_obj)
+                if limits is None:
+                    continue
+                result['limit_1'] += limits['limit_1']
+                result['limit_2'] += limits['limit_2']
+                result['limit_3'] += limits['limit_3']
+                found = True
             return result if found else None
         
         def get_limit_and_occupancy(pod_val, dolzhnost, date_str):
             """Возвращает (limit_count, occupancy_value, limit_level, max_limit) или None если нет лимита."""
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
             combined_pod = pod_val
             combined_dol = dolzhnost
             group_dols = None
@@ -2858,12 +2920,12 @@ def api_headcount_violations():
                 combined_dol = HOUSEKEEPER_COMBINED_DOL
                 group_dols = HOUSEKEEPER_DOLS_RAW
             
-            # Получаем лимиты: для группы суммируем, для обычных — берём напрямую
+            # Получаем лимиты: для группы суммируем, для обычных — берём напрямую.
+            # Учитывается период действия: берётся последний период ≤ даты.
             if group_dols:
-                limits = get_combined_group_limits(limits_db, group_dols, combined_pod)
+                limits = get_combined_group_limits(group_dols, combined_pod, date_obj)
             else:
-                key = (combined_pod, combined_dol)
-                limits = limits_db.get(key)
+                limits = pick_period_limits(limits_periods.get((combined_pod, combined_dol)), date_obj)
             
             if limits is None:
                 return None
@@ -2874,10 +2936,6 @@ def api_headcount_violations():
             # Определяем уровень загрузки (occupancy = 0 — это валидное значение!)
             occ_key = (combined_pod, date_str)
             occupancy = occupancy_cache.get(occ_key)
-            
-            # Отладочный лог
-            if occupancy is None:
-                logger.info(f'NO OCCUPANCY for {occ_key}, cache keys sample: {list(occupancy_cache.keys())[:5]}')
             
             if occupancy is None:
                 # Если нет данных по загрузке — берём средний лимит (limit_2)
@@ -2899,25 +2957,6 @@ def api_headcount_violations():
         total_excess = 0
         total_excess_cost = 0
         
-# Отладочный лог: уникальные должности/подразделения из фактов и ключи лимитов
-        logger.info(f'HC DEBUG: unique fact pairs: {sorted(set(zip(df_fact["podrazdelenie"].astype(str).str.strip(), df_fact["dolzhnost"].astype(str).str.strip())))[:50]}')
-        logger.info(f'HC DEBUG: limits_db keys: {sorted(limits_db.keys())[:50], len(limits_db)}')
-        
-        # Точный лог ТОЛЬКО по групповым должностям (официанты + повара + горничные)
-        group_all_norm = {normalize_dol(d) for d in (WAITER_DOLS_RAW + CHEF_DOLS_WAVE_RAW + CHEF_DOLS_ART_RAW + HOUSEKEEPER_DOLS_RAW)}
-        fact_pairs_group = sorted(set(
-            (str(r['podrazdelenie']).strip(), str(r['dolzhnost']).strip())
-            for _, r in df_fact.iterrows()
-            if normalize_dol(str(r['dolzhnost'])) in group_all_norm
-        ))
-        logger.info(f'HC DEBUG group fact pairs: {fact_pairs_group}')
-        
-        limit_keys_group = sorted(
-            k for k in limits_db.keys()
-            if normalize_dol(k[1]) in group_all_norm
-        )
-        logger.info(f'HC DEBUG group limits keys: {limit_keys_group}')
-        
         for _, row in df_fact.iterrows():
             pod_val = row['podrazdelenie'].strip() if row['podrazdelenie'] else ''
             dolzhnost = row['dolzhnost'].strip() if row['dolzhnost'] else ''
@@ -2936,10 +2975,6 @@ def api_headcount_violations():
             is_chef_wave = is_combined_chef_wave(pod_val, dolzhnost)
             is_chef_art = is_combined_chef_art(pod_val, dolzhnost)
             is_housekeeper = is_combined_housekeeper(pod_val, dolzhnost)
-            
-            # Отладка группировки: показываем проверку для ВСЕХ групповых должностей
-            if normalize_dol(dolzhnost) in group_all_norm:
-                logger.info(f'HC GROUP DETAIL: pod={pod_val!r} dol={dolzhnost!r} norm={normalize_dol(dolzhnost)!r} waiter={is_waiter} chef_wave={is_chef_wave} chef_art={is_chef_art} waiter_norms={WAITER_DOLS_NORM}')
             
             # --- Агрегируем комбинированные должности по дням ---
             if is_waiter:
@@ -3322,9 +3357,14 @@ def api_headcount_violations():
                     for d in item['daily']:
                         dt = datetime.strptime(d['date'], '%Y-%m-%d')
                         cursor.execute('''
-                            INSERT IGNORE INTO violation_history 
+                            INSERT INTO violation_history 
                             (podrazdelenie, dolzhnost, date, limit_level, limit_count, fact_count, excess)
                             VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                                limit_level=VALUES(limit_level),
+                                limit_count=VALUES(limit_count),
+                                fact_count=VALUES(fact_count),
+                                excess=VALUES(excess)
                         ''', (
                             item['podrazdelenie'], item['dolzhnost'], d['date'],
                             d.get('limit_level', ''),

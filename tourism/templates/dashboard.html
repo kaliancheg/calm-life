@@ -2241,6 +2241,26 @@ function animateFotTable(newRowsHtml) {
 let currentHeadcountViolations = [];
 let hcGroupMode = 'dolzhnost'; // 'none', 'otdel', 'dolzhnost'
 
+// Средний лимит за выбранный период (по дням группы)
+function hcAvgLimit(daily) {
+    const vals = (daily || []).map(d => d.limit).filter(v => v != null);
+    if (!vals.length) return null;
+    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+}
+
+// Средний процент загрузки за выбранный период (по дням с данными)
+function hcAvgOccupancy(daily) {
+    const vals = (daily || []).map(d => d.occupancy).filter(v => v != null);
+    if (!vals.length) return null;
+    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
+}
+
+// Бейдж со средним процентом загрузки; при отсутствии данных — «—»
+function hcOccupancyBadge(daily) {
+    const avg = hcAvgOccupancy(daily);
+    return `<span class="hc-badge hc-badge-occupancy">📊 ${avg != null ? avg + '%' : '—'}</span>`;
+}
+
 function setHcGroup(mode) {
     hcGroupMode = mode;
     
@@ -2444,8 +2464,8 @@ async function loadHeadcountViolations() {
                             <div class="hc-header hc-header-child" onclick="toggleHeadcountRow(this, event)">
                                 <span class="hc-toggle">▶</span>
                                 <span class="hc-title"><strong>${child.dolzhnost}</strong></span>
-                                <span class="hc-badge hc-badge-limit">Лимит: ${child.limit}</span>
-                                ${child.limit_level && child.limit_level !== 'нет данных' ? `<span class="hc-badge hc-badge-occupancy">📊 ${child.limit_level}</span>` : ''}
+                                <span class="hc-badge hc-badge-limit">Лимит: ${hcAvgLimit(child.daily) != null ? hcAvgLimit(child.daily) : '—'}</span>
+                                ${hcOccupancyBadge(child.daily)}
                                 <span class="hc-badge hc-badge-excess">⚠ +${child.excess}</span>
                                 <span class="hc-badge hc-badge-cost">💰 ${formatMoney(child.excess_cost || 0)}</span>
                                 <span class="hc-badge hc-badge-days">📅 ${child.date_count} дн.</span>
@@ -2519,8 +2539,8 @@ async function loadHeadcountViolations() {
                     <div class="hc-header" onclick="toggleHeadcountRow(this, event)">
                         <span class="hc-toggle">▶</span>
                         <span class="hc-title"><strong>${displayName}</strong></span>
-                        <span class="hc-badge hc-badge-limit">Лимит: ${v.limit}</span>
-                        ${v.limit_level && v.limit_level !== 'нет данных' ? `<span class="hc-badge hc-badge-occupancy">📊 ${v.limit_level}</span>` : ''}
+                        <span class="hc-badge hc-badge-limit">Лимит: ${hcAvgLimit(v.daily) != null ? hcAvgLimit(v.daily) : '—'}</span>
+                        ${hcOccupancyBadge(v.daily)}
                         <span class="hc-badge hc-badge-excess">⚠ +${v.excess}</span>
                         <span class="hc-badge hc-badge-cost">💰 ${formatMoney(v.excess_cost || 0)}</span>
                         <span class="hc-badge hc-badge-days">📅 ${v.date_count} дн.</span>

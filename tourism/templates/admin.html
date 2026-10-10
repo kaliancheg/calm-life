@@ -256,12 +256,35 @@
             </div>
             <div class="form-group">
                 <label>Лист для импорта:</label>
-                <select id="excelSheet" class="form-control">
+                <select id="excelSheet" class="form-control" onchange="updateHeadcountPeriodVisibility()">
                     <option value="Архив">Архив</option>
                     <option value="Реестр">Реестр</option>
                     <option value="Штатное_расписание">📋 Штатное расписание</option>
                     <option value="Загрузка">📊 Загрузка отеля</option>
                 </select>
+            </div>
+            <div class="form-group" id="headcountPeriodGroup" style="display:none;">
+                <label>Период действия штатного расписания:</label>
+                <div style="display:flex; gap:10px;">
+                    <select id="hcPeriodMonth" class="form-control">
+                        <option value="1">Январь</option>
+                        <option value="2">Февраль</option>
+                        <option value="3">Март</option>
+                        <option value="4">Апрель</option>
+                        <option value="5">Май</option>
+                        <option value="6">Июнь</option>
+                        <option value="7">Июль</option>
+                        <option value="8">Август</option>
+                        <option value="9">Сентябрь</option>
+                        <option value="10">Октябрь</option>
+                        <option value="11">Ноябрь</option>
+                        <option value="12">Декабрь</option>
+                    </select>
+                    <select id="hcPeriodYear" class="form-control"></select>
+                </div>
+                <small style="color:var(--gray);display:block;margin-top:6px;">
+                    Лимиты действуют с выбранного месяца вперёд, пока не загрузите штатное расписание за более поздний период.
+                </small>
             </div>
 <!-- Progress Bar -->
             <div id="progressContainer" class="progress-container" style="display:none;">
@@ -982,7 +1005,40 @@ function createFormData(file, sheetName) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('sheet', sheetName);
+    
+    // Период (месяц/год) передаём только для штатного расписания
+    if (sheetName === 'Штатное_расписание') {
+        formData.append('period_month', document.getElementById('hcPeriodMonth').value);
+        formData.append('period_year', document.getElementById('hcPeriodYear').value);
+    }
     return formData;
+}
+
+// Показываем селекторы периода только для листа «Штатное_расписание»
+function updateHeadcountPeriodVisibility() {
+    const sheetName = document.getElementById('excelSheet').value;
+    const group = document.getElementById('headcountPeriodGroup');
+    if (!group) return;
+    group.style.display = (sheetName === 'Штатное_расписание') ? 'block' : 'none';
+}
+
+// Заполняем годы и ставим текущий месяц/год по умолчанию
+function initHeadcountPeriodSelectors() {
+    const yearSelect = document.getElementById('hcPeriodYear');
+    if (!yearSelect) return;
+    
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    for (let year = currentYear - 2; year <= currentYear + 2; year++) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        yearSelect.appendChild(option);
+    }
+    yearSelect.value = currentYear;
+    document.getElementById('hcPeriodMonth').value = now.getMonth() + 1;
+    
+    updateHeadcountPeriodVisibility();
 }
 
 function formatFileSize(bytes) {
@@ -1400,6 +1456,9 @@ async function changePassword() {
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     const role = '{{ role }}';
+    
+    // Инициализируем селекторы периода штатного расписания
+    initHeadcountPeriodSelectors();
     
     // Если пользователь администратор - активировать вкладку "Обзор" по умолчанию
     if (role === 'admin') {
