@@ -17,13 +17,19 @@ ALTER TABLE headcount_limits
     ADD UNIQUE KEY unique_position_period (podrazdelenie, dolzhnost, effective_year, effective_month);
 
 -- 3. Чистим уже накопившиеся дубли в violation_history:
---    оставляем по одному (последнему) нарушению на ключ podrazdelenie+dolzhnost+date.
-DELETE vh1 FROM violation_history vh1
-INNER JOIN violation_history vh2
-    ON vh1.podrazdelenie = vh2.podrazdelenie
-   AND vh1.dolzhnost = vh2.dolzhnost
-   AND vh1.date = vh2.date
-   AND vh1.id < vh2.id;
+--    оставляем по одной (последней) записи на ключ podrazdelenie+dolzhnost+date.
+--    Используем временную таблицу с max(id) — это O(n log n) вместо O(n^2)
+--    self-join, поэтому на большой истории выполняется быстро и не «вешает» БД.
+CREATE TEMPORARY TABLE vh_keep AS
+SELECT MAX(id) AS keep_id
+FROM violation_history
+GROUP BY podrazdelenie, dolzhnost, date;
+
+DELETE vh FROM violation_history vh
+LEFT JOIN vh_keep k ON vh.id = k.keep_id
+WHERE k.keep_id IS NULL;
+
+DROP TEMPORARY TABLE vh_keep;
 
 -- 4. Уникальный ключ, чтобы история нарушений больше не раздувалась.
 ALTER TABLE violation_history
