@@ -365,7 +365,7 @@
     </div>
     <div class="infographic-grid">
         <section class="infographic-panel infographic-panel-trend">
-            <h3>Динамика · последние 7 дней</h3>
+            <h3>Динамика · последние 14 дней</h3>
             <div class="infographic-plot infographic-plot-trend" id="chart1"></div>
         </section>
         <section class="infographic-panel infographic-panel-employees">
@@ -1759,7 +1759,7 @@ const infographicLayout = {
     xaxis: {gridcolor: 'rgba(148, 163, 184, 0.12)', linecolor: 'rgba(148, 163, 184, 0.2)', color: '#9baac8', zeroline: false},
     yaxis: {gridcolor: 'rgba(148, 163, 184, 0.12)', linecolor: 'rgba(148, 163, 184, 0.2)', color: '#9baac8', zeroline: false}
 };
-const infographicDateValues = infographicDateList.slice(-7);
+const infographicDateValues = infographicDateList.slice(-14);
 const infographicDateTotals = infographicDateValues.map(date => currentAggregatedData
     .filter(record => record.data === date)
     .reduce((sum, record) => sum + (Number(record.itogo) || 0), 0));
