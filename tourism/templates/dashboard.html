@@ -340,12 +340,48 @@
     </div>
 </div>
 
-<div class="charts">
-<div class="chart-card"><h3>📈 Начисления по дням (последние 7 дней)</h3><div id="chart1"></div></div>
-<div class="chart-card"><h3>🏆 Топ-10 сотрудников (по затратам ФОТ)</h3><div id="chart2"></div></div>
-<div class="chart-card"><h3>💵 Начисления по отделам</h3><div id="chart3"></div></div>
-<div class="chart-card"><h3>📊 Начисления по отделам (круговая)</h3><div id="chart4"></div></div>
-</div>
+<section class="fot-infographic" aria-labelledby="fotInfographicTitle">
+    <div class="infographic-header">
+        <div>
+            <span class="infographic-kicker">FINANCIAL PULSE · ФОТ</span>
+            <h2 id="fotInfographicTitle">Финансовая картина периода</h2>
+            <p>Динамика начислений, ключевые сотрудники и распределение затрат по отделам.</p>
+        </div>
+        <div class="infographic-period" id="infographicPeriod">Выбранный период</div>
+    </div>
+    <div class="infographic-summary" aria-label="Сводные показатели">
+        <div class="infographic-stat">
+            <span class="infographic-stat-label">Начислено за период</span>
+            <strong id="infographicMoney">0 ₽</strong>
+        </div>
+        <div class="infographic-stat">
+            <span class="infographic-stat-label">Сотрудников</span>
+            <strong id="infographicEmployees">0</strong>
+        </div>
+        <div class="infographic-stat">
+            <span class="infographic-stat-label">Отделов</span>
+            <strong id="infographicDepartments">0</strong>
+        </div>
+    </div>
+    <div class="infographic-grid">
+        <section class="infographic-panel infographic-panel-trend">
+            <h3>Динамика · последние 7 дней</h3>
+            <div class="infographic-plot infographic-plot-trend" id="chart1"></div>
+        </section>
+        <section class="infographic-panel infographic-panel-employees">
+            <h3>Топ-10 сотрудников · по затратам ФОТ</h3>
+            <div class="infographic-plot infographic-plot-employees" id="chart2"></div>
+        </section>
+        <section class="infographic-panel infographic-panel-departments">
+            <h3>Начисления по отделам</h3>
+            <div class="infographic-plot infographic-plot-departments" id="chart3"></div>
+        </section>
+        <section class="infographic-panel infographic-panel-share">
+            <h3>Доля отделов в ФОТ</h3>
+            <div class="infographic-plot infographic-plot-share" id="chart4"></div>
+        </section>
+    </div>
+</section>
 
 <div class="footer">
     © Created by Kalian Roman 2026 | Supported by <a href="https://fitofarm.ru" target="_blank">FitoFarm 🌿</a>
@@ -1686,113 +1722,130 @@ animateValue(document.getElementById('hours'), 0, hours, 300, false);
 animateValue(document.getElementById('money'), 0, money, 300, true);
 animateValue(document.getElementById('records'), 0, records, 300, false);
 
-const dateMap = {};
-currentAggregatedData.forEach(r => { if (!dateMap[r.data]) dateMap[r.data] = 0; dateMap[r.data] += r.itogo; });
-const sortedDates = Object.keys(dateMap).sort().slice(-7);
+const infographicDepartments = {};
+const infographicEmployees = new Set();
+const infographicDates = new Set();
+let infographicTotal = 0;
+currentAggregatedData.forEach(r => {
+    infographicTotal += Number(r.itogo) || 0;
+    if (r.fio) infographicEmployees.add(r.fio);
+    if (r.data) {
+        if (!infographicDates.has(r.data)) infographicDates.add(r.data);
+    }
+    const department = r.otdel || 'Без отдела';
+    infographicDepartments[department] = (infographicDepartments[department] || 0) + (Number(r.itogo) || 0);
+});
+const infographicDateList = [...infographicDates].sort();
+const infographicDepartmentEntries = Object.entries(infographicDepartments).sort((a, b) => b[1] - a[1]);
+const infographicTopEmployees = Object.entries(currentAggregatedData.reduce((totals, record) => {
+    if (record.fio) totals[record.fio] = (totals[record.fio] || 0) + (Number(record.itogo) || 0);
+    return totals;
+}, {})).sort((a, b) => b[1] - a[1]).slice(0, 10);
+const infographicColors = ['#00e5ff', '#ff4db8', '#8b7bff', '#39d6c5', '#ffb454', '#579bff', '#e879f9', '#a3e635', '#fb7185', '#38bdf8'];
+document.getElementById('infographicMoney').textContent = formatMoney(infographicTotal);
+document.getElementById('infographicEmployees').textContent = infographicEmployees.size.toLocaleString('ru-RU');
+document.getElementById('infographicDepartments').textContent = infographicDepartmentEntries.length.toLocaleString('ru-RU');
+document.getElementById('infographicPeriod').textContent = infographicDateList.length
+    ? `${formatDate(infographicDateList[0]).split(' (')[0]} — ${formatDate(infographicDateList[infographicDateList.length - 1]).split(' (')[0]}`
+    : 'Нет данных за период';
+const infographicConfig = {responsive: true, displayModeBar: false};
+const infographicLayout = {
+    autosize: true,
+    margin: {t: 18, b: 48, l: 58, r: 18},
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    font: {color: '#b8c7e8', family: 'Inter, sans-serif', size: 11},
+    showlegend: false,
+    xaxis: {gridcolor: 'rgba(148, 163, 184, 0.12)', linecolor: 'rgba(148, 163, 184, 0.2)', color: '#9baac8', zeroline: false},
+    yaxis: {gridcolor: 'rgba(148, 163, 184, 0.12)', linecolor: 'rgba(148, 163, 184, 0.2)', color: '#9baac8', zeroline: false}
+};
+const infographicDateValues = infographicDateList.slice(-7);
+const infographicDateTotals = infographicDateValues.map(date => currentAggregatedData
+    .filter(record => record.data === date)
+    .reduce((sum, record) => sum + (Number(record.itogo) || 0), 0));
+
 Plotly.newPlot('chart1', [{
-x: sortedDates.map(d => formatDate(d)),
-y: sortedDates.map(d => dateMap[d]),
-type: 'scatter',
-mode: 'lines+markers',
-line: {color: '#00ffff', width: 3, shape: 'spline'},
-marker: {size: 10, color: '#00ffff', line: {width: 2, color: '#8a2be2'}},
-fill: 'tozeroy',
-fillcolor: 'rgba(0, 255, 255, 0.1)'
+    x: infographicDateValues,
+    y: infographicDateTotals,
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: {color: '#00e5ff', width: 3, shape: 'spline'},
+    marker: {size: 8, color: '#00e5ff', line: {width: 2, color: '#162438'}},
+    fill: 'tozeroy',
+    fillcolor: 'rgba(0, 229, 255, 0.12)',
+    hovertemplate: '%{x|%d.%m.%Y}<br><b>%{y:,.0f} ₽</b><extra></extra>'
 }], {
-height: 380,
-margin: {t: 20, b: 100, l: 70, r: 30},
-paper_bgcolor: 'rgba(0,0,0,0)',
-plot_bgcolor: 'rgba(0,0,0,0)',
-font: {color: '#b8b8ff', family: 'Rajdhani'},
-xaxis: {
-    tickmode: 'array',
-    ticks: sortedDates.map(d => formatDate(d)),
-    ticktext: sortedDates.map(d => {
-        const parts = d.split('.');
-        return parts[0] + '.' + parts[1];
-    }),
-    tickangle: -15,
-    gridcolor: 'rgba(0, 255, 255, 0.2)',
-    linecolor: 'rgba(0, 255, 255, 0.35)',
-    color: '#b8b8ff',
-    tickfont: {size: 13}
-},
-yaxis: {
-    autorange: true,
-    gridcolor: 'rgba(0, 255, 255, 0.2)',
-    linecolor: 'rgba(0, 255, 255, 0.35)',
-    color: '#b8b8ff',
-    tickfont: {size: 13}
-},
-showlegend: false
-});
+    ...infographicLayout,
+    margin: {t: 12, b: 38, l: 58, r: 12},
+    xaxis: {...infographicLayout.xaxis, type: 'date', tickformat: '%d.%m', tickangle: -15, tickvals: infographicDateValues},
+    yaxis: {...infographicLayout.yaxis, tickformat: ',.0f', ticksuffix: ' ₽'}
+}, infographicConfig);
 
-const empMoney = {};
-currentAggregatedData.forEach(r => { if (!empMoney[r.fio]) empMoney[r.fio] = 0; empMoney[r.fio] += r.itogo; });
-const top10 = Object.entries(empMoney).sort((a, b) => b[1] - a[1]).slice(0, 10);
 Plotly.newPlot('chart2', [{
-x: top10.map(x => x[1]),
-y: top10.map(x => x[0]),
-type: 'bar',
-orientation: 'h',
-marker: {
-    color: top10.map((_, i) => 'hsl(' + (i * 13.33) + ', 75%, ' + (50 + i * 2) + '%)'),
-    line: {width: 1.5, color: '#8a2be2'}
-}
+    x: infographicTopEmployees.map(entry => entry[1]),
+    y: infographicTopEmployees.map(entry => entry[0]),
+    type: 'bar',
+    orientation: 'h',
+    marker: {
+        color: infographicTopEmployees.map((_, index) => infographicColors[index % infographicColors.length]),
+        line: {width: 0}
+    },
+    text: infographicTopEmployees.map(entry => formatMoney(entry[1])),
+    textposition: 'auto',
+    hovertemplate: '<b>%{y}</b><br>%{x:,.0f} ₽<extra></extra>'
 }], {
-height: 450,
-margin: {t: 20, b: 40, l: 250, r: 20},
-paper_bgcolor: 'rgba(0,0,0,0)',
-plot_bgcolor: 'rgba(0,0,0,0)',
-font: {color: '#b8b8ff', family: 'Rajdhani', size: 14},
-xaxis: {gridcolor: 'rgba(138, 43, 226, 0.15)', linecolor: 'rgba(138, 43, 226, 0.25)', color: '#b8b8ff'},
-yaxis: {automargin: true, gridcolor: 'rgba(138, 43, 226, 0.15)', linecolor: 'rgba(138, 43, 226, 0.25)', color: '#b8b8ff', tickfont: {size: 14}, autorange: 'reversed'},
-showlegend: false
-});
+    ...infographicLayout,
+    margin: {t: 6, b: 30, l: 12, r: 12},
+    xaxis: {...infographicLayout.xaxis, tickformat: ',.0f', ticksuffix: ' ₽'},
+    yaxis: {...infographicLayout.yaxis, autorange: 'reversed', automargin: true, gridcolor: 'rgba(0,0,0,0)'}
+}, infographicConfig);
 
-const otdelMoney = {};
-currentAggregatedData.forEach(r => { if (!otdelMoney[r.otdel]) otdelMoney[r.otdel] = 0; otdelMoney[r.otdel] += r.itogo; });
 Plotly.newPlot('chart3', [{
-x: Object.keys(otdelMoney),
-y: Object.values(otdelMoney),
-type: 'bar',
-marker: {color: Object.keys(otdelMoney).map((_, i) => 'hsl(' + (160 + i * 50) + ', 50%, 60%)'), line: {width: 1.5, color: '#8a2be2'}}
+    x: infographicDepartmentEntries.map(entry => entry[1]),
+    y: infographicDepartmentEntries.map(entry => entry[0]),
+    type: 'bar',
+    orientation: 'h',
+    marker: {
+        color: infographicDepartmentEntries.map((_, index) => infographicColors[index % infographicColors.length]),
+        line: {width: 0}
+    },
+    text: infographicDepartmentEntries.map(entry => formatMoney(entry[1])),
+    textposition: 'auto',
+    hovertemplate: '<b>%{y}</b><br>%{x:,.0f} ₽<extra></extra>'
 }], {
-height: 300,
-margin: {t: 20, b: 80, l: 50, r: 20},
-paper_bgcolor: 'rgba(0,0,0,0)',
-plot_bgcolor: 'rgba(0,0,0,0)',
-font: {color: '#b8b8ff', family: 'Rajdhani'},
-xaxis: {tickmode: 'linear', gridcolor: 'rgba(0, 255, 136, 0.15)', linecolor: 'rgba(0, 255, 136, 0.25)', color: '#b8b8ff'},
-yaxis: {gridcolor: 'rgba(0, 255, 136, 0.15)', linecolor: 'rgba(0, 255, 136, 0.25)', color: '#b8b8ff'},
-showlegend: false
-});
+    ...infographicLayout,
+    margin: {t: 6, b: 30, l: 12, r: 12},
+    xaxis: {...infographicLayout.xaxis, tickformat: ',.0f', ticksuffix: ' ₽'},
+    yaxis: {...infographicLayout.yaxis, autorange: 'reversed', automargin: true, gridcolor: 'rgba(0,0,0,0)'}
+}, infographicConfig);
 
 Plotly.newPlot('chart4', [{
-labels: Object.keys(otdelMoney),
-values: Object.values(otdelMoney),
-type: 'pie',
-textinfo: 'percent',
-textfont: {size: 14, color: '#ffffff'},
-textposition: 'inside',
-hole: 0.4,
-marker: {colors: Object.keys(otdelMoney).map((_, i) => 'hsl(' + (160 + i * 50) + ', 50%, 65%)'), line: {width: 1.5, color: '#8a2be2'}}
+    labels: infographicDepartmentEntries.map(entry => entry[0]),
+    values: infographicDepartmentEntries.map(entry => entry[1]),
+    type: 'pie',
+    hole: 0.68,
+    sort: false,
+    textinfo: 'percent',
+    textposition: 'inside',
+    textfont: {size: 11, color: '#ffffff'},
+    marker: {
+        colors: infographicDepartmentEntries.map((_, index) => infographicColors[index % infographicColors.length]),
+        line: {width: 2, color: '#121a2a'}
+    },
+    hovertemplate: '<b>%{label}</b><br>%{value:,.0f} ₽ · %{percent}<extra></extra>'
 }], {
-height: 350,
-margin: {t: 20, b: 20, l: 20, r: 280},
-paper_bgcolor: 'rgba(0,0,0,0)',
-plot_bgcolor: 'rgba(0,0,0,0)',
-font: {color: '#ffffff', family: 'Rajdhani', size: 14},
-showlegend: true,
-legend: {
-    x: 1.02,
-    xanchor: 'left',
-    y: 1,
-    yanchor: 'top',
-    font: {color: '#b8b8ff', size: 11},
-    orientation: 'v'
-}
-});
+    ...infographicLayout,
+    margin: {t: 8, b: 8, l: 8, r: 8},
+    showlegend: true,
+    legend: {orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08, font: {color: '#b8c7e8', size: 10}},
+    annotations: [{
+        text: '<b>ФОТ</b>',
+        x: 0.5,
+        y: 0.5,
+        showarrow: false,
+        font: {color: '#e8f2ff', size: 16, family: 'Inter, sans-serif'}
+    }]
+}, infographicConfig);
 
 const otdelAgg = {};
 currentAggregatedData.forEach(r => {
