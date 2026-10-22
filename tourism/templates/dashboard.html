@@ -1725,12 +1725,15 @@ animateValue(document.getElementById('records'), 0, records, 300, false);
 const infographicDepartments = {};
 const infographicEmployees = new Set();
 const infographicDates = new Set();
+const infographicDateTotalsByDate = {};
 let infographicTotal = 0;
 currentAggregatedData.forEach(r => {
     infographicTotal += Number(r.itogo) || 0;
     if (r.fio) infographicEmployees.add(r.fio);
-    if (r.data) {
-        if (!infographicDates.has(r.data)) infographicDates.add(r.data);
+    const recordDate = typeof r.data === 'string' ? r.data.trim() : '';
+    if (recordDate) {
+        infographicDates.add(recordDate);
+        infographicDateTotalsByDate[recordDate] = (infographicDateTotalsByDate[recordDate] || 0) + (Number(r.itogo) || 0);
     }
     const department = r.otdel || 'Без отдела';
     infographicDepartments[department] = (infographicDepartments[department] || 0) + (Number(r.itogo) || 0);
@@ -1760,12 +1763,11 @@ const infographicLayout = {
     yaxis: {gridcolor: 'rgba(148, 163, 184, 0.12)', linecolor: 'rgba(148, 163, 184, 0.2)', color: '#9baac8', zeroline: false}
 };
 const infographicDateValues = infographicDateList.slice(-14);
-const infographicDateTotals = infographicDateValues.map(date => currentAggregatedData
-    .filter(record => record.data === date)
-    .reduce((sum, record) => sum + (Number(record.itogo) || 0), 0));
+const infographicDateLabels = infographicDateValues.map(date => formatDate(date).split(' (')[0]);
+const infographicDateTotals = infographicDateValues.map(date => infographicDateTotalsByDate[date]);
 
 Plotly.newPlot('chart1', [{
-    x: infographicDateValues,
+    x: infographicDateLabels,
     y: infographicDateTotals,
     type: 'scatter',
     mode: 'lines+markers',
@@ -1773,11 +1775,17 @@ Plotly.newPlot('chart1', [{
     marker: {size: 8, color: '#00e5ff', line: {width: 2, color: '#162438'}},
     fill: 'tozeroy',
     fillcolor: 'rgba(0, 229, 255, 0.12)',
-    hovertemplate: '%{x|%d.%m.%Y}<br><b>%{y:,.0f} ₽</b><extra></extra>'
+    hovertemplate: '<b>%{x}</b><br>%{y:,.0f} ₽<extra></extra>'
 }], {
     ...infographicLayout,
     margin: {t: 12, b: 38, l: 58, r: 12},
-    xaxis: {...infographicLayout.xaxis, type: 'date', tickformat: '%d.%m', tickangle: -15, tickvals: infographicDateValues},
+    xaxis: {
+        ...infographicLayout.xaxis,
+        type: 'category',
+        categoryorder: 'array',
+        categoryarray: infographicDateLabels,
+        tickangle: -15
+    },
     yaxis: {...infographicLayout.yaxis, tickformat: ',.0f', ticksuffix: ' ₽'}
 }, infographicConfig);
 
