@@ -1012,11 +1012,11 @@ function renderLFLInfographic(data) {
                 line: {color: '#7ce8a8', width: 1}
             },
             hoverlabel: {
-                bgcolor: '#f4f6f8',
+                bgcolor: 'rgb(244, 246, 248)',
                 bordercolor: '#7ce8a8',
                 font: {color: '#202a36', family: 'inherit', size: 12}
             },
-            hovertemplate: 'День %{x}<br>%{y:,.0f} ₽<extra>Текущий период</extra>'
+            hovertemplate: 'День %{x}<br>%{y:,.0f} ₽<br><b>Текущий период · начисления</b><extra></extra>'
         },
         {
             type: 'bar',
@@ -1028,11 +1028,11 @@ function renderLFLInfographic(data) {
                 line: {color: '#cbd5e1', width: 1}
             },
             hoverlabel: {
-                bgcolor: '#f4f6f8',
+                bgcolor: 'rgb(244, 246, 248)',
                 bordercolor: '#a8b3c2',
                 font: {color: '#202a36', family: 'inherit', size: 12}
             },
-            hovertemplate: 'День %{x}<br>%{y:,.0f} ₽<extra>Предыдущий период</extra>'
+            hovertemplate: 'День %{x}<br>%{y:,.0f} ₽<br><b>Предыдущий период · начисления</b><extra></extra>'
         }
     ];
 
@@ -1060,17 +1060,17 @@ function renderLFLInfographic(data) {
                 yaxis: 'y2',
                 connectgaps: false,
                 line: {
-                    color: occupancyColors[departmentIndex % occupancyColors.length],
+                    color: periodIndex === 1 ? '#aeb8c5' : occupancyColors[departmentIndex % occupancyColors.length],
                     width: periodIndex === 0 ? 2.5 : 1.8,
                     dash: period.dash
                 },
                 marker: {size: 5},
                 hoverlabel: {
-                    bgcolor: '#f4f6f8',
+                    bgcolor: 'rgb(244, 246, 248)',
                     bordercolor: '#a8b3c2',
                     font: {color: '#202a36', family: 'inherit', size: 12}
                 },
-                hovertemplate: 'День %{x}<br>%{y:.1f}%<extra>%{fullData.name}</extra>'
+                hovertemplate: 'День %{x}<br>%{y:.1f}%<br><b>%{fullData.name}</b><extra></extra>'
             });
         });
     });
@@ -1085,7 +1085,7 @@ function renderLFLInfographic(data) {
         plot_bgcolor: 'rgba(0,0,0,0)',
         font: {color: '#c8d6f0', family: 'inherit'},
         hoverlabel: {
-            bgcolor: '#f4f6f8',
+            bgcolor: 'rgb(244, 246, 248)',
             bordercolor: '#a8b3c2',
             font: {color: '#202a36', family: 'inherit', size: 12},
             align: 'left'
@@ -1982,6 +1982,15 @@ const infographicBarFill = color => {
     const blue = value & 255;
     return `rgba(${red}, ${green}, ${blue}, 0.48)`;
 };
+const infographicBarBorder = color => {
+    const hex = color.replace('#', '');
+    const value = parseInt(hex, 16);
+    const brighten = channel => Math.round(channel + (255 - channel) * 0.28);
+    const red = brighten((value >> 16) & 255);
+    const green = brighten((value >> 8) & 255);
+    const blue = brighten(value & 255);
+    return `rgb(${red}, ${green}, ${blue})`;
+};
 
 Plotly.newPlot('chart1', [{
     x: infographicDateLabels,
@@ -2014,7 +2023,7 @@ Plotly.newPlot('chart2', [{
     orientation: 'h',
     marker: {
         color: infographicTopEmployees.map((_, index) => infographicBarFill(infographicColors[index % infographicColors.length])),
-        line: {width: 1, color: infographicTopEmployees.map((_, index) => infographicColors[index % infographicColors.length])}
+        line: {width: 2, color: infographicTopEmployees.map((_, index) => infographicBarBorder(infographicColors[index % infographicColors.length]))}
     },
     text: infographicTopEmployees.map(entry => formatMoney(entry[1])),
     textposition: 'outside',
@@ -2036,7 +2045,7 @@ Plotly.newPlot('chart3', [{
     width: infographicDepartmentEntries.map(() => 0.45),
     marker: {
         color: infographicDepartmentEntries.map((_, index) => infographicBarFill(infographicColors[index % infographicColors.length])),
-        line: {width: 1, color: infographicDepartmentEntries.map((_, index) => infographicColors[index % infographicColors.length])}
+        line: {width: 2, color: infographicDepartmentEntries.map((_, index) => infographicBarBorder(infographicColors[index % infographicColors.length]))}
     },
     text: infographicDepartmentEntries.map(entry => formatMoney(entry[1])),
     textposition: 'outside',
