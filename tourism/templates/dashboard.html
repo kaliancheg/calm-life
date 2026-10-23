@@ -176,19 +176,12 @@
             <section class="lfl-infographic" aria-labelledby="lflInfographicTitle">
                 <div class="lfl-infographic-header">
                     <div>
-                        <span class="lfl-infographic-kicker">PERIOD COMPARISON · LFL</span>
-                        <h4 id="lflInfographicTitle">Сравнение показателей</h4>
-                        <p>Сопоставление начислений, часов, сотрудников и записей за выбранные периоды.</p>
+                        <span class="lfl-infographic-kicker">LFL · ДНЕВНОЙ СРЕЗ</span>
+                        <h4 id="lflInfographicTitle">Начисления и загрузка отеля</h4>
+                        <p>Сравнение начислений по дням месяца и загрузки отеля за оба периода.</p>
                     </div>
                 </div>
-                <div class="lfl-infographic-grid" id="lflInfographicMetrics"></div>
-                <details class="lfl-infographic-breakdown">
-                    <summary class="lfl-infographic-breakdown-header">
-                        <h5 id="lflDepartmentComparisonTitle">По отделам</h5>
-                        <span id="lflDepartmentComparisonSummary">Сравнение начислений за периоды</span>
-                    </summary>
-                    <div class="lfl-infographic-breakdown-list" id="lflInfographicDepartments"></div>
-                </details>
+                <div id="lflDailyChart" class="lfl-daily-chart" role="img" aria-label="График дневных начислений и загрузки отеля"></div>
             </section>
         </div>
     </div>
@@ -257,11 +250,11 @@
                 </div>
             </div>
             <div class="lfl-modal-section">
-                <h4>👤 Топ изменений по сотрудникам</h4>
+                <h4>👥 Топ изменений по должностям</h4>
                 <div class="lfl-modal-table-wrap">
-                    <table class="lfl-modal-table" id="lflModalEmpTable">
+                    <table class="lfl-modal-table" id="lflModalPositionTable">
                         <thead>
-                            <tr><th>Сотрудник</th><th>Подразделение</th><th>Должность</th><th>Ставка</th><th>Текущий</th><th>Предыдущий</th><th>Изменение</th></tr>
+                            <tr><th>Должность</th><th>Сотрудников</th><th>Текущий</th><th>Предыдущий</th><th>Разница</th><th>Изменение</th></tr>
                         </thead>
                         <tbody></tbody>
                     </table>
@@ -959,7 +952,9 @@ function updateLFLDisplay(data) {
     // Форматируем часы через animateValue чтобы использовать локализованные разделители разрядов
     animateValue(document.getElementById('lfl-change-hours'), 0, Math.round(delta.hours), 300, false, '', true);
 
-    renderLFLInfographic(data);
+    if (document.getElementById('lflInfographicToggle').getAttribute('aria-expanded') === 'true') {
+        renderLFLInfographic(data);
+    }
     
     console.log('LFL display updated successfully');
 }
@@ -977,248 +972,133 @@ function toggleLFLInfographic() {
     button.setAttribute('aria-expanded', String(!isExpanded));
     button.querySelector('span').textContent = isExpanded ? 'Развернуть инфографику' : 'Свернуть инфографику';
     collapse.classList.toggle('is-open', !isExpanded);
+    if (!isExpanded) {
+        requestAnimationFrame(() => {
+            renderLFLInfographic(lastLFLData);
+            Plotly.Plots.resize(document.getElementById('lflDailyChart'));
+        });
+    }
 }
 
 function renderLFLInfographic(data) {
-    const container = document.getElementById('lflInfographicMetrics');
-    const current = data.period_current;
-    const previous = data.period_previous;
-    const metrics = [
-        {key: 'money', title: 'Начислено', format: formatMoney, delta: value => formatMoney(Math.abs(value))},
-        {key: 'hours', title: 'Отработано часов', format: value => Math.round(value).toLocaleString('ru-RU'), delta: value => `${Math.round(Math.abs(value)).toLocaleString('ru-RU')} ч`},
-        {key: 'employees', title: 'Сотрудники', format: value => Math.round(value).toLocaleString('ru-RU'), delta: value => `${Math.round(Math.abs(value)).toLocaleString('ru-RU')} чел.`},
-        {key: 'records', title: 'Записи', format: value => Math.round(value).toLocaleString('ru-RU'), delta: value => `${Math.round(Math.abs(value)).toLocaleString('ru-RU')} зап.`}
+    const chart = document.getElementById('lflDailyChart');
+    if (!data || !data.daily_comparison || !window.Plotly) return;
+
+    const dayOf = date => Number(String(date).slice(8, 10));
+    const daysWithData = [
+        ...data.daily_comparison.current.map(item => dayOf(item.date)),
+        ...data.daily_comparison.previous.map(item => dayOf(item.date)),
+        ...data.daily_comparison.occupancy.map(item => dayOf(item.date))
+    ].filter(day => Number.isInteger(day) && day >= 1 && day <= 31);
+    const maxDay = Math.max(
+        1,
+        dayOf(data.period_current.to),
+        dayOf(data.period_previous.to),
+        ...daysWithData
+    );
+    const days = Array.from({length: maxDay}, (_, index) => index + 1);
+    const amountByDay = records => new Map(records.map(item => [dayOf(item.date), Number(item.money) || 0]));
+    const currentAmounts = amountByDay(data.daily_comparison.current);
+    const previousAmounts = amountByDay(data.daily_comparison.previous);
+
+    const traces = [
+        {
+            type: 'bar',
+            name: 'Текущий период · начисления',
+            x: days,
+            y: days.map(day => currentAmounts.get(day) || 0),
+            marker: {color: '#00d9f5'},
+            hovertemplate: 'День %{x}<br>%{y:,.0f} ₽<extra>Текущий период</extra>'
+        },
+        {
+            type: 'bar',
+            name: 'Предыдущий период · начисления',
+            x: days,
+            y: days.map(day => previousAmounts.get(day) || 0),
+            marker: {color: '#8b7bff'},
+            hovertemplate: 'День %{x}<br>%{y:,.0f} ₽<extra>Предыдущий период</extra>'
+        }
     ];
 
-    container.replaceChildren();
-    metrics.forEach(metric => {
-        const previousValue = Number(previous.metrics[metric.key]) || 0;
-        const currentValue = Number(current.metrics[metric.key]) || 0;
-        const maxValue = Math.max(previousValue, currentValue);
-        const delta = Number(data.delta[metric.key]) || 0;
-        const change = Number(data.change[metric.key]) || 0;
-
-        const card = document.createElement('article');
-        card.className = 'lfl-infographic-card';
-
-        const header = document.createElement('div');
-        header.className = 'lfl-infographic-card-header';
-        const title = document.createElement('h5');
-        title.textContent = metric.title;
-        const changeBadge = document.createElement('span');
-        changeBadge.className = `lfl-infographic-change ${change >= 0 ? 'positive' : 'negative'}`;
-        changeBadge.textContent = `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
-        header.append(title, changeBadge);
-        card.appendChild(header);
-
-        const deltaLine = document.createElement('div');
-        deltaLine.className = `lfl-infographic-delta ${delta >= 0 ? 'positive' : 'negative'}`;
-        deltaLine.textContent = `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${metric.delta(delta)}`;
-        card.appendChild(deltaLine);
-
-        [
-            {label: 'Предыдущий', period: previous, value: previousValue, className: 'previous'},
-            {label: 'Текущий', period: current, value: currentValue, className: 'current'}
-        ].forEach(item => {
-            const row = document.createElement('div');
-            row.className = 'lfl-infographic-row';
-
-            const rowHeader = document.createElement('div');
-            rowHeader.className = 'lfl-infographic-row-header';
-            const label = document.createElement('span');
-            label.className = `lfl-infographic-period-label ${item.className}`;
-            label.textContent = item.label;
-            const value = document.createElement('strong');
-            value.textContent = metric.format(item.value);
-            rowHeader.append(label, value);
-            row.appendChild(rowHeader);
-
-            const track = document.createElement('div');
-            track.className = 'lfl-infographic-track';
-            const bar = document.createElement('div');
-            bar.className = `lfl-infographic-bar ${item.className}`;
-            bar.style.width = `${maxValue > 0 ? item.value / maxValue * 100 : 0}%`;
-            track.appendChild(bar);
-            row.appendChild(track);
-
-            const dates = document.createElement('span');
-            dates.className = 'lfl-infographic-dates';
-            dates.textContent = formatLFLDateRange(item.period.from, item.period.to);
-            row.appendChild(dates);
-            card.appendChild(row);
-        });
-
-        container.appendChild(card);
-    });
-
-    const filterPeriodData = period => allData.filter(record => {
-        if (record.data < period.from || record.data > period.to) return false;
-        if (selectedPod && record.podrazdelenie !== selectedPod) return false;
-        if (selectedOtdels.length > 0 && !selectedOtdels.includes(record.otdel)) return false;
-        return true;
-    });
-    renderLFLGroupComparison(
-        'lflDepartmentComparisonSummary',
-        'lflInfographicDepartments',
-        filterPeriodData(previous),
-        filterPeriodData(current),
-        'otdel',
-        'dolzhnost'
-    );
-}
-
-function renderLFLGroupComparison(summaryId, containerId, previousRecords, currentRecords, departmentField, positionField) {
-    const container = document.getElementById(containerId);
-    const aggregate = records => {
-        const totals = new Map();
-        records.forEach(record => {
-            const label = record[departmentField] || 'Не указано';
-            totals.set(label, (totals.get(label) || 0) + (Number(record.itogo) || 0));
-        });
-        return totals;
-    };
-    const previousTotals = aggregate(previousRecords);
-    const currentTotals = aggregate(currentRecords);
-    const groups = [...new Set([...previousTotals.keys(), ...currentTotals.keys()])]
-        .map(label => ({
-            label,
-            previous: previousTotals.get(label) || 0,
-            current: currentTotals.get(label) || 0
-        }))
-        .sort((a, b) => Math.max(b.previous, b.current) - Math.max(a.previous, a.current));
-
-    container.replaceChildren();
-    const previousTotal = [...previousTotals.values()].reduce((total, value) => total + value, 0);
-    const currentTotal = [...currentTotals.values()].reduce((total, value) => total + value, 0);
-    document.getElementById(summaryId).textContent = groups.length
-        ? `${groups.length} · ${formatMoney(previousTotal)} → ${formatMoney(currentTotal)}`
-        : 'Нет данных за периоды';
-    if (groups.length === 0) {
-        const empty = document.createElement('p');
-        empty.className = 'lfl-infographic-empty';
-        empty.textContent = 'Нет данных по отделам за выбранные периоды';
-        container.appendChild(empty);
-        return;
-    }
-
-    groups.forEach(group => {
-        const change = group.previous > 0
-            ? (group.current - group.previous) / group.previous * 100
-            : group.current > 0 ? 100 : 0;
-        const item = document.createElement('details');
-        item.className = 'lfl-infographic-group';
-
-        const header = document.createElement('summary');
-        header.className = 'lfl-infographic-group-header';
-        const name = document.createElement('span');
-        name.className = 'lfl-infographic-group-name';
-        name.textContent = group.label;
-        const changeBadge = document.createElement('span');
-        changeBadge.className = `lfl-infographic-change ${change >= 0 ? 'positive' : 'negative'}`;
-        changeBadge.textContent = `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
-        const compactTotals = document.createElement('span');
-        compactTotals.className = 'lfl-infographic-group-totals';
-        compactTotals.textContent = `${formatMoney(group.previous)} → ${formatMoney(group.current)}`;
-        header.append(name, compactTotals, changeBadge);
-        item.appendChild(header);
-
-        const detail = document.createElement('div');
-        detail.className = 'lfl-infographic-group-detail';
-        appendLFLComparisonRows(detail, group.previous, group.current);
-
-        const previousDepartmentRecords = previousRecords.filter(record => (record[departmentField] || 'Не указано') === group.label);
-        const currentDepartmentRecords = currentRecords.filter(record => (record[departmentField] || 'Не указано') === group.label);
-        const positions = aggregateLFLGroups(previousDepartmentRecords, positionField, currentDepartmentRecords);
-        const positionsDetails = document.createElement('details');
-        positionsDetails.className = 'lfl-infographic-positions';
-        const positionsSummary = document.createElement('summary');
-        positionsSummary.className = 'lfl-infographic-positions-summary';
-        positionsSummary.textContent = `По должностям · ${positions.length}`;
-        positionsDetails.appendChild(positionsSummary);
-
-        if (positions.length) {
-            const positionsList = document.createElement('div');
-            positionsList.className = 'lfl-infographic-positions-list';
-            positions.forEach(position => {
-                const positionItem = document.createElement('article');
-                positionItem.className = 'lfl-infographic-position';
-                const positionHeader = document.createElement('div');
-                positionHeader.className = 'lfl-infographic-group-header';
-                const positionName = document.createElement('span');
-                positionName.className = 'lfl-infographic-group-name';
-                positionName.textContent = position.label;
-                const positionChange = position.previous > 0
-                    ? (position.current - position.previous) / position.previous * 100
-                    : position.current > 0 ? 100 : 0;
-                const positionBadge = document.createElement('span');
-                positionBadge.className = `lfl-infographic-change ${positionChange >= 0 ? 'positive' : 'negative'}`;
-                positionBadge.textContent = `${positionChange > 0 ? '+' : ''}${positionChange.toFixed(1)}%`;
-                positionHeader.append(positionName, positionBadge);
-                positionItem.appendChild(positionHeader);
-                appendLFLComparisonRows(positionItem, position.previous, position.current);
-                positionsList.appendChild(positionItem);
-            });
-            positionsDetails.appendChild(positionsList);
-        } else {
-            const empty = document.createElement('p');
-            empty.className = 'lfl-infographic-empty';
-            empty.textContent = 'Нет данных по должностям';
-            positionsDetails.appendChild(empty);
-        }
-
-        detail.appendChild(positionsDetails);
-        item.appendChild(detail);
-        container.appendChild(item);
-    });
-}
-
-function aggregateLFLGroups(previousRecords, groupField, currentRecords) {
-    const totals = records => {
-        const result = new Map();
-        records.forEach(record => {
-            const label = record[groupField] || 'Не указано';
-            result.set(label, (result.get(label) || 0) + (Number(record.itogo) || 0));
-        });
-        return result;
-    };
-    const previousTotals = totals(previousRecords);
-    const currentTotals = totals(currentRecords);
-    return [...new Set([...previousTotals.keys(), ...currentTotals.keys()])]
-        .map(label => ({
-            label,
-            previous: previousTotals.get(label) || 0,
-            current: currentTotals.get(label) || 0
-        }))
-        .sort((a, b) => Math.max(b.previous, b.current) - Math.max(a.previous, a.current));
-}
-
-function appendLFLComparisonRows(container, previousValue, currentValue) {
-    const maximum = Math.max(previousValue, currentValue);
+    const occupancyColors = ['#64e6ad', '#ffb86c', '#f78fb3', '#b8a4ff'];
     [
-        {label: 'Предыдущий', value: previousValue, className: 'previous'},
-        {label: 'Текущий', value: currentValue, className: 'current'}
-    ].forEach(period => {
-        const row = document.createElement('div');
-        row.className = 'lfl-infographic-group-row';
-        const rowHeader = document.createElement('div');
-        rowHeader.className = 'lfl-infographic-row-header';
-        const periodLabel = document.createElement('span');
-        periodLabel.className = `lfl-infographic-period-label ${period.className}`;
-        periodLabel.textContent = period.label;
-        const value = document.createElement('strong');
-        value.textContent = formatMoney(period.value);
-        rowHeader.append(periodLabel, value);
-        row.appendChild(rowHeader);
+        {period: data.period_current, label: 'Текущий период', dash: 'solid'},
+        {period: data.period_previous, label: 'Предыдущий период', dash: 'dot'}
+    ].forEach((period, periodIndex) => {
+        const occupancyByDepartment = new Map();
+        data.daily_comparison.occupancy
+            .filter(item => item.date >= period.period.from && item.date <= period.period.to)
+            .forEach(item => {
+                const department = item.podrazdelenie || 'Подразделение';
+                if (!occupancyByDepartment.has(department)) occupancyByDepartment.set(department, new Map());
+                occupancyByDepartment.get(department).set(dayOf(item.date), Number(item.occupancy_percent));
+            });
 
-        const track = document.createElement('div');
-        track.className = 'lfl-infographic-track';
-        const bar = document.createElement('div');
-        bar.className = `lfl-infographic-bar ${period.className}`;
-        bar.style.width = `${maximum > 0 ? period.value / maximum * 100 : 0}%`;
-        track.appendChild(bar);
-        row.appendChild(track);
-        container.appendChild(row);
+        [...occupancyByDepartment.entries()].forEach(([department, values], departmentIndex) => {
+            traces.push({
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: `Загрузка · ${department} · ${period.label.toLowerCase()}`,
+                x: days,
+                y: days.map(day => values.has(day) ? values.get(day) : null),
+                yaxis: 'y2',
+                connectgaps: false,
+                line: {
+                    color: occupancyColors[departmentIndex % occupancyColors.length],
+                    width: periodIndex === 0 ? 2.5 : 1.8,
+                    dash: period.dash
+                },
+                marker: {size: 5},
+                hovertemplate: 'День %{x}<br>%{y:.1f}%<extra>%{fullData.name}</extra>'
+            });
+        });
     });
+
+    Plotly.react(chart, traces, {
+        autosize: true,
+        height: 370,
+        barmode: 'group',
+        bargap: 0.28,
+        margin: {l: 72, r: 74, t: 22, b: 84},
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        font: {color: '#c8d6f0', family: 'inherit'},
+        legend: {orientation: 'h', x: 0, y: -0.22, font: {size: 10}},
+        xaxis: {
+            title: {text: 'День месяца', standoff: 8},
+            tickmode: 'array',
+            tickvals: days,
+            ticktext: days.map(day => String(day).padStart(2, '0')),
+            gridcolor: 'rgba(148, 163, 184, 0.08)',
+            linecolor: 'rgba(148, 163, 184, 0.2)',
+            fixedrange: true
+        },
+        yaxis: {
+            title: {text: 'Начисления, ₽'},
+            rangemode: 'tozero',
+            separatethousands: true,
+            gridcolor: 'rgba(148, 163, 184, 0.12)',
+            zerolinecolor: 'rgba(148, 163, 184, 0.2)'
+        },
+        yaxis2: {
+            title: {text: 'Загрузка, %'},
+            overlaying: 'y',
+            side: 'right',
+            range: [0, 100],
+            ticksuffix: '%',
+            gridcolor: 'rgba(0,0,0,0)',
+            fixedrange: true
+        },
+        annotations: traces.length === 2 ? [{
+            text: 'Нет данных о загрузке отеля за выбранные периоды',
+            xref: 'paper',
+            yref: 'paper',
+            x: 0.5,
+            y: 1,
+            showarrow: false,
+            font: {color: '#91a2c2', size: 12}
+        }] : []
+    }, {responsive: true, displayModeBar: false});
 }
 
 // ==================== LFL DETAILS MODAL ====================
@@ -1433,50 +1313,59 @@ function renderLFLDetails() {
     
     document.querySelector('#lflModalOtdelTable tbody').innerHTML = otdelRows;
     
-    // Aggregate by employee - unique key: fio + dolzhnost + podrazdelenie
-    const aggByEmp = (data) => {
-        const agg = {};
+    // Aggregate by position; employee counts remain unique within each position.
+    const aggByPosition = data => {
+        const agg = new Map();
         data.forEach(r => {
-            const key = r.fio + '|' + r.dolzhnost + '|' + r.podrazdelenie;
-            if (!agg[key]) {
-                agg[key] = { 
-                    fio: r.fio, 
-                    podrazdelenie: r.podrazdelenie,
-                    dolzhnost: r.dolzhnost, 
-                    stavka: r.stavka,
-                    money: 0, 
-                    hours: 0 
-                };
+            const position = r.dolzhnost || 'Не указано';
+            if (!agg.has(position)) {
+                agg.set(position, {money: 0, employees: new Set()});
             }
-            agg[key].money += r.itogo;
-            agg[key].hours += r.chasy;
+            const item = agg.get(position);
+            item.money += Number(r.itogo) || 0;
+            item.employees.add(`${r.fio || ''}|${r.podrazdelenie || ''}`);
         });
         return agg;
     };
-    
-    const curEmp = aggByEmp(curData);
-    const prevEmp = aggByEmp(prevData);
-    const allEmps = new Set([...Object.keys(curEmp), ...Object.keys(prevEmp)]);
-    
-    // Build employee table sorted by absolute change, top 20
-    const empRows = Array.from(allEmps).map(key => {
-        const c = curEmp[key] || { fio: prevEmp[key]?.fio || '—', podrazdelenie: prevEmp[key]?.podrazdelenie || '—', dolzhnost: prevEmp[key]?.dolzhnost || '—', stavka: prevEmp[key]?.stavka || '—', money: 0, hours: 0 };
-        const p = prevEmp[key] || { fio: curEmp[key]?.fio || '—', podrazdelenie: curEmp[key]?.podrazdelenie || '—', dolzhnost: curEmp[key]?.dolzhnost || '—', stavka: curEmp[key]?.stavka || '—', money: 0, hours: 0 };
-        const changePct = p.money > 0 ? ((c.money - p.money) / p.money * 100) : (c.money > 0 ? 100 : 0);
+
+    const currentByPosition = aggByPosition(curData);
+    const previousByPosition = aggByPosition(prevData);
+    const allPositions = new Set([...currentByPosition.keys(), ...previousByPosition.keys()]);
+    const positionRows = Array.from(allPositions).map(position => {
+        const current = currentByPosition.get(position) || {money: 0, employees: new Set()};
+        const previous = previousByPosition.get(position) || {money: 0, employees: new Set()};
+        const difference = current.money - previous.money;
+        const changePct = previous.money > 0
+            ? difference / previous.money * 100
+            : current.money > 0 ? 100 : 0;
+        if (Math.abs(changePct) >= 1000) return null;
         const sign = changePct > 0 ? '▲' : changePct < 0 ? '▼' : '—';
         const colorClass = changePct > 0 ? 'positive' : changePct < 0 ? 'negative' : '';
-        return { html: `<tr>
-            <td>${c.fio}</td>
-            <td>${c.podrazdelenie}</td>
-            <td>${c.dolzhnost}</td>
-            <td>${c.stavka ? parseInt(c.stavka).toLocaleString('ru-RU') : '—'}</td>
-            <td>${formatMoney(c.money)}</td>
-            <td>${formatMoney(p.money)}</td>
-            <td class="${colorClass}">${changePct > 0 ? '+' : ''}${changePct.toFixed(1)}% ${sign}</td>
-        </tr>`, absChange: Math.abs(changePct) };
-    }).sort((a, b) => b.absChange - a.absChange).slice(0, 20).map(r => r.html).join('');
-    
-    document.querySelector('#lflModalEmpTable tbody').innerHTML = empRows;
+        return {
+            position,
+            currentMoney: current.money,
+            previousMoney: previous.money,
+            difference,
+            employees: current.employees.size,
+            changePct,
+            colorClass,
+            sign,
+            absChange: Math.abs(changePct)
+        };
+    }).filter(Boolean)
+        .sort((a, b) => b.absChange - a.absChange)
+        .slice(0, 20)
+        .map(row => `<tr>
+            <td>${row.position}</td>
+            <td>${row.employees.toLocaleString('ru-RU')}</td>
+            <td>${formatMoney(row.currentMoney)}</td>
+            <td>${formatMoney(row.previousMoney)}</td>
+            <td class="${row.colorClass}">${row.difference > 0 ? '+' : ''}${formatMoney(row.difference).replace(' ₽', '')}</td>
+            <td class="${row.colorClass}">${row.changePct > 0 ? '+' : ''}${row.changePct.toFixed(1)}% ${row.sign}</td>
+        </tr>`)
+        .join('');
+
+    document.querySelector('#lflModalPositionTable tbody').innerHTML = positionRows;
 }
 
 // Раскрытие/сворачивание строк отделов в LFL модалке

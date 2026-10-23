@@ -880,6 +880,53 @@ def api_lfl():
         # Получаем данные за оба периода
         df_current = get_period_data(period_to[0], period_to[1], allowed_subs, allowed_otdels, 'CURRENT')
         df_prev = get_period_data(period_prev[0], period_prev[1], allowed_subs, allowed_otdels, 'PREVIOUS')
+
+        def daily_totals(df):
+            if df.empty:
+                return []
+            dates = pd.to_datetime(df['data'], errors='coerce')
+            daily = (
+                df.assign(_day=dates.dt.strftime('%Y-%m-%d'))
+                .dropna(subset=['_day'])
+                .groupby('_day', as_index=False)['itogo']
+                .sum()
+            )
+            return [
+                {'date': row['_day'], 'money': float(row['itogo'])}
+                for _, row in daily.iterrows()
+            ]
+
+        occupancy_conditions = [
+            '((date >= %s AND date <= %s) OR (date >= %s AND date <= %s))'
+        ]
+        occupancy_params = [period_to[0], period_to[1], period_prev[0], period_prev[1]]
+        if selected_pod:
+            occupancy_conditions.append('podrazdelenie = %s')
+            occupancy_params.append(selected_pod)
+        if allowed_subs is not None and len(allowed_subs) > 0:
+            occupancy_conditions.append(
+                'podrazdelenie IN (%s)' % ','.join(['%s'] * len(allowed_subs))
+            )
+            occupancy_params.extend(allowed_subs)
+        occupancy_df = pd.read_sql(
+            f'''
+                SELECT date, podrazdelenie, occupancy_percent
+                FROM hotel_occupancy
+                WHERE {' AND '.join(occupancy_conditions)}
+            ''',
+            conn,
+            params=occupancy_params
+        )
+        occupancy_df['_day'] = pd.to_datetime(occupancy_df['date'], errors='coerce')
+        daily_occupancy = [
+            {
+                'date': row['_day'].strftime('%Y-%m-%d'),
+                'podrazdelenie': row['podrazdelenie'],
+                'occupancy_percent': float(row['occupancy_percent'])
+            }
+            for _, row in occupancy_df.iterrows()
+            if pd.notna(row['_day']) and pd.notna(row['occupancy_percent'])
+        ]
         
         # Рассчитываем агрегированные показатели
         def calc_metrics(df):
@@ -932,6 +979,11 @@ def api_lfl():
                 'hours': metrics_current['hours'] - metrics_prev['hours'],
                 'money': metrics_current['money'] - metrics_prev['money'],
                 'records': metrics_current['records'] - metrics_prev['records']
+            },
+            'daily_comparison': {
+                'current': daily_totals(df_current),
+                'previous': daily_totals(df_prev),
+                'occupancy': daily_occupancy
             }
         }
         
