@@ -170,42 +170,35 @@
                 <div class="lfl-sub-metric">⏰ <span id="lfl-change-hours">0</span> ч</div>
             </div>
         </div>
-        <div class="lfl-infographic-collapse" id="lflInfographicCollapse">
-            <div class="lfl-infographic-collapse-inner">
-                <section class="lfl-infographic" aria-labelledby="lflInfographicTitle">
-                    <div class="lfl-infographic-header">
-                        <div>
-                            <span class="lfl-infographic-kicker">PERIOD COMPARISON · LFL</span>
-                            <h4 id="lflInfographicTitle">Сравнение показателей</h4>
-                            <p>Сопоставление начислений, часов, сотрудников и записей за выбранные периоды.</p>
-                        </div>
+    </div>
+    <div class="lfl-infographic-collapse" id="lflInfographicCollapse">
+        <div class="lfl-infographic-collapse-inner">
+            <section class="lfl-infographic" aria-labelledby="lflInfographicTitle">
+                <div class="lfl-infographic-header">
+                    <div>
+                        <span class="lfl-infographic-kicker">PERIOD COMPARISON · LFL</span>
+                        <h4 id="lflInfographicTitle">Сравнение показателей</h4>
+                        <p>Сопоставление начислений, часов, сотрудников и записей за выбранные периоды.</p>
                     </div>
-                    <div class="lfl-infographic-grid" id="lflInfographicMetrics"></div>
-                    <details class="lfl-infographic-breakdown">
-                        <summary class="lfl-infographic-breakdown-header">
-                            <h5 id="lflDepartmentComparisonTitle">По отделам</h5>
-                            <span id="lflDepartmentComparisonSummary">Сравнение начислений за периоды</span>
-                        </summary>
-                        <div class="lfl-infographic-breakdown-list" id="lflInfographicDepartments"></div>
-                    </details>
-                    <details class="lfl-infographic-breakdown">
-                        <summary class="lfl-infographic-breakdown-header">
-                            <h5 id="lflPositionComparisonTitle">По должностям</h5>
-                            <span id="lflPositionComparisonSummary">Сравнение начислений за периоды</span>
-                        </summary>
-                        <div class="lfl-infographic-breakdown-list" id="lflInfographicPositions"></div>
-                    </details>
-                </section>
-            </div>
+                </div>
+                <div class="lfl-infographic-grid" id="lflInfographicMetrics"></div>
+                <details class="lfl-infographic-breakdown">
+                    <summary class="lfl-infographic-breakdown-header">
+                        <h5 id="lflDepartmentComparisonTitle">По отделам</h5>
+                        <span id="lflDepartmentComparisonSummary">Сравнение начислений за периоды</span>
+                    </summary>
+                    <div class="lfl-infographic-breakdown-list" id="lflInfographicDepartments"></div>
+                </details>
+            </section>
         </div>
-        <div class="lfl-infographic-toggle-wrap">
-            <button class="lfl-infographic-toggle" id="lflInfographicToggle" type="button"
-                    aria-expanded="false" aria-controls="lflInfographicCollapse"
-                    onclick="toggleLFLInfographic()">
-                <span>Развернуть инфографику</span>
-                <span class="lfl-infographic-toggle-icon" aria-hidden="true">⌄</span>
-            </button>
-        </div>
+    </div>
+    <div class="lfl-infographic-toggle-wrap">
+        <button class="lfl-infographic-toggle" id="lflInfographicToggle" type="button"
+                aria-expanded="false" aria-controls="lflInfographicCollapse"
+                onclick="toggleLFLInfographic()">
+            <span>Развернуть инфографику</span>
+            <span class="lfl-infographic-toggle-icon" aria-hidden="true">⌄</span>
+        </button>
     </div>
 </div>
 
@@ -1065,29 +1058,21 @@ function renderLFLInfographic(data) {
         return true;
     });
     renderLFLGroupComparison(
-        'lflInfographicDepartments',
         'lflDepartmentComparisonSummary',
+        'lflInfographicDepartments',
         filterPeriodData(previous),
         filterPeriodData(current),
         'otdel',
-        'Нет данных по отделам за выбранные периоды'
-    );
-    renderLFLGroupComparison(
-        'lflInfographicPositions',
-        'lflPositionComparisonSummary',
-        filterPeriodData(previous),
-        filterPeriodData(current),
-        'dolzhnost',
-        'Нет данных по должностям за выбранные периоды'
+        'dolzhnost'
     );
 }
 
-function renderLFLGroupComparison(containerId, summaryId, previousRecords, currentRecords, groupField, emptyMessage) {
+function renderLFLGroupComparison(summaryId, containerId, previousRecords, currentRecords, departmentField, positionField) {
     const container = document.getElementById(containerId);
     const aggregate = records => {
         const totals = new Map();
         records.forEach(record => {
-            const label = record[groupField] || 'Не указано';
+            const label = record[departmentField] || 'Не указано';
             totals.set(label, (totals.get(label) || 0) + (Number(record.itogo) || 0));
         });
         return totals;
@@ -1107,60 +1092,132 @@ function renderLFLGroupComparison(containerId, summaryId, previousRecords, curre
     const currentTotal = [...currentTotals.values()].reduce((total, value) => total + value, 0);
     document.getElementById(summaryId).textContent = groups.length
         ? `${groups.length} · ${formatMoney(previousTotal)} → ${formatMoney(currentTotal)}`
-        : 'Нет данных за выбранные периоды';
+        : 'Нет данных за периоды';
     if (groups.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'lfl-infographic-empty';
-        empty.textContent = emptyMessage;
+        empty.textContent = 'Нет данных по отделам за выбранные периоды';
         container.appendChild(empty);
         return;
     }
 
     groups.forEach(group => {
-        const maximum = Math.max(group.previous, group.current);
         const change = group.previous > 0
             ? (group.current - group.previous) / group.previous * 100
             : group.current > 0 ? 100 : 0;
-        const item = document.createElement('article');
+        const item = document.createElement('details');
         item.className = 'lfl-infographic-group';
 
-        const header = document.createElement('div');
+        const header = document.createElement('summary');
         header.className = 'lfl-infographic-group-header';
-        const name = document.createElement('h6');
+        const name = document.createElement('span');
+        name.className = 'lfl-infographic-group-name';
         name.textContent = group.label;
         const changeBadge = document.createElement('span');
         changeBadge.className = `lfl-infographic-change ${change >= 0 ? 'positive' : 'negative'}`;
         changeBadge.textContent = `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
-        header.append(name, changeBadge);
+        const compactTotals = document.createElement('span');
+        compactTotals.className = 'lfl-infographic-group-totals';
+        compactTotals.textContent = `${formatMoney(group.previous)} → ${formatMoney(group.current)}`;
+        header.append(name, compactTotals, changeBadge);
         item.appendChild(header);
 
-        [
-            {label: 'Предыдущий', value: group.previous, className: 'previous'},
-            {label: 'Текущий', value: group.current, className: 'current'}
-        ].forEach(period => {
-            const row = document.createElement('div');
-            row.className = 'lfl-infographic-group-row';
-            const rowHeader = document.createElement('div');
-            rowHeader.className = 'lfl-infographic-row-header';
-            const periodLabel = document.createElement('span');
-            periodLabel.className = `lfl-infographic-period-label ${period.className}`;
-            periodLabel.textContent = period.label;
-            const value = document.createElement('strong');
-            value.textContent = formatMoney(period.value);
-            rowHeader.append(periodLabel, value);
-            row.appendChild(rowHeader);
+        const detail = document.createElement('div');
+        detail.className = 'lfl-infographic-group-detail';
+        appendLFLComparisonRows(detail, group.previous, group.current);
 
-            const track = document.createElement('div');
-            track.className = 'lfl-infographic-track';
-            const bar = document.createElement('div');
-            bar.className = `lfl-infographic-bar ${period.className}`;
-            bar.style.width = `${maximum > 0 ? period.value / maximum * 100 : 0}%`;
-            track.appendChild(bar);
-            row.appendChild(track);
-            item.appendChild(row);
-        });
+        const previousDepartmentRecords = previousRecords.filter(record => (record[departmentField] || 'Не указано') === group.label);
+        const currentDepartmentRecords = currentRecords.filter(record => (record[departmentField] || 'Не указано') === group.label);
+        const positions = aggregateLFLGroups(previousDepartmentRecords, positionField, currentDepartmentRecords);
+        const positionsDetails = document.createElement('details');
+        positionsDetails.className = 'lfl-infographic-positions';
+        const positionsSummary = document.createElement('summary');
+        positionsSummary.className = 'lfl-infographic-positions-summary';
+        positionsSummary.textContent = `По должностям · ${positions.length}`;
+        positionsDetails.appendChild(positionsSummary);
 
+        if (positions.length) {
+            const positionsList = document.createElement('div');
+            positionsList.className = 'lfl-infographic-positions-list';
+            positions.forEach(position => {
+                const positionItem = document.createElement('article');
+                positionItem.className = 'lfl-infographic-position';
+                const positionHeader = document.createElement('div');
+                positionHeader.className = 'lfl-infographic-group-header';
+                const positionName = document.createElement('span');
+                positionName.className = 'lfl-infographic-group-name';
+                positionName.textContent = position.label;
+                const positionChange = position.previous > 0
+                    ? (position.current - position.previous) / position.previous * 100
+                    : position.current > 0 ? 100 : 0;
+                const positionBadge = document.createElement('span');
+                positionBadge.className = `lfl-infographic-change ${positionChange >= 0 ? 'positive' : 'negative'}`;
+                positionBadge.textContent = `${positionChange > 0 ? '+' : ''}${positionChange.toFixed(1)}%`;
+                positionHeader.append(positionName, positionBadge);
+                positionItem.appendChild(positionHeader);
+                appendLFLComparisonRows(positionItem, position.previous, position.current);
+                positionsList.appendChild(positionItem);
+            });
+            positionsDetails.appendChild(positionsList);
+        } else {
+            const empty = document.createElement('p');
+            empty.className = 'lfl-infographic-empty';
+            empty.textContent = 'Нет данных по должностям';
+            positionsDetails.appendChild(empty);
+        }
+
+        detail.appendChild(positionsDetails);
+        item.appendChild(detail);
         container.appendChild(item);
+    });
+}
+
+function aggregateLFLGroups(previousRecords, groupField, currentRecords) {
+    const totals = records => {
+        const result = new Map();
+        records.forEach(record => {
+            const label = record[groupField] || 'Не указано';
+            result.set(label, (result.get(label) || 0) + (Number(record.itogo) || 0));
+        });
+        return result;
+    };
+    const previousTotals = totals(previousRecords);
+    const currentTotals = totals(currentRecords);
+    return [...new Set([...previousTotals.keys(), ...currentTotals.keys()])]
+        .map(label => ({
+            label,
+            previous: previousTotals.get(label) || 0,
+            current: currentTotals.get(label) || 0
+        }))
+        .sort((a, b) => Math.max(b.previous, b.current) - Math.max(a.previous, a.current));
+}
+
+function appendLFLComparisonRows(container, previousValue, currentValue) {
+    const maximum = Math.max(previousValue, currentValue);
+    [
+        {label: 'Предыдущий', value: previousValue, className: 'previous'},
+        {label: 'Текущий', value: currentValue, className: 'current'}
+    ].forEach(period => {
+        const row = document.createElement('div');
+        row.className = 'lfl-infographic-group-row';
+        const rowHeader = document.createElement('div');
+        rowHeader.className = 'lfl-infographic-row-header';
+        const periodLabel = document.createElement('span');
+        periodLabel.className = `lfl-infographic-period-label ${period.className}`;
+        periodLabel.textContent = period.label;
+        const value = document.createElement('strong');
+        value.textContent = formatMoney(period.value);
+        rowHeader.append(periodLabel, value);
+        row.appendChild(rowHeader);
+
+        const track = document.createElement('div');
+        track.className = 'lfl-infographic-track';
+        const bar = document.createElement('div');
+        bar.className = `lfl-infographic-bar ${period.className}`;
+        bar.style.width = `${maximum > 0 ? period.value / maximum * 100 : 0}%`;
+        track.appendChild(bar);
+        row.appendChild(track);
+        container.appendChild(row);
     });
 }
 
