@@ -170,6 +170,26 @@
                 <div class="lfl-sub-metric">⏰ <span id="lfl-change-hours">0</span> ч</div>
             </div>
         </div>
+        <button class="lfl-infographic-toggle" id="lflInfographicToggle" type="button"
+                aria-expanded="false" aria-controls="lflInfographicCollapse"
+                onclick="toggleLFLInfographic()">
+            <span>Развернуть инфографику</span>
+            <span class="lfl-infographic-toggle-icon" aria-hidden="true">⌄</span>
+        </button>
+        <div class="lfl-infographic-collapse" id="lflInfographicCollapse">
+            <div class="lfl-infographic-collapse-inner">
+                <section class="lfl-infographic" aria-labelledby="lflInfographicTitle">
+                    <div class="lfl-infographic-header">
+                        <div>
+                            <span class="lfl-infographic-kicker">PERIOD COMPARISON · LFL</span>
+                            <h4 id="lflInfographicTitle">Сравнение показателей</h4>
+                            <p>Сопоставление начислений, часов, сотрудников и записей за выбранные периоды.</p>
+                        </div>
+                    </div>
+                    <div class="lfl-infographic-grid" id="lflInfographicMetrics"></div>
+                </section>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -369,7 +389,7 @@
             <div class="infographic-plot infographic-plot-trend" id="chart1"></div>
         </section>
         <section class="infographic-panel infographic-panel-employees">
-            <h3>Топ-10 сотрудников · по затратам ФОТ</h3>
+            <h3>Топ-10 сотрудников по затратам ФОТ</h3>
             <div class="infographic-plot infographic-plot-employees" id="chart2"></div>
         </section>
         <section class="infographic-panel infographic-panel-departments">
@@ -899,23 +919,16 @@ function updateLFLDisplay(data) {
     updateLFLNavLabel();
     
     // Форматируем даты
-    const formatDateRange = (from, to) => {
-        const fromDate = new Date(from);
-        const toDate = new Date(to);
-        const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
-        return `${fromDate.toLocaleDateString('ru-RU', options)} - ${toDate.toLocaleDateString('ru-RU', options)}`;
-    };
-    
     // Current period
     document.getElementById('lfl-current-label').textContent = 'Текущий период';
-    document.getElementById('lfl-current-dates').textContent = formatDateRange(cur.from, cur.to);
+    document.getElementById('lfl-current-dates').textContent = formatLFLDateRange(cur.from, cur.to);
     animateValue(document.getElementById('lfl-current-money'), 0, cur.metrics.money, 300, true);
     animateValue(document.getElementById('lfl-current-employees'), 0, cur.metrics.employees, 300, false);
     animateValue(document.getElementById('lfl-current-hours'), 0, Math.round(cur.metrics.hours), 300, false);
     
     // Previous period
     document.getElementById('lfl-previous-label').textContent = 'Предыдущий период';
-    document.getElementById('lfl-previous-dates').textContent = formatDateRange(prev.from, prev.to);
+    document.getElementById('lfl-previous-dates').textContent = formatLFLDateRange(prev.from, prev.to);
     animateValue(document.getElementById('lfl-previous-money'), 0, prev.metrics.money, 300, true);
     animateValue(document.getElementById('lfl-previous-employees'), 0, prev.metrics.employees, 300, false);
     animateValue(document.getElementById('lfl-previous-hours'), 0, Math.round(prev.metrics.hours), 300, false);
@@ -936,8 +949,98 @@ function updateLFLDisplay(data) {
     document.getElementById('lfl-change-employees').textContent = `${delta.employees > 0 ? '+' : ''}${delta.employees}`;
     // Форматируем часы через animateValue чтобы использовать локализованные разделители разрядов
     animateValue(document.getElementById('lfl-change-hours'), 0, Math.round(delta.hours), 300, false, '', true);
+
+    renderLFLInfographic(data);
     
     console.log('LFL display updated successfully');
+}
+
+function formatLFLDateRange(from, to) {
+    const options = {day: '2-digit', month: '2-digit', year: 'numeric'};
+    return `${new Date(from).toLocaleDateString('ru-RU', options)} - ${new Date(to).toLocaleDateString('ru-RU', options)}`;
+}
+
+function toggleLFLInfographic() {
+    const collapse = document.getElementById('lflInfographicCollapse');
+    const button = document.getElementById('lflInfographicToggle');
+    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+    button.setAttribute('aria-expanded', String(!isExpanded));
+    button.querySelector('span').textContent = isExpanded ? 'Развернуть инфографику' : 'Свернуть инфографику';
+    collapse.classList.toggle('is-open', !isExpanded);
+}
+
+function renderLFLInfographic(data) {
+    const container = document.getElementById('lflInfographicMetrics');
+    const current = data.period_current;
+    const previous = data.period_previous;
+    const metrics = [
+        {key: 'money', title: 'Начислено', format: formatMoney, delta: value => formatMoney(Math.abs(value))},
+        {key: 'hours', title: 'Отработано часов', format: value => Math.round(value).toLocaleString('ru-RU'), delta: value => `${Math.round(Math.abs(value)).toLocaleString('ru-RU')} ч`},
+        {key: 'employees', title: 'Сотрудники', format: value => Math.round(value).toLocaleString('ru-RU'), delta: value => `${Math.round(Math.abs(value)).toLocaleString('ru-RU')} чел.`},
+        {key: 'records', title: 'Записи', format: value => Math.round(value).toLocaleString('ru-RU'), delta: value => `${Math.round(Math.abs(value)).toLocaleString('ru-RU')} зап.`}
+    ];
+
+    container.replaceChildren();
+    metrics.forEach(metric => {
+        const previousValue = Number(previous.metrics[metric.key]) || 0;
+        const currentValue = Number(current.metrics[metric.key]) || 0;
+        const maxValue = Math.max(previousValue, currentValue);
+        const delta = Number(data.delta[metric.key]) || 0;
+        const change = Number(data.change[metric.key]) || 0;
+
+        const card = document.createElement('article');
+        card.className = 'lfl-infographic-card';
+
+        const header = document.createElement('div');
+        header.className = 'lfl-infographic-card-header';
+        const title = document.createElement('h5');
+        title.textContent = metric.title;
+        const changeBadge = document.createElement('span');
+        changeBadge.className = `lfl-infographic-change ${change >= 0 ? 'positive' : 'negative'}`;
+        changeBadge.textContent = `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
+        header.append(title, changeBadge);
+        card.appendChild(header);
+
+        const deltaLine = document.createElement('div');
+        deltaLine.className = `lfl-infographic-delta ${delta >= 0 ? 'positive' : 'negative'}`;
+        deltaLine.textContent = `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${metric.delta(delta)}`;
+        card.appendChild(deltaLine);
+
+        [
+            {label: 'Предыдущий', period: previous, value: previousValue, className: 'previous'},
+            {label: 'Текущий', period: current, value: currentValue, className: 'current'}
+        ].forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'lfl-infographic-row';
+
+            const rowHeader = document.createElement('div');
+            rowHeader.className = 'lfl-infographic-row-header';
+            const label = document.createElement('span');
+            label.className = `lfl-infographic-period-label ${item.className}`;
+            label.textContent = item.label;
+            const value = document.createElement('strong');
+            value.textContent = metric.format(item.value);
+            rowHeader.append(label, value);
+            row.appendChild(rowHeader);
+
+            const track = document.createElement('div');
+            track.className = 'lfl-infographic-track';
+            const bar = document.createElement('div');
+            bar.className = `lfl-infographic-bar ${item.className}`;
+            bar.style.width = `${maxValue > 0 ? item.value / maxValue * 100 : 0}%`;
+            track.appendChild(bar);
+            row.appendChild(track);
+
+            const dates = document.createElement('span');
+            dates.className = 'lfl-infographic-dates';
+            dates.textContent = formatLFLDateRange(item.period.from, item.period.to);
+            row.appendChild(dates);
+            card.appendChild(row);
+        });
+
+        container.appendChild(card);
+    });
 }
 
 // ==================== LFL DETAILS MODAL ====================
