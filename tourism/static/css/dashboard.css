@@ -1337,6 +1337,8 @@ body {
 
 .lfl-infographic-toggle {
     display: flex;
+    width: fit-content;
+    max-width: 100%;
     align-items: center;
     justify-content: center;
     gap: 10px;
@@ -1389,6 +1391,8 @@ body {
 }
 
 .lfl-infographic {
+    width: 100%;
+    box-sizing: border-box;
     padding: 22px;
     border: 1px solid rgba(0, 229, 255, 0.2);
     border-radius: 18px;
@@ -1427,7 +1431,7 @@ body {
 
 .lfl-infographic-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
 }
 
@@ -1542,6 +1546,89 @@ body {
     color: #7788a8;
     font-size: 0.68em;
     text-align: right;
+}
+
+.lfl-infographic-breakdown {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 20px;
+    padding: 18px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
+}
+
+.lfl-infographic-breakdown-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.lfl-infographic-breakdown-header h5 {
+    margin: 0;
+    color: #dce8ff;
+    font-size: 0.98em;
+    font-weight: 600;
+}
+
+.lfl-infographic-breakdown-header span {
+    color: #7788a8;
+    font-size: 0.76em;
+}
+
+.lfl-infographic-breakdown-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+}
+
+.lfl-infographic-group {
+    min-width: 0;
+    padding: 13px 15px;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 11px;
+    background: rgba(9, 17, 32, 0.34);
+}
+
+.lfl-infographic-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.lfl-infographic-group-header h6 {
+    overflow: hidden;
+    margin: 0;
+    color: #e4edff;
+    font-size: 0.86em;
+    font-weight: 600;
+    text-overflow: ellipsis;
+}
+
+.lfl-infographic-group-row + .lfl-infographic-group-row {
+    margin-top: 9px;
+}
+
+.lfl-infographic-group-row .lfl-infographic-row-header {
+    margin-bottom: 5px;
+    font-size: 0.72em;
+}
+
+.lfl-infographic-group-row .lfl-infographic-row-header strong {
+    font-size: 0.96em;
+}
+
+.lfl-infographic-empty {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 15px;
+    color: #91a2c2;
+    font-size: 0.86em;
+    text-align: center;
 }
 
 /* LFL Details Modal */
@@ -2460,7 +2547,21 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     .lfl-infographic-grid {
         grid-template-columns: minmax(0, 1fr);
     }
-    
+
+    .lfl-infographic-breakdown {
+        padding: 14px;
+    }
+
+    .lfl-infographic-breakdown-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .lfl-infographic-breakdown-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .lfl-card { 
         padding: 15px; 
     }
