@@ -1011,6 +1011,11 @@ function renderLFLInfographic(data) {
                 color: 'rgba(110, 225, 155, 0.48)',
                 line: {color: '#7ce8a8', width: 1}
             },
+            hoverlabel: {
+                bgcolor: '#f4f6f8',
+                bordercolor: '#7ce8a8',
+                font: {color: '#202a36', family: 'inherit', size: 12}
+            },
             hovertemplate: 'День %{x}<br>%{y:,.0f} ₽<extra>Текущий период</extra>'
         },
         {
@@ -1021,6 +1026,11 @@ function renderLFLInfographic(data) {
             marker: {
                 color: 'rgba(148, 163, 184, 0.45)',
                 line: {color: '#cbd5e1', width: 1}
+            },
+            hoverlabel: {
+                bgcolor: '#f4f6f8',
+                bordercolor: '#a8b3c2',
+                font: {color: '#202a36', family: 'inherit', size: 12}
             },
             hovertemplate: 'День %{x}<br>%{y:,.0f} ₽<extra>Предыдущий период</extra>'
         }
@@ -1055,6 +1065,11 @@ function renderLFLInfographic(data) {
                     dash: period.dash
                 },
                 marker: {size: 5},
+                hoverlabel: {
+                    bgcolor: '#f4f6f8',
+                    bordercolor: '#a8b3c2',
+                    font: {color: '#202a36', family: 'inherit', size: 12}
+                },
                 hovertemplate: 'День %{x}<br>%{y:.1f}%<extra>%{fullData.name}</extra>'
             });
         });
@@ -1088,7 +1103,7 @@ function renderLFLInfographic(data) {
             title: {text: 'День месяца', standoff: 8},
             tickmode: 'linear',
             tick0: 1,
-            dtick: Math.max(1, Math.ceil(maxDay / 10)),
+            dtick: 1,
             tickformat: '02d',
             gridcolor: 'rgba(148, 163, 184, 0.08)',
             linecolor: 'rgba(148, 163, 184, 0.2)',
@@ -1959,6 +1974,14 @@ const infographicDateLabels = infographicDateValues.map(date => {
     return parts.length === 3 ? String(Number(parts[2])) : date;
 });
 const infographicDateTotals = infographicDateValues.map(date => infographicDateTotalsByDate[date]);
+const infographicBarFill = color => {
+    const hex = color.replace('#', '');
+    const value = parseInt(hex, 16);
+    const red = (value >> 16) & 255;
+    const green = (value >> 8) & 255;
+    const blue = value & 255;
+    return `rgba(${red}, ${green}, ${blue}, 0.48)`;
+};
 
 Plotly.newPlot('chart1', [{
     x: infographicDateLabels,
@@ -1990,8 +2013,8 @@ Plotly.newPlot('chart2', [{
     type: 'bar',
     orientation: 'h',
     marker: {
-        color: infographicTopEmployees.map((_, index) => infographicColors[index % infographicColors.length]),
-        line: {width: 0}
+        color: infographicTopEmployees.map((_, index) => infographicBarFill(infographicColors[index % infographicColors.length])),
+        line: {width: 1, color: infographicTopEmployees.map((_, index) => infographicColors[index % infographicColors.length])}
     },
     text: infographicTopEmployees.map(entry => formatMoney(entry[1])),
     textposition: 'outside',
@@ -2012,8 +2035,8 @@ Plotly.newPlot('chart3', [{
     orientation: 'h',
     width: infographicDepartmentEntries.map(() => 0.45),
     marker: {
-        color: infographicDepartmentEntries.map((_, index) => infographicColors[index % infographicColors.length]),
-        line: {width: 0}
+        color: infographicDepartmentEntries.map((_, index) => infographicBarFill(infographicColors[index % infographicColors.length])),
+        line: {width: 1, color: infographicDepartmentEntries.map((_, index) => infographicColors[index % infographicColors.length])}
     },
     text: infographicDepartmentEntries.map(entry => formatMoney(entry[1])),
     textposition: 'outside',
