@@ -1335,14 +1335,22 @@ body {
     color: #00ffff;
 }
 
+.lfl-infographic-toggle-wrap {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    margin-top: 18px;
+}
+
 .lfl-infographic-toggle {
     display: flex;
-    width: fit-content;
-    max-width: 100%;
+    width: auto !important;
+    max-width: calc(100% - 24px);
+    flex: 0 0 auto;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    margin: 18px auto 0;
+    margin: 0;
     padding: 9px 16px;
     border: 1px solid rgba(0, 229, 255, 0.28);
     border-radius: 999px;
@@ -1382,7 +1390,6 @@ body {
 .lfl-infographic-collapse.is-open {
     grid-template-rows: 1fr;
     opacity: 1;
-    margin-top: 18px;
 }
 
 .lfl-infographic-collapse-inner {
@@ -1552,7 +1559,7 @@ body {
     width: 100%;
     box-sizing: border-box;
     margin-top: 20px;
-    padding: 18px;
+    padding: 0 16px;
     border: 1px solid rgba(148, 163, 184, 0.14);
     border-radius: 14px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
@@ -1560,10 +1567,29 @@ body {
 
 .lfl-infographic-breakdown-header {
     display: flex;
+    min-height: 58px;
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 14px;
+    padding: 16px 0;
+    cursor: pointer;
+    list-style: none;
+}
+
+.lfl-infographic-breakdown-header::-webkit-details-marker {
+    display: none;
+}
+
+.lfl-infographic-breakdown-header::after {
+    content: '＋';
+    flex: 0 0 auto;
+    color: #6fe9f1;
+    font-size: 1.1em;
+    transition: transform 0.2s ease;
+}
+
+.lfl-infographic-breakdown[open] .lfl-infographic-breakdown-header::after {
+    content: '−';
 }
 
 .lfl-infographic-breakdown-header h5 {
@@ -1571,22 +1597,26 @@ body {
     color: #dce8ff;
     font-size: 0.98em;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .lfl-infographic-breakdown-header span {
+    flex: 1 1 auto;
     color: #7788a8;
     font-size: 0.76em;
+    text-align: right;
 }
 
 .lfl-infographic-breakdown-list {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+    gap: 8px 12px;
+    padding: 0 0 16px;
 }
 
 .lfl-infographic-group {
     min-width: 0;
-    padding: 13px 15px;
+    padding: 10px 12px;
     border: 1px solid rgba(148, 163, 184, 0.1);
     border-radius: 11px;
     background: rgba(9, 17, 32, 0.34);
@@ -1597,7 +1627,7 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 7px;
 }
 
 .lfl-infographic-group-header h6 {
@@ -1610,11 +1640,11 @@ body {
 }
 
 .lfl-infographic-group-row + .lfl-infographic-group-row {
-    margin-top: 9px;
+    margin-top: 6px;
 }
 
 .lfl-infographic-group-row .lfl-infographic-row-header {
-    margin-bottom: 5px;
+    margin-bottom: 3px;
     font-size: 0.72em;
 }
 
@@ -2545,21 +2575,17 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
     }
 
     .lfl-infographic-grid {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .lfl-infographic-breakdown {
-        padding: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .lfl-infographic-breakdown-header {
         align-items: flex-start;
-        flex-direction: column;
-        gap: 5px;
+        min-height: 0;
+        gap: 8px;
     }
 
     .lfl-infographic-breakdown-list {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
     }
 
     .lfl-card { 
@@ -2717,6 +2743,23 @@ table tbody tr:not(.group-header):not(.group-row):hover td {
 @media (max-width: 480px) {
     .container { 
         padding: 0 5px !important;
+    }
+
+    .lfl-infographic-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lfl-infographic-breakdown {
+        padding: 0 12px;
+    }
+
+    .lfl-infographic-breakdown-header {
+        flex-wrap: wrap;
+    }
+
+    .lfl-infographic-breakdown-header span {
+        flex-basis: calc(100% - 24px);
+        text-align: left;
     }
 
     .fot-infographic {

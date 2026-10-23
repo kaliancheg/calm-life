@@ -181,29 +181,31 @@
                         </div>
                     </div>
                     <div class="lfl-infographic-grid" id="lflInfographicMetrics"></div>
-                    <section class="lfl-infographic-breakdown" aria-labelledby="lflDepartmentComparisonTitle">
-                        <div class="lfl-infographic-breakdown-header">
+                    <details class="lfl-infographic-breakdown">
+                        <summary class="lfl-infographic-breakdown-header">
                             <h5 id="lflDepartmentComparisonTitle">По отделам</h5>
-                            <span>Начисления за сравниваемые периоды</span>
-                        </div>
+                            <span id="lflDepartmentComparisonSummary">Сравнение начислений за периоды</span>
+                        </summary>
                         <div class="lfl-infographic-breakdown-list" id="lflInfographicDepartments"></div>
-                    </section>
-                    <section class="lfl-infographic-breakdown" aria-labelledby="lflPositionComparisonTitle">
-                        <div class="lfl-infographic-breakdown-header">
+                    </details>
+                    <details class="lfl-infographic-breakdown">
+                        <summary class="lfl-infographic-breakdown-header">
                             <h5 id="lflPositionComparisonTitle">По должностям</h5>
-                            <span>Начисления за сравниваемые периоды</span>
-                        </div>
+                            <span id="lflPositionComparisonSummary">Сравнение начислений за периоды</span>
+                        </summary>
                         <div class="lfl-infographic-breakdown-list" id="lflInfographicPositions"></div>
-                    </section>
+                    </details>
                 </section>
             </div>
         </div>
-        <button class="lfl-infographic-toggle" id="lflInfographicToggle" type="button"
-                aria-expanded="false" aria-controls="lflInfographicCollapse"
-                onclick="toggleLFLInfographic()">
-            <span>Развернуть инфографику</span>
-            <span class="lfl-infographic-toggle-icon" aria-hidden="true">⌄</span>
-        </button>
+        <div class="lfl-infographic-toggle-wrap">
+            <button class="lfl-infographic-toggle" id="lflInfographicToggle" type="button"
+                    aria-expanded="false" aria-controls="lflInfographicCollapse"
+                    onclick="toggleLFLInfographic()">
+                <span>Развернуть инфографику</span>
+                <span class="lfl-infographic-toggle-icon" aria-hidden="true">⌄</span>
+            </button>
+        </div>
     </div>
 </div>
 
@@ -1064,6 +1066,7 @@ function renderLFLInfographic(data) {
     });
     renderLFLGroupComparison(
         'lflInfographicDepartments',
+        'lflDepartmentComparisonSummary',
         filterPeriodData(previous),
         filterPeriodData(current),
         'otdel',
@@ -1071,6 +1074,7 @@ function renderLFLInfographic(data) {
     );
     renderLFLGroupComparison(
         'lflInfographicPositions',
+        'lflPositionComparisonSummary',
         filterPeriodData(previous),
         filterPeriodData(current),
         'dolzhnost',
@@ -1078,7 +1082,7 @@ function renderLFLInfographic(data) {
     );
 }
 
-function renderLFLGroupComparison(containerId, previousRecords, currentRecords, groupField, emptyMessage) {
+function renderLFLGroupComparison(containerId, summaryId, previousRecords, currentRecords, groupField, emptyMessage) {
     const container = document.getElementById(containerId);
     const aggregate = records => {
         const totals = new Map();
@@ -1099,6 +1103,11 @@ function renderLFLGroupComparison(containerId, previousRecords, currentRecords, 
         .sort((a, b) => Math.max(b.previous, b.current) - Math.max(a.previous, a.current));
 
     container.replaceChildren();
+    const previousTotal = [...previousTotals.values()].reduce((total, value) => total + value, 0);
+    const currentTotal = [...currentTotals.values()].reduce((total, value) => total + value, 0);
+    document.getElementById(summaryId).textContent = groups.length
+        ? `${groups.length} · ${formatMoney(previousTotal)} → ${formatMoney(currentTotal)}`
+        : 'Нет данных за выбранные периоды';
     if (groups.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'lfl-infographic-empty';
