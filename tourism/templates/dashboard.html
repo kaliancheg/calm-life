@@ -365,7 +365,7 @@
     </div>
     <div class="infographic-grid">
         <section class="infographic-panel infographic-panel-trend">
-            <h3>Динамика · последние 14 дней</h3>
+            <h3>Динамика</h3>
             <div class="infographic-plot infographic-plot-trend" id="chart1"></div>
         </section>
         <section class="infographic-panel infographic-panel-employees">
@@ -1762,8 +1762,11 @@ const infographicLayout = {
     xaxis: {gridcolor: 'rgba(148, 163, 184, 0.12)', linecolor: 'rgba(148, 163, 184, 0.2)', color: '#9baac8', zeroline: false},
     yaxis: {gridcolor: 'rgba(148, 163, 184, 0.12)', linecolor: 'rgba(148, 163, 184, 0.2)', color: '#9baac8', zeroline: false}
 };
-const infographicDateValues = infographicDateList.slice(-14);
-const infographicDateLabels = infographicDateValues.map(date => formatDate(date).split(' (')[0]);
+const infographicDateValues = infographicDateList.slice(-30);
+const infographicDateLabels = infographicDateValues.map(date => {
+    const parts = date.split('-');
+    return parts.length === 3 ? String(Number(parts[2])) : date;
+});
 const infographicDateTotals = infographicDateValues.map(date => infographicDateTotalsByDate[date]);
 
 Plotly.newPlot('chart1', [{
@@ -1784,7 +1787,8 @@ Plotly.newPlot('chart1', [{
         type: 'category',
         categoryorder: 'array',
         categoryarray: infographicDateLabels,
-        tickangle: -15
+        tickangle: -15,
+        tickfont: {size: 10}
     },
     yaxis: {...infographicLayout.yaxis, tickformat: ',.0f', ticksuffix: ' ₽'}
 }, infographicConfig);
@@ -1799,12 +1803,13 @@ Plotly.newPlot('chart2', [{
         line: {width: 0}
     },
     text: infographicTopEmployees.map(entry => formatMoney(entry[1])),
-    textposition: 'auto',
+    textposition: 'outside',
+    cliponaxis: false,
     hovertemplate: '<b>%{y}</b><br>%{x:,.0f} ₽<extra></extra>'
 }], {
     ...infographicLayout,
-    margin: {t: 6, b: 30, l: 12, r: 12},
-    xaxis: {...infographicLayout.xaxis, tickformat: ',.0f', ticksuffix: ' ₽'},
+    margin: {t: 6, b: 30, l: 12, r: 36},
+    xaxis: {...infographicLayout.xaxis, tickformat: ',.0f', ticksuffix: ' ₽', rangemode: 'tozero'},
     yaxis: {...infographicLayout.yaxis, autorange: 'reversed', automargin: true, gridcolor: 'rgba(0,0,0,0)'}
 }, infographicConfig);
 
@@ -1818,12 +1823,13 @@ Plotly.newPlot('chart3', [{
         line: {width: 0}
     },
     text: infographicDepartmentEntries.map(entry => formatMoney(entry[1])),
-    textposition: 'auto',
+    textposition: 'outside',
+    cliponaxis: false,
     hovertemplate: '<b>%{y}</b><br>%{x:,.0f} ₽<extra></extra>'
 }], {
     ...infographicLayout,
-    margin: {t: 6, b: 30, l: 12, r: 12},
-    xaxis: {...infographicLayout.xaxis, tickformat: ',.0f', ticksuffix: ' ₽'},
+    margin: {t: 6, b: 30, l: 12, r: 36},
+    xaxis: {...infographicLayout.xaxis, tickformat: ',.0f', ticksuffix: ' ₽', rangemode: 'tozero'},
     yaxis: {...infographicLayout.yaxis, autorange: 'reversed', automargin: true, gridcolor: 'rgba(0,0,0,0)'}
 }, infographicConfig);
 
