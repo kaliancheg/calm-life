@@ -1813,11 +1813,13 @@ Plotly.newPlot('chart2', [{
     yaxis: {...infographicLayout.yaxis, autorange: 'reversed', automargin: true, gridcolor: 'rgba(0,0,0,0)'}
 }, infographicConfig);
 
+const infographicDepartmentMax = Math.max(0, ...infographicDepartmentEntries.map(entry => entry[1]));
 Plotly.newPlot('chart3', [{
     x: infographicDepartmentEntries.map(entry => entry[1]),
     y: infographicDepartmentEntries.map(entry => entry[0]),
     type: 'bar',
     orientation: 'h',
+    width: infographicDepartmentEntries.map(() => 0.45),
     marker: {
         color: infographicDepartmentEntries.map((_, index) => infographicColors[index % infographicColors.length]),
         line: {width: 0}
@@ -1829,7 +1831,12 @@ Plotly.newPlot('chart3', [{
 }], {
     ...infographicLayout,
     margin: {t: 6, b: 30, l: 12, r: 36},
-    xaxis: {...infographicLayout.xaxis, tickformat: ',.0f', ticksuffix: ' ₽', rangemode: 'tozero'},
+    xaxis: {
+        ...infographicLayout.xaxis,
+        range: [0, infographicDepartmentMax ? infographicDepartmentMax * 1.4 : 1],
+        tickformat: ',.0f',
+        ticksuffix: ' ₽'
+    },
     yaxis: {...infographicLayout.yaxis, autorange: 'reversed', automargin: true, gridcolor: 'rgba(0,0,0,0)'}
 }, infographicConfig);
 
