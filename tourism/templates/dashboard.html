@@ -1101,6 +1101,7 @@ function renderLFLInfographic(data) {
         },
         xaxis: {
             title: {text: 'День месяца', standoff: 8},
+            range: [0.5, maxDay + 0.5],
             tickmode: 'linear',
             tick0: 1,
             dtick: 1,
@@ -2021,6 +2022,7 @@ Plotly.newPlot('chart2', [{
     y: infographicTopEmployees.map(entry => entry[0]),
     type: 'bar',
     orientation: 'h',
+    width: infographicTopEmployees.map(() => 0.56),
     marker: {
         color: infographicTopEmployees.map((_, index) => infographicBarFill(infographicColors[index % infographicColors.length])),
         line: {width: 2, color: infographicTopEmployees.map((_, index) => infographicBarBorder(infographicColors[index % infographicColors.length]))}
