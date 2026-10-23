@@ -1400,6 +1400,11 @@ body {
     margin-top: 18px;
 }
 
+.lfl-infographic-collapse.is-open,
+.lfl-infographic-collapse.is-open .lfl-infographic-collapse-inner {
+    overflow: visible;
+}
+
 .lfl-infographic-collapse-inner {
     min-height: 0;
     overflow: hidden;
@@ -1446,8 +1451,8 @@ body {
 
 .lfl-daily-chart {
     width: 100%;
+    height: 370px;
     min-width: 0;
-    min-height: 320px;
 }
 
 .lfl-infographic-grid {

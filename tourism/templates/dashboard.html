@@ -254,7 +254,7 @@
                 <div class="lfl-modal-table-wrap">
                     <table class="lfl-modal-table" id="lflModalPositionTable">
                         <thead>
-                            <tr><th>Должность</th><th>Сотрудников</th><th>Текущий</th><th>Предыдущий</th><th>Разница</th><th>Изменение</th></tr>
+                            <tr><th>Должность</th><th>Сотрудников</th><th>Текущий</th><th>Предыдущий</th><th aria-sort="descending">Разница ↓</th><th>Изменение</th></tr>
                         </thead>
                         <tbody></tbody>
                     </table>
@@ -1007,7 +1007,10 @@ function renderLFLInfographic(data) {
             name: 'Текущий период · начисления',
             x: days,
             y: days.map(day => currentAmounts.get(day) || 0),
-            marker: {color: '#00d9f5'},
+            marker: {
+                color: 'rgba(110, 225, 155, 0.48)',
+                line: {color: '#7ce8a8', width: 1}
+            },
             hovertemplate: 'День %{x}<br>%{y:,.0f} ₽<extra>Текущий период</extra>'
         },
         {
@@ -1015,7 +1018,10 @@ function renderLFLInfographic(data) {
             name: 'Предыдущий период · начисления',
             x: days,
             y: days.map(day => previousAmounts.get(day) || 0),
-            marker: {color: '#8b7bff'},
+            marker: {
+                color: 'rgba(148, 163, 184, 0.45)',
+                line: {color: '#cbd5e1', width: 1}
+            },
             hovertemplate: 'День %{x}<br>%{y:,.0f} ₽<extra>Предыдущий период</extra>'
         }
     ];
@@ -1059,16 +1065,31 @@ function renderLFLInfographic(data) {
         height: 370,
         barmode: 'group',
         bargap: 0.28,
-        margin: {l: 72, r: 74, t: 22, b: 84},
+        margin: {l: 72, r: 74, t: 22, b: 104},
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)',
         font: {color: '#c8d6f0', family: 'inherit'},
-        legend: {orientation: 'h', x: 0, y: -0.22, font: {size: 10}},
+        hoverlabel: {
+            bgcolor: '#f4f6f8',
+            bordercolor: '#a8b3c2',
+            font: {color: '#202a36', family: 'inherit', size: 12},
+            align: 'left'
+        },
+        legend: {
+            orientation: 'h',
+            x: 0.5,
+            xanchor: 'center',
+            y: -0.28,
+            entrywidth: 0.24,
+            entrywidthmode: 'fraction',
+            font: {size: 10}
+        },
         xaxis: {
             title: {text: 'День месяца', standoff: 8},
-            tickmode: 'array',
-            tickvals: days,
-            ticktext: days.map(day => String(day).padStart(2, '0')),
+            tickmode: 'linear',
+            tick0: 1,
+            dtick: Math.max(1, Math.ceil(maxDay / 10)),
+            tickformat: '02d',
             gridcolor: 'rgba(148, 163, 184, 0.08)',
             linecolor: 'rgba(148, 163, 184, 0.2)',
             fixedrange: true
@@ -1353,7 +1374,7 @@ function renderLFLDetails() {
             absChange: Math.abs(changePct)
         };
     }).filter(Boolean)
-        .sort((a, b) => b.absChange - a.absChange)
+        .sort((a, b) => b.difference - a.difference)
         .slice(0, 20)
         .map(row => `<tr>
             <td>${row.position}</td>
