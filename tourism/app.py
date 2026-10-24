@@ -104,6 +104,19 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.session_protection = 'strong'
 
+def _is_api_request():
+    return request.path.startswith(('/api/', '/admin/'))
+
+
+@login_manager.unauthorized_handler
+def handle_unauthorized_request():
+    if _is_api_request():
+        response = jsonify({'error': 'authentication_required', 'session_expired': True})
+        response.status_code = 401
+        response.headers['X-Session-Expired'] = '1'
+        return response
+    return redirect(url_for('login', next=request.url))
+
 
 def _parse_import_period():
     """Читает дату начала действия (год/месяц/число) из формы импорта Excel.
@@ -465,13 +478,23 @@ def before_request():
                 if datetime.now() - last_activity > app.config['SESSION_TIMEOUT']:
                     logout_user()
                     session.clear()
+                    if _is_api_request():
+                        response = jsonify({'error': 'session_expired', 'session_expired': True})
+                        response.status_code = 401
+                        response.headers['X-Session-Expired'] = '1'
+                        return response
                     flash('Сессия истекла. Пожалуйста, войдите снова.', 'info')
-                    return redirect(url_for('login'))
+                    return redirect(url_for('login', expired=1))
             except (ValueError, TypeError):
                 # Если дата некорректна, считаем сессию устаревшей
                 logout_user()
                 session.clear()
-                return redirect(url_for('login'))
+                if _is_api_request():
+                    response = jsonify({'error': 'session_expired', 'session_expired': True})
+                    response.status_code = 401
+                    response.headers['X-Session-Expired'] = '1'
+                    return response
+                return redirect(url_for('login', expired=1))
         session['last_activity'] = datetime.now().isoformat()
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -613,7 +636,12 @@ def login():
                 if conn and conn.is_connected():
                     conn.close()
     
-    return render_template('login.html', error=error, lockout_info=lockout_info)
+    return render_template(
+        'login.html',
+        error=error,
+        lockout_info=lockout_info,
+        session_expired=request.args.get('expired') == '1'
+    )
 
 @app.route('/logout')
 @login_required
@@ -633,7 +661,9 @@ def render_dashboard():
         'dashboard.html',
         user_name=current_user.full_name,
         role=current_user.role,
-        can_export=can_export
+        can_export=can_export,
+        session_timeout_ms=int(app.config['SESSION_TIMEOUT'].total_seconds() * 1000),
+        session_user_id=current_user.get_id()
     )
 
 @app.route('/')
@@ -752,6 +782,12 @@ def api_data():
     finally:
         if conn and conn.is_connected():
             conn.close()
+
+@app.route('/api/session/heartbeat', methods=['POST'])
+@login_required
+def session_heartbeat():
+    """Подтверждение активности пользователя для продления серверной сессии."""
+    return jsonify({'authenticated': True})
 
 # ==================== LFL ANALYSIS API ====================
 
@@ -1017,7 +1053,9 @@ def admin_panel():
         'admin.html',
         user_name=current_user.full_name,
         role=current_user.role,
-        current_user_id=current_user.id
+        current_user_id=current_user.id,
+        session_timeout_ms=int(app.config['SESSION_TIMEOUT'].total_seconds() * 1000),
+        session_user_id=current_user.get_id()
     )
 
 # ==================== USER MANAGEMENT ====================

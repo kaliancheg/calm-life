@@ -10,6 +10,10 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ru.js"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<script src="{{ url_for('static', filename='js/session-timeout.js') }}"
+        data-timeout-ms="{{ session_timeout_ms }}"
+        data-user-id="{{ session_user_id }}"
+        data-login-url="{{ url_for('login', expired=1) }}"></script>
 </head>
 <body>
 <div class="container">
