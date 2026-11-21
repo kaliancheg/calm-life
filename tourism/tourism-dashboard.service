@@ -30,9 +30,10 @@ RestartSec=10
 # Environment="PYTHONPATH=/var/www/calm-life/tourism"
 # Environment="FLASK_ENV=production"
 
-# Секреты (OPENROUTER_API_KEY) НЕ хранятся в репозитории.
+# Секреты (YANDEX_API_KEY, YANDEX_FOLDER_ID) НЕ хранятся в репозитории.
 # Файл создаётся на сервере вне git, права 0600, владелец root:
-#   echo 'OPENROUTER_API_KEY=<ваш_ключ>' | sudo tee /etc/tourism-dashboard/secrets.env
+#   echo 'YANDEX_FOLDER_ID=<folder_id>' | sudo tee /etc/tourism-dashboard/secrets.env
+#   echo 'YANDEX_API_KEY=<ключ сервисного аккаунта>' | sudo tee -a /etc/tourism-dashboard/secrets.env
 #   sudo chmod 600 /etc/tourism-dashboard/secrets.env
 EnvironmentFile=-/etc/tourism-dashboard/secrets.env
 

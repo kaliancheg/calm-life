@@ -3867,16 +3867,16 @@ def clear_records():
 
 # ==================== MINI-MVP: LETTER GENERATOR (PUBLIC) ====================
 
-OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+YANDEX_LLM_URL = 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion'
 
 @app.route('/api/letter', methods=['POST'])
 def api_letter():
-    """Публичный API — генерация холодного письма через OpenRouter."""
+    """Публичный API — генерация холодного письма через YandexGPT."""
     # Читаем ключ в момент запроса, а не при импорте модуля:
-    # так смена секрета в EnvironmentFile не зависит от порядка загрузки workers.
-    api_key = os.environ.get('OPENROUTER_API_KEY', '').strip()
-    if not api_key:
-        logger.error('OPENROUTER_API_KEY is not set in process environment')
+    api_key = os.environ.get('YANDEX_API_KEY', '').strip()
+    folder_id = os.environ.get('YANDEX_FOLDER_ID', '').strip()
+    if not api_key or not folder_id:
+        logger.error('YANDEX_API_KEY or YANDEX_FOLDER_ID is not set in process environment')
         return jsonify({'error': 'Сервер не настроен'}), 500
 
     try:
@@ -3908,43 +3908,45 @@ def api_letter():
     ])
 
     payload = {
-        'model': 'nvidia/nemotron-3-ultra-550b-a55b:free',
+        'modelUri': f'gpt://{folder_id}/yandexgpt-lite/latest',
+        'completionOptions': {
+            'stream': False,
+            'temperature': 0.6,
+            'maxTokens': '600',
+        },
         'messages': [
-            {'role': 'system', 'content': system_prompt},
-            {'role': 'user', 'content': 'Напиши письмо.'},
+            {'role': 'system', 'text': system_prompt},
+            {'role': 'user', 'text': 'Напиши письмо.'},
         ],
-        'max_tokens': 600,
-        'temperature': 0.7,
     }
 
     headers = {
-        'Authorization': f'Bearer {api_key}',
+        'Authorization': f'Api-Key {api_key}',
+        'x-folder-id': folder_id,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://mvp.calm-life.ru',
-        'X-Title': 'Letter to Client',
     }
 
     try:
-        resp = http_requests.post(OPENROUTER_API_URL, json=payload, headers=headers, timeout=30)
+        resp = http_requests.post(YANDEX_LLM_URL, json=payload, headers=headers, timeout=30)
     except http_requests.RequestException as exc:
-        logger.error(f'OpenRouter connection error: {exc}')
+        logger.error(f'YandexGPT connection error: {exc}')
         return jsonify({'error': 'Сервер не смог связаться с AI. Попробуйте позже.'}), 502
 
     if resp.status_code >= 400:
-        logger.error(f'OpenRouter error {resp.status_code}: {resp.text[:500]}')
+        logger.error(f'YandexGPT error {resp.status_code}: {resp.text[:500]}')
         return jsonify({'error': 'Не удалось получить ответ от AI. Попробуйте позже.'}), resp.status_code
 
     try:
         data = resp.json()
     except ValueError:
-        logger.error('OpenRouter returned non-JSON response')
+        logger.error('YandexGPT returned non-JSON response')
         return jsonify({'error': 'AI вернул некорректный ответ. Попробуйте ещё раз.'}), 502
 
     letter = None
     try:
-        letter = data['choices'][0]['message']['content'].strip()
+        letter = data['result']['alternatives'][0]['message']['text'].strip()
     except (KeyError, IndexError, TypeError, AttributeError):
-        pass
+        logger.error(f'YandexGPT unexpected response: {resp.text[:500]}')
 
     if not letter:
         return jsonify({'error': 'AI вернул пустой ответ. Попробуйте ещё раз.'}), 502
