@@ -3908,7 +3908,7 @@ def api_letter():
     ])
 
     payload = {
-        'model': 'openrouter/free',
+        'model': 'nvidia/nemotron-3-ultra-550b-a55b:free',
         'messages': [
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': 'Напиши письмо.'},
