@@ -13,6 +13,7 @@ from typing import List, Optional, Dict, Any
 import os
 import tempfile
 import json
+import requests as http_requests
 from pytz import timezone
 
 # Настройка логирования
@@ -3863,6 +3864,92 @@ def clear_records():
     except Exception as e:
         logger.error(f'Error clearing records: {e}')
         return jsonify({'error': str(e)}), 500
+
+# ==================== MINI-MVP: LETTER GENERATOR (PUBLIC) ====================
+
+OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+
+@app.route('/api/letter', methods=['POST'])
+def api_letter():
+    """Публичный API — генерация холодного письма через OpenRouter."""
+    api_key = OPENROUTER_API_KEY
+    if not api_key:
+        logger.error('OPENROUTER_API_KEY is not set')
+        return jsonify({'error': 'Сервер не настроен'}), 500
+
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception:
+        return jsonify({'error': 'Некорректный формат данных'}), 400
+
+    client_name = (body.get('clientName') or '').strip()
+    client_sphere = (body.get('clientSphere') or '').strip()
+    user_service = (body.get('userService') or '').strip()
+    user_name = (body.get('userName') or '').strip()
+
+    if not all([client_name, client_sphere, user_service, user_name]):
+        return jsonify({'error': 'Пожалуйста, заполните все поля формы перед отправкой'}), 400
+
+    system_prompt = '\n'.join([
+        'Ты — помощник по холодным продажам для фрилансеров.',
+        'Ты помогаешь пользователю составить короткое персонализированное письмо потенциальному клиенту на основе информации, которую он вводит.',
+        'Не пиши письма длиннее 5 предложений.',
+        'Не используй шаблонные фразы.',
+        'Не уходи от темы.',
+        'Ответ — одно письмо в деловом, но дружелюбном тоне. Без вступлений и объяснений от AI — только готовый текст.',
+        '',
+        'Данные:',
+        f'— Клиент: {client_name}',
+        f'— Сфера клиента: {client_sphere}',
+        f'— Твоя услуга/опыт: {user_service}',
+        f'— Твоё имя: {user_name}',
+    ])
+
+    payload = {
+        'model': 'openrouter/free',
+        'messages': [
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': 'Напиши письмо.'},
+        ],
+        'max_tokens': 600,
+        'temperature': 0.7,
+    }
+
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://mvp.calm-life.ru',
+        'X-Title': 'Letter to Client',
+    }
+
+    try:
+        resp = http_requests.post(OPENROUTER_API_URL, json=payload, headers=headers, timeout=30)
+    except http_requests.RequestException as exc:
+        logger.error(f'OpenRouter connection error: {exc}')
+        return jsonify({'error': 'Сервер не смог связаться с AI. Попробуйте позже.'}), 502
+
+    if resp.status_code >= 400:
+        logger.error(f'OpenRouter error {resp.status_code}: {resp.text[:500]}')
+        return jsonify({'error': 'Не удалось получить ответ от AI. Попробуйте позже.'}), resp.status_code
+
+    try:
+        data = resp.json()
+    except ValueError:
+        logger.error('OpenRouter returned non-JSON response')
+        return jsonify({'error': 'AI вернул некорректный ответ. Попробуйте ещё раз.'}), 502
+
+    letter = None
+    try:
+        letter = data['choices'][0]['message']['content'].strip()
+    except (KeyError, IndexError, TypeError, AttributeError):
+        pass
+
+    if not letter:
+        return jsonify({'error': 'AI вернул пустой ответ. Попробуйте ещё раз.'}), 502
+
+    return jsonify({'letter': letter})
+
 
 if __name__ == '__main__':
     print('='*60)

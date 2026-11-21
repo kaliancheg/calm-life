@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#050c17">
+  <title>AI-критик идей</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body id="top">
+  <header class="topbar">
+    <div class="wrap top">
+      <div class="mark">IC</div>
+      <div class="brand">
+        <b>AI-критик идей</b>
+        <small>ВЕНЧУРНЫЙ ПОДХОД К ВАШИМ ПРОЕКТАМ</small>
+      </div>
+      <nav class="nav">
+        <a href="#hero">Главная</a>
+        <a href="#chat-section">Критика</a>
+        <a href="#principles">Как работает</a>
+      </nav>
+      <button class="theme" id="themeBtn">☾ / ☀</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="hero">
+      <div class="wrap hero-grid">
+        <div class="cover">
+          <div style="padding:40px;text-align:center;">
+            <div style="font-size:64px;margin-bottom:20px;">💼</div>
+            <h2 style="font-size:24px;margin:0 0 10px;">Венчурный взгляд</h2>
+            <p style="color:var(--muted);font-size:13px;margin:0;">Получите честный разбор вашей бизнес-идеи глазами инвестора</p>
+          </div>
+        </div>
+        <div>
+          <div class="eyebrow">AI-АНАЛИЗАТОР</div>
+          <h1>AI-критик <span>бизнес-идей</span></h1>
+          <p class="intro">
+            Опишите свою бизнес-идею — AI оценит её глазами венчурного инвестора.
+            Узнайте сильные стороны, риски и конкретные шаги для проверки гипотез.
+          </p>
+          <div class="notice">
+            <b>Как это работает:</b> Введите описание идеи — получите структурированный разбор: сильные стороны, риски и что проверить дальше.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="chat-section">
+      <div class="wrap">
+        <div class="head">
+          <div>
+            <div class="kicker">РАЗБОР ИДЕИ</div>
+            <h2>Опишите свою бизнес-идею</h2>
+          </div>
+          <p>AI выступит в роли венчурного инвестора и даст структурированный фидбек по вашей идее.</p>
+        </div>
+        
+        <div id="chat-container">
+          <div class="chat-messages" id="chat-messages">
+            <div class="msg msg-bot">
+              Привет! Опишите вашу бизнес-идею — что за продукт, для кого он и как зарабатывает. Я дам честный разбор с точки зрения инвестора: сильные стороны, риски и следующие шаги для проверки.
+            </div>
+          </div>
+          <div class="chat-input">
+            <input type="text" id="chat-input" placeholder="Опишите идею, например: сервис подписки на экологичные товары для..." autocomplete="off">
+            <button id="send-btn">Оценить</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="principles">
+      <div class="wrap">
+        <div class="head">
+          <div>
+            <div class="kicker">КАК РАБОТАЕТ</div>
+            <h2>Структура разбора</h2>
+          </div>
+        </div>
+        <div class="principles">
+          <article class="principle">
+            <b>Сильные стороны</b>
+            <p>Что в идее может привлечь инвестора: рынок, команда, уникальность, экономика.</p>
+          </article>
+          <article class="principle">
+            <b>Риски</b>
+            <p>Честный взгляд на слабые места: конкуренция, монетизация, операционные сложности.</p>
+          </article>
+          <article class="principle">
+            <b>Что проверить следующим шагом</b>
+            <p>Конкретные действия для валидации гипотез до вложений.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <b>AI-критик идей</b><br>
+      Структурированный разбор бизнес-идей с позиции венчурного инвестора
+    </div>
+  </footer>
+
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,3 +1,12 @@
 .DS_Store
 Thumbs.db
 *.log
+
+# Секреты и локальные переменные окружения — не коммитить
+.env
+.env.*
+*.env
+secrets.env
+vercel.json
+.vercel
+node_modules

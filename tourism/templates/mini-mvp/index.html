@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#050c17">
+  <title>Письмо первому клиенту</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='mini-mvp/css/style.css') }}">
+</head>
+
+<body id="top">
+  <header class="topbar">
+    <div class="wrap top">
+      <div class="mark">PC</div>
+      <div class="brand">
+        <b>Письмо клиенту</b>
+        <small>AI-ГЕНЕРАТОР ХОЛОДНЫХ ПИСЕМ</small>
+      </div>
+      <nav class="nav">
+        <a href="#hero">Главная</a>
+        <a href="#chat-section">Генератор</a>
+        <a href="#principles">Как работает</a>
+      </nav>
+      <button class="theme" id="themeBtn">☾ / ☀</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero" id="hero">
+      <div class="wrap hero-grid">
+        <div class="cover">
+          <div style="padding:40px;text-align:center;">
+            <div style="font-size:64px;margin-bottom:20px;">💼</div>
+            <h2 style="font-size:24px;margin:0 0 10px;">Первый клиент ждёт</h2>
+            <p style="color:var(--muted);font-size:13px;margin:0;">Напишите идеальное первое письмо за 30 секунд</p>
+          </div>
+        </div>
+        <div>
+          <div class="eyebrow">ХОЛОДНЫЕ ПИСЬМА</div>
+          <h1>Письмо <span>первому клиенту</span></h1>
+          <p class="intro">
+            Фрилансеру трудно написать первое письмо потенциальному клиенту.
+            AI сгенерирует персонализированное письмо за секунды — просто укажите данные.
+          </p>
+          <div class="notice">
+            <b>Как это работает:</b> Заполните форму с информацией о клиенте — получите готовое персонализированное письмо, которое можно отправить.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHAT / ФОРМА -->
+    <section id="chat-section">
+      <div class="wrap">
+        <div class="head">
+          <div>
+            <div class="kicker">ГЕНЕРАТОР ПИСЕМ</div>
+            <h2>Данные о клиенте</h2>
+          </div>
+          <p>Заполните форму — AI напишет короткое персонализированное письмо для вашего потенциального клиента.</p>
+        </div>
+
+        <div id="chat-container">
+          <div class="chat-messages" id="chat-messages">
+            <div class="msg msg-bot">
+              Привет! Заполните форму ниже с информацией о вашем потенциальном клиенте, и AI напишет короткое персонализированное письмо для первого контакта.
+            </div>
+          </div>
+          <form id="letter-form" autocomplete="off">
+            <div class="form-grid">
+              <div class="field" id="field-name">
+                <label for="client-name">Имя клиента и компания</label>
+                <input type="text" id="client-name" placeholder="Алексей, TechCorp">
+              </div>
+              <div class="field" id="field-sphere">
+                <label for="client-sphere">Сфера деятельности</label>
+                <input type="text" id="client-sphere" placeholder="Разработка мобильных приложений">
+              </div>
+              <div class="field" id="field-service">
+                <label for="user-service">Ваша услуга / опыт</label>
+                <input type="text" id="user-service" placeholder="UI/UX дизайн, 3 года опыта">
+              </div>
+              <div class="field" id="field-freelancer">
+                <label for="user-name">Ваше имя (фрилансер)</label>
+                <input type="text" id="user-name" placeholder="Мария">
+              </div>
+            </div>
+            <div class="chat-input">
+              <button type="submit" class="primary" id="send-btn">Отправить</button>
+            </div>
+            <div class="error-pop" id="error-pop" role="alert">
+              Пожалуйста, заполните все поля формы перед отправкой
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRINCIPLES -->
+    <section id="principles">
+      <div class="wrap">
+        <div class="head">
+          <div>
+            <div class="kicker">КАК РАБОТАЕТ</div>
+            <h2>Три простых шага</h2>
+          </div>
+        </div>
+        <div class="principles">
+          <article class="principle">
+            <b>1. Укажите данные клиента</b>
+            <p>Введите имя, компанию, сферу деятельности и информацию о себе — чем точнее, тем персонализированнее письмо.</p>
+          </article>
+          <article class="principle">
+            <b>2. AI напишет письмо</b>
+            <p>ИИ-агент создаст короткое деловое письмо до 5 предложений — без шаблонных фраз, по существу.</p>
+          </article>
+          <article class="principle">
+            <b>3. Скопируйте и отправьте</b>
+            <p>Готовое письмо появится прямо в чате — скопируйте его и отправьте потенциальному клиенту.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <b>Письмо первому клиенту</b><br>
+      AI-генератор персонализированных холодных писем для фрилансеров
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='mini-mvp/js/app.js') }}"></script>
+</body>
+
+</html>
