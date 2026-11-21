@@ -3868,14 +3868,15 @@ def clear_records():
 # ==================== MINI-MVP: LETTER GENERATOR (PUBLIC) ====================
 
 OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
-OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
 
 @app.route('/api/letter', methods=['POST'])
 def api_letter():
     """Публичный API — генерация холодного письма через OpenRouter."""
-    api_key = OPENROUTER_API_KEY
+    # Читаем ключ в момент запроса, а не при импорте модуля:
+    # так смена секрета в EnvironmentFile не зависит от порядка загрузки workers.
+    api_key = os.environ.get('OPENROUTER_API_KEY', '').strip()
     if not api_key:
-        logger.error('OPENROUTER_API_KEY is not set')
+        logger.error('OPENROUTER_API_KEY is not set in process environment')
         return jsonify({'error': 'Сервер не настроен'}), 500
 
     try:
